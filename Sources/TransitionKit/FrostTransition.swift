@@ -1,0 +1,69 @@
+import Foundation
+import Metal
+import Tuner
+
+/// The classic iPhone Duo-style frost. Image locked in space, blur front moves
+/// from the top edge toward the hinge, then fades to black. PRD 4.3 / 4.5.
+public struct FrostParams: TunableParameters {
+    public var maxBlur: Double = 64          // radius in px at the frostiest
+    public var frostSpread: Double = 0.6     // softness of the frost front (fraction of height)
+    public var darknessStart: Double = 0.30  // progress at which darkening begins
+    public var progressCurve: TunerBezier = .linear
+
+    public init() {}
+
+    public static let tunerID = "frost"
+    public static let tunerDisplayName = "Frost"
+    public static let defaults = FrostParams()
+    public static let schema = TunerSchema<FrostParams>([
+        TunerFolder("Frost", [
+            .slider(\.maxBlur, "Max blur radius", 0...120, unit: "px", decimals: 0),
+            .slider(\.frostSpread, "Frost spread", 0...1.5),
+            .slider(\.darknessStart, "Darkness start", 0...1),
+        ]),
+        TunerFolder("Motion", [
+            .bezier(\.progressCurve, "Progress curve"),
+        ]),
+    ])
+}
+
+public final class FrostTransition: Transition {
+    public static let id = "frost"
+    public static let displayName = "Frost"
+    public static let fragmentFunctionName = "frostFragment"
+
+    public var params = FrostParams()
+
+    public init() {}
+
+    /// Builds the mip chain the shader blurs from. Runs once per snapshot, so a
+    /// 120 Hz frame never pays for the blur pyramid.
+    public func prepare(snapshot: MTLTexture, device: MTLDevice, commandQueue: MTLCommandQueue) -> MTLTexture {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: snapshot.pixelFormat,
+                                                                  width: snapshot.width, height: snapshot.height,
+                                                                  mipmapped: true)
+        descriptor.usage = [.shaderRead]
+        descriptor.storageMode = .private
+        guard let mipped = device.makeTexture(descriptor: descriptor),
+              let commandBuffer = commandQueue.makeCommandBuffer(),
+              let blit = commandBuffer.makeBlitCommandEncoder() else { return snapshot }
+        blit.copy(from: snapshot, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: snapshot.width, height: snapshot.height, depth: 1),
+                  to: mipped, destinationSlice: 0, destinationLevel: 0,
+                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.generateMipmaps(for: mipped)
+        blit.endEncoding()
+        commandBuffer.commit()
+        return mipped
+    }
+
+    public func uniforms(progress: Double, context: RenderContext) -> TransitionUniforms {
+        var u = TransitionUniforms()
+        u.progress = Float(params.progressCurve.value(at: progress))
+        u.maxBlur = context.reduceTransparency ? 0 : Float(params.maxBlur)
+        u.frostSpread = Float(params.frostSpread)
+        u.darknessStart = Float(params.darknessStart)
+        return u
+    }
+}

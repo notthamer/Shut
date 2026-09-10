@@ -1,0 +1,51 @@
+import TransitionKit
+import Tuner
+
+/// Presets that ship with the app. Mirrored as JSON in presets/ for the README.
+enum BuiltInPresets {
+    static var notchDrain: [(String, NotchDrainParams)] {
+        var gentle = NotchDrainParams()
+        gentle.falloff = 0.6
+        gentle.twist = 0.25
+        gentle.stretch = 0.4
+        gentle.blurStrength = 0.3
+        gentle.darken = 0.4
+        gentle.aberration = 0.5
+        gentle.glow = 0.2
+        gentle.pourOutDamping = 0.85
+        gentle.overshoot = 0.03
+
+        var blackHole = NotchDrainParams()
+        blackHole.falloff = 1.8
+        blackHole.twist = 1.4
+        blackHole.stretch = 1.2
+        blackHole.pull = 1.6
+        blackHole.blurSamples = 12
+        blackHole.blurStrength = 0.8
+        blackHole.darken = 0.9
+        blackHole.aberration = 5
+        blackHole.glow = 0.7
+        blackHole.glowColor = TunerColor(red: 0.6, green: 0.8, blue: 1.0)
+        blackHole.sinkRadius = 28
+        blackHole.commitThreshold = 0.6
+        blackHole.pourOutDamping = 0.55
+        blackHole.overshoot = 0.12
+
+        return [("Gentle", gentle), ("Default", NotchDrainParams()), ("Black Hole", blackHole)]
+    }
+
+    static var frost: [(String, FrostParams)] {
+        var light = FrostParams()
+        light.maxBlur = 24
+        light.frostSpread = 0.9
+        light.darknessStart = 0.5
+
+        var deep = FrostParams()
+        deep.maxBlur = 120
+        deep.frostSpread = 0.3
+        deep.darknessStart = 0.15
+        deep.progressCurve = .easeIn
+
+        return [("Light", light), ("Default", FrostParams()), ("Deep Freeze", deep)]
+    }
+}
