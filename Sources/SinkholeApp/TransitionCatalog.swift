@@ -5,6 +5,7 @@ enum TransitionCatalog {
     static func make() -> [AnyTransition] {
         [
             AnyTransition(NotchDrainTransition()),
+            AnyTransition(FrostTransition()),
             AnyTransition(FadeTransition()),
         ]
     }

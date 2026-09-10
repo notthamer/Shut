@@ -91,3 +91,13 @@ final class RenderTests: XCTestCase {
         XCTAssertGreaterThan(b[5], 0.3, "pour-out overshoot still shows the snapshot")
     }
 }
+
+extension RenderTests {
+    func testFrostBlursFromTopAndEndsBlack() throws {
+        let frames = try renderFrames(AnyTransition(FrostTransition()), progresses: [0, 0.35, 0.7, 1])
+        let b = frames.map { meanBrightness($0.1) }
+        XCTAssertGreaterThan(b[0], 0.3)
+        XCTAssertGreaterThan(b[1], b[2], "darkens after darknessStart")
+        XCTAssertLessThan(b[3], 0.01, "p = 1 is black")
+    }
+}
