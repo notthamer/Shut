@@ -35,7 +35,9 @@ scripts/build.sh            # → build/Sinkhole.app
 open build/Sinkhole.app
 ```
 
-Or open `Sinkhole.xcodeproj` in Xcode and press Run.
+Or open **`Sinkhole.xcodeproj`** (not the folder or `Package.swift`) in Xcode, make sure
+the scheme next to the Run button says **Sinkhole**, and press Run. The `lidangle-cli`
+and `sinkhole` schemes are the command-line tools, not the app.
 
 Sinkhole needs **Screen Recording** permission (System Settings → Privacy & Security)
 to snapshot the desktop. Snapshots live in GPU memory only and are released the
