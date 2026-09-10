@@ -43,15 +43,33 @@ public final class TransitionRenderer {
 
     // MARK: - Snapshot
 
-    /// Uploads a captured image. The image is converted to a texture and the
-    /// CGImage is dropped on return; nothing is ever written to disk.
+    /// Uploads a captured image. The image is drawn into a BGRA8 bitmap of known
+    /// layout and copied straight into a texture; the CGImage and the bitmap are
+    /// dropped on return. Nothing is ever written to disk.
+    ///
+    /// Drawing through CoreGraphics rather than MTKTextureLoader means any CGImage
+    /// works (ScreenCaptureKit's, NSImage's, tests'), at the cost of one copy.
     public func setSnapshot(_ image: CGImage) throws {
-        let loader = MTKTextureLoader(device: device)
-        let texture = try loader.newTexture(cgImage: image, options: [
-            .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
-            .textureStorageMode: NSNumber(value: MTLStorageMode.private.rawValue),
-            .SRGB: NSNumber(value: false),
-        ])
+        let width = image.width, height = image.height
+        let bytesPerRow = width * 4
+        var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
+        let bitmapInfo = CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+        try pixels.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height,
+                                          bitsPerComponent: 8, bytesPerRow: bytesPerRow,
+                                          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: bitmapInfo) else {
+                throw RendererError.noDevice
+            }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
+
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm,
+                                                                  width: width, height: height, mipmapped: false)
+        descriptor.usage = [.shaderRead]
+        descriptor.storageMode = .shared   // unified memory on Apple silicon: no blit needed
+        guard let texture = device.makeTexture(descriptor: descriptor) else { throw RendererError.noDevice }
+        texture.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0,
+                        withBytes: pixels, bytesPerRow: bytesPerRow)
         snapshot = texture
         preparedTexture = nil
         preparedForTransitionID = nil
@@ -74,38 +92,55 @@ public final class TransitionRenderer {
     /// Renders one frame of `transition` at `progress` into `drawable`.
     public func draw(to drawable: CAMetalDrawable, transition: AnyTransition,
                      progress: Double, context: RenderContext) {
-        guard let snapshot else { return }
-        guard let pipeline = pipeline(for: transition.fragmentFunctionName) else { return }
+        guard let commandBuffer = encode(to: drawable.texture, transition: transition,
+                                         progress: progress, context: context) else { return }
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
+    }
+
+    /// Offscreen variant, used by tests and the frame-time profiler. Blocks until
+    /// the GPU has finished so the texture can be read back.
+    public func render(to texture: MTLTexture, transition: AnyTransition,
+                       progress: Double, context: RenderContext) {
+        guard let commandBuffer = encode(to: texture, transition: transition,
+                                         progress: progress, context: context) else { return }
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+    }
+
+    private func encode(to target: MTLTexture, transition: AnyTransition,
+                        progress: Double, context: RenderContext) -> MTLCommandBuffer? {
+        guard let snapshot else { return nil }
+        guard let pipeline = pipeline(for: transition.fragmentFunctionName) else { return nil }
 
         if preparedForTransitionID != transition.id || preparedTexture == nil {
             preparedTexture = transition.prepare(snapshot: snapshot, device: device, commandQueue: commandQueue)
             preparedForTransitionID = transition.id
         }
-        guard let source = preparedTexture else { return }
+        guard let source = preparedTexture else { return nil }
 
         var uniforms = transition.uniforms(progress: progress, context: context)
         uniforms.snapshotSize = context.snapshotSize
-        uniforms.outputSize = SIMD2(Float(drawable.texture.width), Float(drawable.texture.height))
+        uniforms.outputSize = SIMD2(Float(target.width), Float(target.height))
         uniforms.time = context.time
         uniforms.reduceTransparency = context.reduceTransparency ? 1 : 0
         uniforms.mipLevels = Float(source.mipmapLevelCount)
         memcpy(uniformBuffer.contents(), &uniforms, MemoryLayout<TransitionUniforms>.stride)
 
         let pass = MTLRenderPassDescriptor()
-        pass.colorAttachments[0].texture = drawable.texture
+        pass.colorAttachments[0].texture = target
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         pass.colorAttachments[0].storeAction = .store
 
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return }
+              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentTexture(source, index: 0)
         encoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         encoder.endEncoding()
-        commandBuffer.present(drawable)
-        commandBuffer.commit()
+        return commandBuffer
     }
 
     private func pipeline(for fragmentName: String) -> MTLRenderPipelineState? {

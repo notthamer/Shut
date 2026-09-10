@@ -32,7 +32,7 @@ struct TransitionUniforms {
     float mipLevels;
 
     float reduceTransparency;
-    float pad0;
+    float pull;
     float pad1;
 };
 

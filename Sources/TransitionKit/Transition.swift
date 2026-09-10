@@ -19,15 +19,18 @@ public struct RenderContext: Equatable {
     public var reduceTransparency: Bool
     /// Seconds since the transition was shown; lets shaders animate glow etc.
     public var time: Float
+    /// Snapshot pixels per screen point (2 on every Retina MacBook).
+    public var scale: Float
 
     public init(snapshotSize: SIMD2<Float>, sinkPoint: SIMD2<Float>, notchSize: SIMD2<Float>,
-                usesVirtualNotch: Bool, reduceTransparency: Bool = false, time: Float = 0) {
+                usesVirtualNotch: Bool, reduceTransparency: Bool = false, time: Float = 0, scale: Float = 2) {
         self.snapshotSize = snapshotSize
         self.sinkPoint = sinkPoint
         self.notchSize = notchSize
         self.usesVirtualNotch = usesVirtualNotch
         self.reduceTransparency = reduceTransparency
         self.time = time
+        self.scale = scale
     }
 }
 
@@ -102,6 +105,26 @@ public final class AnyTransition {
 
     /// Current params as JSON, for presets and the menu bar.
     public var paramsJSON: Data? { jsonGet() }
+
+    /// Params as a dictionary, for the few places the app needs a value without
+    /// knowing the concrete struct (progress curve, pour-out spring).
+    public var paramsObject: [String: Any] {
+        guard let data = paramsJSON,
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [:] }
+        return object
+    }
+
+    public func doubleParam(_ key: String, default value: Double) -> Double {
+        paramsObject[key] as? Double ?? value
+    }
+
+    public func bezierParam(_ key: String) -> TunerBezier {
+        guard let curve = paramsObject[key] as? [String: Double],
+              let x1 = curve["x1"], let y1 = curve["y1"], let x2 = curve["x2"], let y2 = curve["y2"] else {
+            return .linear
+        }
+        return TunerBezier(x1, y1, x2, y2)
+    }
     @discardableResult public func setParams(json: Data) -> Bool { jsonSet(json) }
     public func resetParams() { resetImpl() }
 }

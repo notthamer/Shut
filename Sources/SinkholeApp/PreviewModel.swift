@@ -29,9 +29,14 @@ public final class PreviewModel: ObservableObject {
     /// Set by the SwiftUI representable when the Metal view exists.
     weak var metalView: MetalTransitionView?
 
-    /// Optional spring parameters for "Play pour-out", read from the current
-    /// transition's params JSON (Notch Drain has them; Fade and Frost don't).
-    public var pourOutSpring: (response: Double, damping: Double, overshoot: Double) = (0.55, 0.72, 0.06)
+    /// Spring parameters for "Play pour-out", read from the current transition's
+    /// params (Notch Drain has them; Fade and Frost fall back to the defaults).
+    public var pourOutSpring: (response: Double, damping: Double, overshoot: Double) {
+        let t = registry.current
+        return (t.doubleParam("pourOutResponse", default: 0.55),
+                t.doubleParam("pourOutDamping", default: 0.72),
+                t.doubleParam("overshoot", default: 0.06))
+    }
 
     public init(registry: TransitionRegistry, settings: AppSettings, sensor: LidSensorMonitor) throws {
         renderer = try TransitionRenderer()
@@ -55,7 +60,8 @@ public final class PreviewModel: ObservableObject {
                              sinkPoint: geometry.sinkPoint,
                              notchSize: geometry.notchSize,
                              usesVirtualNotch: geometry.isVirtual,
-                             reduceTransparency: NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency)
+                             reduceTransparency: NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
+                             scale: Float(BuiltInDisplay.screen?.backingScaleFactor ?? 2))
     }
 
     /// Grabs a fresh desktop snapshot (excluding our own windows).
@@ -171,13 +177,7 @@ public final class PreviewModel: ObservableObject {
     }
 
     private func curveFromParams() -> TunerBezier {
-        guard let data = registry.current.paramsJSON,
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let curve = object["progressCurve"] as? [String: Double],
-              let x1 = curve["x1"], let y1 = curve["y1"], let x2 = curve["x2"], let y2 = curve["y2"] else {
-            return .linear
-        }
-        return TunerBezier(x1, y1, x2, y2)
+        registry.current.bezierParam("progressCurve")
     }
 }
 

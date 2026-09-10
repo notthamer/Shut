@@ -250,27 +250,17 @@ public final class AppController: ObservableObject {
             sinkPoint: geometry.sinkPoint,
             notchSize: geometry.notchSize,
             usesVirtualNotch: geometry.isVirtual,
-            reduceTransparency: NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
+            reduceTransparency: NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
+            scale: Float(screen.backingScaleFactor)
         )
     }
 
-    /// Transitions expose their progress curve through their params JSON; the
-    /// driver reads it so the lid mapping honours the Tuner setting.
-    private func curveFor(_ transition: AnyTransition) -> Tuner.TunerBezier {
-        guard let data = transition.paramsJSON,
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let curve = object["progressCurve"] as? [String: Double],
-              let x1 = curve["x1"], let y1 = curve["y1"], let x2 = curve["x2"], let y2 = curve["y2"] else {
-            return .linear
-        }
-        return TunerBezier(x1, y1, x2, y2)
+    private func curveFor(_ transition: AnyTransition) -> TunerBezier {
+        transition.bezierParam("progressCurve")
     }
 
     private func commitThresholdFor(_ transition: AnyTransition) -> Double {
-        guard let data = transition.paramsJSON,
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let threshold = object["commitThreshold"] as? Double else { return 1 }
-        return threshold
+        transition.doubleParam("commitThreshold", default: 1)
     }
 }
 

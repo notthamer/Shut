@@ -1,4 +1,6 @@
 import XCTest
+import Tuner
+import simd
 import Metal
 @testable import TransitionKit
 
@@ -51,5 +53,37 @@ final class TransitionKitTests: XCTestCase {
         let json = try XCTUnwrap(fade.paramsJSON)
         XCTAssertTrue(fade.setParams(json: json))
         XCTAssertFalse(fade.setParams(json: Data("nonsense".utf8)))
+    }
+}
+
+final class NotchDrainTests: XCTestCase {
+    func testSinkGeometryAndMaxDistance() {
+        let t = NotchDrainTransition()
+        let context = RenderContext(snapshotSize: SIMD2(3024, 1964), sinkPoint: SIMD2(1512, 64),
+                                    notchSize: SIMD2(360, 64), usesVirtualNotch: false, scale: 2)
+        let u = t.uniforms(progress: 0.3, context: context)
+        XCTAssertEqual(u.sink, SIMD2(1512, 64))
+        XCTAssertEqual(u.maxDistance, simd_length(SIMD2<Float>(1512, 1900)), accuracy: 0.5)
+        XCTAssertEqual(u.sinkRadius, 32, "16 pt × scale 2")
+        XCTAssertEqual(u.virtualNotch, 0)
+    }
+
+    func testOffsetsAndAutoDetectOff() {
+        let t = NotchDrainTransition()
+        t.params.autoDetectNotch = false
+        t.params.offsetX = 10
+        let context = RenderContext(snapshotSize: SIMD2(3024, 1964), sinkPoint: SIMD2(1512, 64),
+                                    notchSize: SIMD2(360, 64), usesVirtualNotch: false, scale: 2)
+        let u = t.uniforms(progress: 0, context: context)
+        XCTAssertEqual(u.virtualNotch, 1)
+        XCTAssertEqual(u.sink.x, 1512 + 20)
+    }
+
+    func testDefaultsMatchPRD() {
+        let p = NotchDrainParams.defaults
+        XCTAssertEqual(p.falloff, 1.2); XCTAssertEqual(p.twist, 0.6); XCTAssertEqual(p.stretch, 0.8)
+        XCTAssertEqual(p.blurSamples, 8); XCTAssertEqual(p.darken, 0.6); XCTAssertEqual(p.sinkRadius, 16)
+        XCTAssertEqual(p.pourOutResponse, 0.55); XCTAssertEqual(p.pourOutDamping, 0.72)
+        XCTAssertEqual(p.progressCurve, TunerBezier(0.45, 0, 0.85, 0.55))
     }
 }

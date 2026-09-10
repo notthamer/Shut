@@ -43,7 +43,7 @@ public struct TransitionUniforms {
 
     // Shared
     public var reduceTransparency: Float = 0
-    public var pad0: Float = 0
+    public var pull: Float = 1.0        // Notch Drain contraction exponent (γ in the PRD)
     public var pad1: Float = 0
 
     public init() {}

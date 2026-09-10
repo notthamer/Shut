@@ -4,6 +4,7 @@ import TransitionKit
 enum TransitionCatalog {
     static func make() -> [AnyTransition] {
         [
+            AnyTransition(NotchDrainTransition()),
             AnyTransition(FadeTransition()),
         ]
     }
