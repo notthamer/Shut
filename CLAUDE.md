@@ -1,0 +1,44 @@
+# Sinkhole — conventions for contributors (human or AI)
+
+Sinkhole is an open-source, MIT-licensed macOS menu bar app built in public.
+The full spec is in `docs/PRD.md`; the milestone prompts are in `docs/prompts.md`.
+
+## Rules
+
+1. **Readable over clever.** This code is a public portfolio piece. Prefer the obvious
+   version. If a trick is needed for performance, isolate it and explain it.
+2. **Comments explain design reasoning**, not what the code literally does. The shader
+   files especially should read like a walkthrough.
+3. **No third-party dependencies.** SwiftPM targets depend only on Apple frameworks.
+   Argument parsing, JSON, HID, Metal: all hand-rolled or from the SDK.
+4. **Never write screen content to disk.** Snapshots exist only as `MTLTexture`s in
+   memory and are released the moment a transition ends. Logs never contain pixels.
+   Never use `print` on image data, never save debug PNGs.
+5. **`Tuner` must never import app code or `TransitionKit`.** It is a standalone
+   SwiftUI package (a DialKit-style tuning panel) that other apps can reuse. It only
+   imports SwiftUI, AppKit, Foundation, Combine, and UniformTypeIdentifiers.
+   Do not use the DialKit name in code.
+6. **Don't copy code from other lid-angle projects.** samhenrigold/LidAngleSensor is
+   Apache-2.0; we credit its research and write our own implementation.
+
+## Layout
+
+- `Package.swift` is the source of truth for all library and executable targets.
+- `Sinkhole.xcodeproj` contains a single app target that is a 3-line shim over the
+  `SinkholeApp` library product, so Xcode builds a real `.app` bundle for testing.
+- `scripts/build.sh` produces the same `.app` from SwiftPM without Xcode.
+- `App/` holds files owned by the Xcode target (Info.plist, entitlements, assets).
+
+## Swift settings
+
+- Deployment target: macOS 14.0.
+- Swift language mode 5 (tools 6.0). IOKit callbacks, AppKit notifications, Metal
+  objects, and distributed-notification observers are all non-Sendable; strict
+  concurrency checking would cost a lot of ceremony for no user-facing benefit.
+  Main-thread ownership is enforced with `@MainActor` on the app controller instead.
+
+## Testing
+
+- `swift build` and `swift test` must pass before every commit.
+- `xcodebuild -project Sinkhole.xcodeproj -scheme Sinkhole build` must pass too.
+- Manual lid tests are listed in `README.md` under "Testing".
