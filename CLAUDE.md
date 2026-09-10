@@ -16,8 +16,8 @@ The full spec is in `docs/PRD.md`; the milestone prompts are in `docs/prompts.md
    Never use `print` on image data, never save debug PNGs.
 5. **`Tuner` must never import app code or `TransitionKit`.** It is a standalone
    SwiftUI package (a DialKit-style tuning panel) that other apps can reuse. It only
-   imports SwiftUI, AppKit, Foundation, Combine, and UniformTypeIdentifiers.
-   Do not use the DialKit name in code.
+   imports SwiftUI, AppKit, Foundation, Combine, UniformTypeIdentifiers, and Carbon
+   (for the permission-free global hot key). Do not use the DialKit name in code.
 6. **Don't copy code from other lid-angle projects.** samhenrigold/LidAngleSensor is
    Apache-2.0; we credit its research and write our own implementation.
 
@@ -40,5 +40,8 @@ The full spec is in `docs/PRD.md`; the milestone prompts are in `docs/prompts.md
 ## Testing
 
 - `swift build` and `swift test` must pass before every commit.
+- Render tests draw each transition offscreen on a synthetic image. Set
+  `SINKHOLE_FRAME_DUMP=/some/dir` to get PNGs of the frames (and of the Tuner panel).
+- After changing `BuiltInPresets.swift`, run `swift run sinkhole --export-presets presets`.
 - `xcodebuild -project Sinkhole.xcodeproj -scheme Sinkhole build` must pass too.
 - Manual lid tests are listed in `README.md` under "Testing".

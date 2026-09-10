@@ -23,7 +23,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     /// Wired by the app once the Tuner host exists.
     var openTuner: (() -> Void)?
-    var openPreview: (() -> Void)?
     var presetMenuProvider: (() -> [NSMenuItem])?
     var launchAtLoginItem: NSMenuItem?
 
@@ -126,7 +125,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     // MARK: Actions
 
     @objc private func toggleEnabled() { settings.isEnabled.toggle() }
-    @objc private func openTunerAction() { openTuner?() ?? openPreview?() }
+    @objc private func openTunerAction() { openTuner?() }
     @objc private func openPermission() {
         ScreenRecordingPermission.request()
         ScreenRecordingPermission.openSystemSettings()

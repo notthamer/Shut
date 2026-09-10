@@ -1,0 +1,36 @@
+{
+  "name" : "Default",
+  "transition" : "notchDrain",
+  "values" : {
+    "aberration" : 2,
+    "autoDetectNotch" : true,
+    "blurSamples" : 8,
+    "blurStrength" : 0.5,
+    "commitThreshold" : 1,
+    "darken" : 0.6,
+    "falloff" : 1.2,
+    "glow" : 0.35,
+    "glowColor" : {
+      "alpha" : 1,
+      "blue" : 1,
+      "green" : 1,
+      "red" : 1
+    },
+    "offsetX" : 0,
+    "offsetY" : 0,
+    "overshoot" : 0.06,
+    "pourOutDamping" : 0.72,
+    "pourOutDelayMs" : 0,
+    "pourOutResponse" : 0.55,
+    "progressCurve" : {
+      "x1" : 0.45,
+      "x2" : 0.85,
+      "y1" : 0,
+      "y2" : 0.55
+    },
+    "pull" : 1,
+    "sinkRadius" : 16,
+    "stretch" : 0.8,
+    "twist" : 0.6
+  }
+}

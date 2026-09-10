@@ -128,22 +128,18 @@ public final class PreviewModel: ObservableObject {
         }
     }
 
-    /// Plays a pour-out: spring from 1 back to 0 with overshoot into negative
-    /// progress, exactly as the unlock flow does.
+    /// Plays a pour-out: spring from 1 back to 0, dipping below zero by at most
+    /// the overshoot parameter, exactly as the unlock flow does.
     public func playPourOut() {
         followLid = false
         driver.reset()
         driver.set(progress: 1)
         let spring = pourOutSpring
-        driver.animate(to: -0.0, response: spring.response, damping: spring.damping)
-        // Overshoot is expressed by letting the spring target sit slightly below
-        // zero for the first part of the motion, then settle at zero.
-        var settledAtZero = false
+        driver.animate(to: 0, response: spring.response, damping: spring.damping)
         run { [weak self] dt in
             guard let self else { return false }
             let p = self.driver.step(dt: dt, angle: nil)
             self.progress = max(p, -spring.overshoot)
-            if !settledAtZero, p < 0.02 { settledAtZero = true }
             return !self.driver.isSpringSettled
         }
     }

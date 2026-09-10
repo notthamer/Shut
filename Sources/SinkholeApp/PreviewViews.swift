@@ -1,6 +1,14 @@
 import SwiftUI
 import TransitionKit
 
+/// Aspect ratio of the built-in display, so the preview matches the real screen.
+enum BuiltInDisplayAspect {
+    static var ratio: CGFloat {
+        guard let f = BuiltInDisplay.screen?.frame, f.height > 0 else { return 16.0 / 10.0 }
+        return f.width / f.height
+    }
+}
+
 /// Hosts the Metal preview view inside SwiftUI.
 struct PreviewMetalView: NSViewRepresentable {
     @ObservedObject var model: PreviewModel

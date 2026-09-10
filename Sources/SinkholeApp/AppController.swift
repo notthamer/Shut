@@ -31,6 +31,7 @@ public final class AppController: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var captureTask: Task<Void, Never>?
     private var lastCaptureDate: Date = .distantPast
+    private var armedAt: Date = .distantPast
     private var shownAt: Date?
     private var lastAngle: Double?
 
@@ -114,9 +115,15 @@ public final class AppController: ObservableObject {
                 disarm()
             } else if angle <= start {
                 beginClose()
-            } else if Date().timeIntervalSince(lastCaptureDate) > 1.0, abs(sensor.velocity) < 2 {
-                // Lid is resting near the start angle: keep the snapshot fresh so
-                // a later close doesn't show stale content.
+            } else if Date().timeIntervalSince(lastCaptureDate) > 1.0,
+                      Date().timeIntervalSince(armedAt) < 6.0, abs(sensor.velocity) < 2 {
+                // Lid is resting near the start angle: keep the snapshot fresh for a
+                // few seconds so a close doesn't show stale content. After that we
+                // stop, so a lid parked at 85° costs nothing.
+                capture()
+            } else if Date().timeIntervalSince(lastCaptureDate) > 6.0, sensor.velocity < -5 {
+                // Parked for a while and now closing: grab one fresh frame. If the
+                // lid beats it to the start angle the previous snapshot is used.
                 capture()
             }
 
@@ -135,6 +142,7 @@ public final class AppController: ObservableObject {
 
     private func arm() {
         state = .armed
+        armedAt = Date()
         capture()
     }
 
@@ -158,9 +166,11 @@ public final class AppController: ObservableObject {
             do {
                 let image = try await ScreenCapturer.captureBuiltInDisplay()
                 guard let self, !Task.isCancelled else { return }
+                self.captureTask = nil
+                // Never swap the snapshot under a transition that's already playing.
+                guard self.state == .armed else { return }
                 try self.renderer.setSnapshot(image)
                 Log.capture.info("snapshot ready in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
-                self.captureTask = nil
                 // If the lid crossed the start angle while we were capturing, go now.
                 if self.state == .armed, let angle = self.lastAngle, angle <= self.settings.startAngle {
                     self.beginClose()

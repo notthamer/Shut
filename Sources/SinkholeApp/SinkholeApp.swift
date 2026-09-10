@@ -1,10 +1,31 @@
 import AppKit
 import LidSensor
 import TransitionKit
+import Tuner
 
 /// Entry point shared by the Xcode app target and the SwiftPM `sinkhole`
 /// executable. Both call `SinkholeApp.run()` and nothing else.
 public enum SinkholeApp {
+    /// Writes every built-in preset to `dir/<transition>/<name>.json`, the same
+    /// format Tuner saves and the repo's presets/ folder uses.
+    public static func exportBuiltInPresets(to dir: URL) throws -> [URL] {
+        var written: [URL] = []
+        func write<P: TunableParameters>(_ list: [(String, P)]) throws {
+            let sub = dir.appendingPathComponent(P.tunerID)
+            try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+            for (name, values) in list {
+                guard let preset = Preset(name: name, tunerID: P.tunerID, values: values, builtIn: true) else { continue }
+                let file = sub.appendingPathComponent(name.lowercased().replacingOccurrences(of: " ", with: "-"))
+                    .appendingPathExtension("json")
+                try Data(preset.fileText.utf8).write(to: file, options: .atomic)
+                written.append(file)
+            }
+        }
+        try write(BuiltInPresets.notchDrain)
+        try write(BuiltInPresets.frost)
+        return written
+    }
+
     @MainActor
     public static func run() {
         let app = NSApplication.shared
@@ -24,7 +45,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: AppController!
     private var menuBar: MenuBarController!
     private var previewModel: PreviewModel!
-    private var previewWindow: PreviewWindowController!
     private var tunerHost: TunerHost?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -46,8 +66,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         controller = AppController(settings: settings, sensor: sensor, registry: registry, renderer: renderer)
         menuBar = MenuBarController(controller: controller, settings: settings, registry: registry)
-        previewWindow = PreviewWindowController(model: previewModel, registry: registry)
-        menuBar.openPreview = { [weak self] in self?.previewWindow.show() }
 
         tunerHost = TunerHost(registry: registry, previewModel: previewModel, controller: controller, settings: settings)
         menuBar.openTuner = { [weak self] in self?.tunerHost?.toggle() }
