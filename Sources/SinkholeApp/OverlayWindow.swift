@@ -9,7 +9,11 @@ final class OverlayWindow: NSWindow {
 
     init(screen: NSScreen, renderer: TransitionRenderer, transition: AnyTransition, context: RenderContext) {
         metalView = MetalTransitionView(renderer: renderer, transition: transition, context: context)
-        super.init(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false, screen: screen)
+        // Use the designated initializer directly. The `screen:` variant calls back
+        // into it, which a Swift subclass with its own init doesn't inherit, and
+        // that call traps at runtime. `screen.frame` is in global coordinates, so
+        // the window lands on the right display anyway.
+        super.init(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         level = .screenSaver
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         ignoresMouseEvents = true

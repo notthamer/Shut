@@ -67,6 +67,7 @@ let package = Package(
         .testTarget(name: "LidSensorTests", dependencies: ["LidSensor"]),
         .testTarget(name: "TransitionKitTests", dependencies: ["TransitionKit"]),
         .testTarget(name: "TunerTests", dependencies: ["Tuner"]),
+        .testTarget(name: "SinkholeAppTests", dependencies: ["SinkholeApp"]),
     ],
     swiftLanguageModes: [.v5]
 )
