@@ -13,7 +13,8 @@ public final class AppController: ObservableObject {
         case armed       // lid approaching start angle; snapshot captured or in flight
         case closing     // overlay visible, progress follows the lid
         case reversing   // lid reopened; spring back to 0 then tear down
-        case asleep      // display slept; overlay hidden, snapshot released
+        case drained     // asleep or just woken: overlay is solid black, no snapshot
+        case pouring     // unlocked: fresh snapshot springing from p = 1 back to 0
     }
 
     @Published public private(set) var state: State = .idle
@@ -32,6 +33,16 @@ public final class AppController: ObservableObject {
     private var lastCaptureDate: Date = .distantPast
     private var shownAt: Date?
     private var lastAngle: Double?
+
+    // Pour-out (PRD 5.7)
+    private let unlock = UnlockObserver()
+    private var screensAsleep = false
+    private var blackSince: Date?
+    private var safetyTimer: Timer?
+    private var pourOutWorkItem: DispatchWorkItem?
+    /// PRD 5.7 safety rule: black overlay visible while awake and unlocked for
+    /// longer than this is force-hidden, whatever state we think we're in.
+    private let blackScreenLimit: TimeInterval = 1.5
 
     /// How far above the start angle we arm and capture. Wide enough that the
     /// snapshot is ready before the overlay is needed even on a fast close.
@@ -72,9 +83,19 @@ public final class AppController: ObservableObject {
 
         let workspace = NSWorkspace.shared.notificationCenter
         workspace.addObserver(self, selector: #selector(willSleep), name: NSWorkspace.willSleepNotification, object: nil)
-        workspace.addObserver(self, selector: #selector(willSleep), name: NSWorkspace.screensDidSleepNotification, object: nil)
+        workspace.addObserver(self, selector: #selector(screensSlept), name: NSWorkspace.screensDidSleepNotification, object: nil)
         workspace.addObserver(self, selector: #selector(didWake), name: NSWorkspace.didWakeNotification, object: nil)
-        workspace.addObserver(self, selector: #selector(didWake), name: NSWorkspace.screensDidWakeNotification, object: nil)
+        workspace.addObserver(self, selector: #selector(screensWoke), name: NSWorkspace.screensDidWakeNotification, object: nil)
+
+        unlock.onUnlock = { [weak self] in self?.sessionUnlocked() }
+        unlock.onLock = { [weak self] in self?.blackSince = nil }
+
+        // The safety timer runs for the life of the app. It's a 4 Hz check of a
+        // few booleans, so it costs nothing, and it is the last line of defence
+        // against a black screen.
+        safetyTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.safetyCheck() }
+        }
     }
 
     // MARK: - Sensor
@@ -105,7 +126,7 @@ public final class AppController: ObservableObject {
         case .reversing:
             if angle <= start { resumeClose() }
 
-        case .asleep:
+        case .drained, .pouring:
             break
         }
     }
@@ -193,6 +214,10 @@ public final class AppController: ObservableObject {
     func teardown(reason: String) {
         displayLink?.stop()
         overlay?.hide()
+        overlay?.metalView.isBlackedOut = false
+        blackSince = nil
+        pourOutWorkItem?.cancel()
+        pourOutWorkItem = nil
         captureTask?.cancel()
         captureTask = nil
         renderer.clearSnapshot()
@@ -215,7 +240,12 @@ public final class AppController: ObservableObject {
             return
         }
 
-        let p = driver.step(dt: dt, angle: lastAngle)
+        var p = driver.step(dt: dt, angle: lastAngle)
+        if state == .pouring {
+            // The spring may dip below zero; the transition's overshoot parameter
+            // caps how far, which the shader turns into the splash.
+            p = max(p, -pourOutOvershoot)
+        }
         progress = p
         overlay.metalView.progress = p
         overlay.metalView.context.time = Float(Date().timeIntervalSince(shownAt ?? Date()))
@@ -225,20 +255,136 @@ public final class AppController: ObservableObject {
             teardown(reason: "lid reopened")
             // Lid is open but may still be near the start angle; re-arm cheaply.
             if let angle = lastAngle, angle < settings.startAngle + armMargin { arm() }
+        } else if state == .pouring, driver.isSpringSettled {
+            teardown(reason: "pour-out complete")
         }
     }
 
-    // MARK: - Power
+    private var pourOutOvershoot: Double = 0.06
+
+    // MARK: - Power and pour-out (PRD 5.7)
 
     @objc private func willSleep(_ note: Notification) {
         Log.app.info("sleep: \(note.name.rawValue)")
-        teardown(reason: "sleep")
-        state = .asleep
+        enterDrained()
+    }
+
+    @objc private func screensSlept(_ note: Notification) {
+        Log.app.info("screens slept")
+        screensAsleep = true
+        enterDrained()
     }
 
     @objc private func didWake(_ note: Notification) {
         Log.app.info("wake: \(note.name.rawValue)")
-        if state == .asleep { state = .idle }
+        wakeUp()
+    }
+
+    @objc private func screensWoke(_ note: Notification) {
+        Log.app.info("screens woke")
+        screensAsleep = false
+        wakeUp()
+    }
+
+    /// Step 1: release the snapshot and go solid black. The overlay stays ordered
+    /// in through sleep so the desktop is never visible between wake and pour-out.
+    private func enterDrained() {
+        guard settings.isEnabled, state != .drained else { return }
+        displayLink?.stop()
+        captureTask?.cancel()
+        captureTask = nil
+        pourOutWorkItem?.cancel()
+        renderer.clearSnapshot()
+
+        guard let screen = BuiltInDisplay.screen else { state = .idle; return }
+        if overlay == nil {
+            overlay = OverlayWindow(screen: screen, renderer: renderer, transition: registry.effectiveForLid,
+                                    context: makeContext(screen: screen))
+        }
+        overlay?.metalView.isBlackedOut = true
+        overlay?.metalView.render()
+        overlay?.show(on: screen)
+        if shownAt == nil { onTransitionVisibilityChanged?(true) }
+        shownAt = Date()
+        blackSince = nil
+        state = .drained
+        Log.overlay.info("drained: black overlay in place")
+    }
+
+    /// Step 2/3: on wake, either wait for the unlock notification or, with no
+    /// password, pour out straight away.
+    private func wakeUp() {
+        guard state == .drained else { return }
+        unlock.refresh()
+        overlay?.metalView.render()  // repaint black after the display comes back
+        if unlock.isLocked {
+            Log.unlock.info("awake and locked; waiting for unlock")
+        } else {
+            Log.unlock.info("awake and unlocked; pouring out now")
+            sessionUnlocked()
+        }
+    }
+
+    private func sessionUnlocked() {
+        guard state == .drained, !screensAsleep else { return }
+        let delay = registry.effectiveForLid.doubleParam("pourOutDelayMs", default: 0) / 1000
+        pourOutWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.beginPourOut() }
+        pourOutWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    /// Step 3/4: fresh snapshot (the overlay is excluded, so it sees the desktop
+    /// underneath), then spring from p = 1 to 0.
+    private func beginPourOut() {
+        guard state == .drained, let overlay, let screen = BuiltInDisplay.screen else { return }
+        guard ScreenRecordingPermission.isGranted else {
+            teardown(reason: "pour-out without screen recording permission")
+            return
+        }
+        blackSince = Date()  // the safety clock starts here: unlocked, awake, black
+        let transition = registry.effectiveForLid
+        captureTask = Task { [weak self] in
+            do {
+                let image = try await ScreenCapturer.captureBuiltInDisplay()
+                guard let self, !Task.isCancelled, self.state == .drained else { return }
+                try self.renderer.setSnapshot(image)
+                self.captureTask = nil
+
+                overlay.metalView.transition = transition
+                overlay.metalView.context = self.makeContext(screen: screen)
+                overlay.metalView.isBlackedOut = false
+                self.pourOutOvershoot = transition.doubleParam("overshoot", default: 0.06)
+                self.driver.reset()
+                self.driver.set(progress: 1)
+                self.driver.animate(to: 0,
+                                    response: transition.doubleParam("pourOutResponse", default: 0.55),
+                                    damping: transition.doubleParam("pourOutDamping", default: 0.72))
+                self.state = .pouring
+                self.blackSince = nil
+                self.shownAt = Date()
+                Log.overlay.info("pour-out started (\(transition.id))")
+
+                if self.displayLink == nil { self.displayLink = DisplayLinkDriver(screen: screen) }
+                self.displayLink?.onFrame = { [weak self] dt in self?.frame(dt: dt) }
+                self.displayLink?.start()
+            } catch {
+                Log.capture.error("pour-out capture failed: \(error.localizedDescription); hiding")
+                self?.teardown(reason: "pour-out capture failed")
+            }
+        }
+    }
+
+    /// PRD 5.7 safety rule, evaluated 4× a second regardless of state.
+    private func safetyCheck() {
+        guard let overlay, overlay.isVisible, overlay.metalView.isBlackedOut else { blackSince = nil; return }
+        let awakeAndUnlocked = !screensAsleep && !unlock.isLocked
+        guard awakeAndUnlocked else { blackSince = nil; return }
+        if blackSince == nil { blackSince = Date(); return }
+        if Date().timeIntervalSince(blackSince!) > blackScreenLimit {
+            Log.overlay.error("SAFETY: black overlay visible \(self.blackScreenLimit)s while awake+unlocked in state \(self.state.rawValue); force hiding")
+            teardown(reason: "black screen safety")
+        }
     }
 
     // MARK: - Helpers

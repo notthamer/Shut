@@ -98,6 +98,21 @@ public final class TransitionRenderer {
         commandBuffer.commit()
     }
 
+    /// Fills the drawable with opaque black. Used for the "drained" state between
+    /// sleep and pour-out, when there is deliberately no snapshot in memory.
+    public func drawBlack(to drawable: CAMetalDrawable) {
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = drawable.texture
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        pass.colorAttachments[0].storeAction = .store
+        guard let commandBuffer = commandQueue.makeCommandBuffer(),
+              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return }
+        encoder.endEncoding()
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
+    }
+
     /// Offscreen variant, used by tests and the frame-time profiler. Blocks until
     /// the GPU has finished so the texture can be read back.
     public func render(to texture: MTLTexture, transition: AnyTransition,

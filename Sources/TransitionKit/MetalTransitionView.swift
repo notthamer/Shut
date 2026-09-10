@@ -58,11 +58,20 @@ public final class MetalTransitionView: NSView {
         }
     }
 
-    /// Draws the current progress. Cheap to call; skipped if there's no snapshot
-    /// or no drawable available this instant.
+    /// When true the view ignores the snapshot and paints solid black.
+    public var isBlackedOut = false
+
+    /// Draws the current progress (or black). Cheap to call; skipped if there's
+    /// nothing to draw or no drawable available this instant.
     public func render() {
-        guard renderer.snapshot != nil, bounds.width > 0 else { return }
+        guard bounds.width > 0 else { return }
         updateDrawableSize()
+        if isBlackedOut {
+            guard let drawable = metalLayer.nextDrawable() else { return }
+            renderer.drawBlack(to: drawable)
+            return
+        }
+        guard renderer.snapshot != nil else { return }
         guard let drawable = metalLayer.nextDrawable() else { return }
         renderer.draw(to: drawable, transition: transition, progress: progress, context: context)
     }
