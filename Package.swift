@@ -31,6 +31,9 @@ let package = Package(
         .target(
             name: "TransitionKit",
             dependencies: ["Tuner"],
+            // The .metal sources are copied verbatim into the resource bundle and compiled
+            // once at launch (see ShaderLibrary). Same behaviour under Xcode and swift build.
+            resources: [.copy("Shaders")],
             linkerSettings: [
                 .linkedFramework("Metal"),
                 .linkedFramework("MetalKit"),
