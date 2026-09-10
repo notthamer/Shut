@@ -46,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBar: MenuBarController!
     private var previewModel: PreviewModel!
     private var tunerHost: TunerHost?
+    private let permissionWindow = PermissionWindowController()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         settings = AppSettings()
@@ -77,10 +78,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Log.lid.warning("no lid sensor; Tuner and preview still work")
         }
 
+        menuBar.showPermissionWindow = { [weak self] in self?.permissionWindow.show() }
         if !ScreenRecordingPermission.isGranted {
-            // First launch: show the system prompt once. The menu keeps a shortcut
-            // to System Settings for later.
+            // Ask the system (it prompts once per app identity) and show our own
+            // window, which polls and offers a relaunch once the switch is on.
             ScreenRecordingPermission.request()
+            permissionWindow.show()
         }
     }
 

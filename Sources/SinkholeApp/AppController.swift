@@ -32,6 +32,9 @@ public final class AppController: ObservableObject {
     private var captureTask: Task<Void, Never>?
     private var lastCaptureDate: Date = .distantPast
     private var armedAt: Date = .distantPast
+    private var permissionCheckedAt: Date = .distantPast
+    private var permissionGranted = false
+    private var hasWarnedAboutPermission = false
     private var shownAt: Date?
     private var lastAngle: Double?
 
@@ -108,7 +111,18 @@ public final class AppController: ObservableObject {
 
         switch state {
         case .idle:
-            if angle < start + armMargin { arm() }
+            // Re-check the permission at most every 2 s, so a missing grant logs
+            // once instead of at the sensor's 120 Hz.
+            if Date().timeIntervalSince(permissionCheckedAt) > 2 {
+                permissionCheckedAt = Date()
+                let granted = ScreenRecordingPermission.isGranted
+                if !granted, !hasWarnedAboutPermission {
+                    hasWarnedAboutPermission = true
+                    Log.capture.warning("Screen Recording not granted; lid transitions disabled until relaunch")
+                }
+                permissionGranted = granted
+            }
+            if permissionGranted, angle < start + armMargin { arm() }
 
         case .armed:
             if angle > start + armMargin + hysteresis {
@@ -157,6 +171,7 @@ public final class AppController: ObservableObject {
         guard captureTask == nil else { return }
         guard ScreenRecordingPermission.isGranted else {
             Log.capture.warning("Screen Recording not granted; cannot arm")
+            permissionGranted = false
             state = .idle
             return
         }
