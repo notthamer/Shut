@@ -68,10 +68,19 @@ src = s + rotate(vf · k, θ)                      // inverse map; outside = bla
 ```
 
 Motion blur averages a few samples at slightly smaller `q` (where this pixel's
-content just was), red and blue read from slightly different radii for a little
-chromatic fringe, and a glow ring around the notch peaks mid-transition. During
-pour-out, `p` runs from 1 back to 0 and briefly below, which makes `k < 1` and
-pushes the desktop past its normal size: the splash.
+content just was), sweeping them along an arc that tightens toward the notch: that
+arc is the whirlpool (`vortex`). It is done as a smear rather than a rotation on
+purpose, because the notch sits on the top edge of the screen and any real spin
+there would pull in the void above the display. Content that leaves the screen
+dissolves over `edge softness` points instead of being cut off, red and blue read
+from slightly different radii for a little chromatic fringe, and a glow ring
+around the notch peaks mid-transition. During pour-out, `p` runs from 1 back to 0
+and briefly below, which makes `k < 1` and pushes the desktop past its normal
+size: the splash.
+
+The lid sensor itself only updates ten times a second in whole degrees, so
+`LidSensor` reconstructs a smooth angle by dead-reckoning from the lid's velocity
+between readings. Without that, the drain pulses.
 
 The full walk-through is in `Sources/TransitionKit/Shaders/NotchDrain.metal`.
 

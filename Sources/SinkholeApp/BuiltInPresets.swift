@@ -5,9 +5,11 @@ import Tuner
 enum BuiltInPresets {
     static var notchDrain: [(String, NotchDrainParams)] {
         var gentle = NotchDrainParams()
-        gentle.falloff = 0.6
-        gentle.twist = 0.25
+        gentle.falloff = 0.3
+        gentle.twist = 0.15
+        gentle.vortex = 0.5
         gentle.stretch = 0.4
+        gentle.pull = 0.6
         gentle.blurStrength = 0.3
         gentle.darken = 0.4
         gentle.aberration = 0.5
@@ -16,10 +18,11 @@ enum BuiltInPresets {
         gentle.overshoot = 0.03
 
         var blackHole = NotchDrainParams()
-        blackHole.falloff = 1.8
-        blackHole.twist = 1.4
+        blackHole.falloff = 1.2
+        blackHole.twist = 0.8
+        blackHole.vortex = 1.8
         blackHole.stretch = 1.2
-        blackHole.pull = 1.6
+        blackHole.pull = 1.1
         blackHole.blurSamples = 12
         blackHole.blurStrength = 0.8
         blackHole.darken = 0.9

@@ -60,8 +60,8 @@ public final class AppController: ObservableObject {
     public var onTransitionVisibilityChanged: ((Bool) -> Void)?
 
     /// Follow-mode glide, from TriggerParams.
-    public var followLag: Double = 0.045
-    public var prediction: Double = 0.03
+    public var followLag: Double = 0.03
+    public var prediction: Double = 0.0
 
     public init(settings: AppSettings, sensor: LidSensorMonitor, registry: TransitionRegistry, renderer: TransitionRenderer) {
         self.settings = settings
@@ -301,7 +301,7 @@ public final class AppController: ObservableObject {
     }
 
     @objc private func screensSlept(_ note: Notification) {
-        Log.app.info("screens slept")
+        Log.app.info("screens slept at lid angle \(self.lastAngle.map { String(format: "%.0f", $0) } ?? "?")° (use this for Fully complete angle)")
         screensAsleep = true
         enterDrained()
     }

@@ -79,9 +79,11 @@ final class NotchDrainTests: XCTestCase {
         XCTAssertEqual(u.sink.x, 1512 + 20)
     }
 
-    func testDefaultsMatchPRD() {
+    /// Defaults follow PRD 4.5 except where visual tuning moved them (falloff,
+    /// twist, stretch were softened after judging rendered frames).
+    func testDefaultsMatchTunedValues() {
         let p = NotchDrainParams.defaults
-        XCTAssertEqual(p.falloff, 1.2); XCTAssertEqual(p.twist, 0.6); XCTAssertEqual(p.stretch, 0.8)
+        XCTAssertEqual(p.falloff, 0.5); XCTAssertEqual(p.twist, 0.3); XCTAssertEqual(p.stretch, 0.6)
         XCTAssertEqual(p.blurSamples, 8); XCTAssertEqual(p.darken, 0.6); XCTAssertEqual(p.sinkRadius, 16)
         XCTAssertEqual(p.pourOutResponse, 0.55); XCTAssertEqual(p.pourOutDamping, 0.72)
         XCTAssertEqual(p.progressCurve, TunerBezier(0.45, 0, 0.85, 0.55))

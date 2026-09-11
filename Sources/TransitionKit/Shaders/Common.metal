@@ -33,7 +33,10 @@ struct TransitionUniforms {
 
     float reduceTransparency;
     float pull;
+    float vortex;
+    float edgeSoftness;
     float pad1;
+    float pad2;
 };
 
 struct VertexOut {

@@ -7,10 +7,11 @@ import Tuner
 public struct NotchDrainParams: TunableParameters {
     // Motion
     public var progressCurve: TunerBezier = .easeIn
-    public var falloff: Double = 1.2          // how much near-notch content leads
-    public var twist: Double = 0.6            // turns at full progress
-    public var stretch: Double = 0.8          // funnel: horizontal squeeze toward the notch
-    public var pull: Double = 1.0             // contraction exponent (γ): how fast content collapses
+    public var falloff: Double = 0.5          // how much near-notch content leads
+    public var twist: Double = 0.3            // turns at full progress (whole-screen swirl)
+    public var vortex: Double = 1.0           // arc-shaped streaking near the sink, like water at a drain
+    public var stretch: Double = 0.6          // funnel: horizontal squeeze toward the notch
+    public var pull: Double = 0.7             // contraction exponent (γ): lower = more gradual collapse
     public var commitThreshold: Double = 1.0  // 1.0 = follow the lid all the way
 
     // Look
@@ -20,6 +21,7 @@ public struct NotchDrainParams: TunableParameters {
     public var aberration: Double = 2         // px
     public var glow: Double = 0.35
     public var glowColor: TunerColor = .white
+    public var edgeSoftness: Double = 90      // pt; how softly content fades where it leaves the screen
 
     // Sink
     public var autoDetectNotch: Bool = true
@@ -43,6 +45,7 @@ public struct NotchDrainParams: TunableParameters {
             .bezier(\.progressCurve, "Progress curve"),
             .slider(\.falloff, "Falloff", 0...3),
             .slider(\.twist, "Twist", -2...2, unit: "turns"),
+            .slider(\.vortex, "Vortex", 0...2),
             .slider(\.stretch, "Funnel stretch", 0...2),
             .slider(\.pull, "Pull", 0.5...3),
             .slider(\.commitThreshold, "Commit threshold", 0...1, step: 0.01, unit: "×", decimals: 2),
@@ -54,6 +57,7 @@ public struct NotchDrainParams: TunableParameters {
             .slider(\.aberration, "Chromatic aberration", 0...10, unit: "px", decimals: 1),
             .slider(\.glow, "Rim glow", 0...1),
             .color(\.glowColor, "Glow color"),
+            .slider(\.edgeSoftness, "Edge softness", 0...300, step: 5, unit: "pt", decimals: 0),
         ]),
         TunerFolder("Sink", [
             .toggle(\.autoDetectNotch, "Auto-detect notch"),
@@ -111,7 +115,9 @@ public final class NotchDrainTransition: Transition {
         u.progress = Float(progress)
         u.falloff = Float(p.falloff)
         u.twist = Float(p.twist)
+        u.vortex = Float(p.vortex)
         u.stretch = Float(p.stretch)
+        u.edgeSoftness = Float(p.edgeSoftness) * scale
         u.pull = Float(p.pull)
         u.overshoot = Float(p.overshoot)
         u.blurSamples = Int32(context.reduceTransparency ? 0 : p.blurSamples)

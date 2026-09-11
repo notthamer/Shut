@@ -25,8 +25,8 @@ struct ProgressDriver {
     /// moves in steps. In follow mode progress glides toward the target with this
     /// time constant (seconds), and `prediction` seconds of the lid's velocity are
     /// added first so the glide doesn't read as lag.
-    var followLag: Double = 0.045
-    var prediction: Double = 0.03
+    var followLag: Double = 0.03
+    var prediction: Double = 0.0
 
     private(set) var mode: Mode = .follow
     private(set) var spring: Spring?

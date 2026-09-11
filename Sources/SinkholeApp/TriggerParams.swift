@@ -7,8 +7,8 @@ struct TriggerParams: TunableParameters {
     var startAngle: Double = 80      // degrees; transition begins below this
     var endAngle: Double = 12        // degrees; fully complete (calibrate with lidangle-cli)
     var smoothing: Smoothing = .medium
-    var followLag: Double = 0.045    // seconds; glide time constant toward the lid
-    var prediction: Double = 0.03    // seconds of velocity look-ahead
+    var followLag: Double = 0.03     // seconds; glide time constant toward the lid
+    var prediction: Double = 0.0     // extra seconds of velocity look-ahead (sensor tracker already predicts)
 
     static let tunerID = "trigger"
     static let tunerDisplayName = "Trigger"

@@ -81,7 +81,7 @@ final class RenderTests: XCTestCase {
     }
 
     func testNotchDrainStartsIntactAndEndsBlack() throws {
-        let frames = try renderFrames(AnyTransition(NotchDrainTransition()), progresses: [0, 0.25, 0.5, 0.75, 1, -0.06])
+        let frames = try renderFrames(AnyTransition(NotchDrainTransition()), progresses: [0, 0.25, 0.5, 0.75, 1, -0.06, 0.15, 0.35, 0.6])
         let b = frames.map { meanBrightness($0.1) }
         XCTAssertGreaterThan(b[0], 0.3, "p = 0 shows the snapshot untouched")
         XCTAssertGreaterThan(b[0], b[1], "brightness falls as content drains")

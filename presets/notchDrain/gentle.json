@@ -8,7 +8,8 @@
     "blurStrength" : 0.3,
     "commitThreshold" : 1,
     "darken" : 0.4,
-    "falloff" : 0.6,
+    "edgeSoftness" : 90,
+    "falloff" : 0.3,
     "glow" : 0.2,
     "glowColor" : {
       "alpha" : 1,
@@ -28,9 +29,10 @@
       "y1" : 0,
       "y2" : 0.55
     },
-    "pull" : 1,
+    "pull" : 0.6,
     "sinkRadius" : 16,
     "stretch" : 0.4,
-    "twist" : 0.25
+    "twist" : 0.15,
+    "vortex" : 0.5
   }
 }

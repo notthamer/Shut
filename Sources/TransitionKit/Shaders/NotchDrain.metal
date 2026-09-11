@@ -24,18 +24,20 @@ static float2 rotate2(float2 v, float angle) {
 }
 
 // Where output offset `v` (relative to the sink) reads from in the snapshot at
-// local progress `q`.
-static float2 drainSource(float2 v, float q, constant TransitionUniforms &u) {
+// local progress `q`. `extraTheta` lets the blur loop sweep along an arc.
+static float2 drainSource(float2 v, float q, float extraTheta, constant TransitionUniforms &u) {
     // Contraction. As q → 1, k → ∞ and every pixel samples from far outside the
     // snapshot, i.e. black. `pull` shapes how quickly that happens: 1 is linear,
-    // higher values hold the image longer and then collapse fast at the end.
-    // Negative q (pour-out overshoot) makes k < 1, which enlarges content slightly:
-    // that's the splash.
+    // lower values collapse more gradually, higher ones hold the image and then
+    // drop it. Negative q (pour-out overshoot) makes k < 1, which enlarges content
+    // slightly: that's the splash.
     float k = 1.0 / max(0.001, pow(max(1.0 - q, 0.0), u.pull));
 
-    // Swirl. q² keeps the start gentle so the image doesn't visibly rotate before
-    // it starts moving, then winds up as it goes down the drain.
-    float theta = u.twist * 2.0 * M_PI_F * q * q;
+    // Global swirl. q² keeps the start gentle so the image doesn't visibly rotate
+    // before it starts moving. Kept modest on purpose: the sink sits on the top
+    // edge of the screen, and any large rotation near it makes pixels sample from
+    // the void above the display, which shows up as a lopsided black blob.
+    float theta = u.twist * 2.0 * M_PI_F * q * q + extraTheta;
 
     // Funnel. Stretching v.x in the inverse map squeezes content horizontally
     // toward the vertical line through the notch, forming the "tail" into the sink.
@@ -44,11 +46,18 @@ static float2 drainSource(float2 v, float q, constant TransitionUniforms &u) {
     return u.sink + rotate2(vf * k, theta);
 }
 
-static float3 sampleSnapshot(texture2d<float> snapshot, float2 src, float2 size) {
+// 1 inside the snapshot, fading to 0 over `edgeSoftness` pixels outside it, so
+// content that has been pulled off-screen dissolves instead of being cut hard.
+static float edgeFade(float2 src, constant TransitionUniforms &u) {
+    float2 outside = max(max(-src, src - u.snapshotSize), 0.0);
+    return 1.0 - smoothstep(0.0, max(u.edgeSoftness, 1.0), length(outside));
+}
+
+static float3 sampleSnapshot(texture2d<float> snapshot, float2 src, constant TransitionUniforms &u) {
     constexpr sampler s(address::clamp_to_edge, filter::linear);
-    float2 uv = src / size;
-    if (any(uv < 0.0) || any(uv > 1.0)) return float3(0.0);
-    return snapshot.sample(s, uv).rgb;
+    float fade = edgeFade(src, u);
+    if (fade <= 0.0) return float3(0.0);
+    return snapshot.sample(s, src / u.snapshotSize).rgb * fade;
 }
 
 // Signed distance to a pill with its flat edge on the top of the screen and
@@ -77,29 +86,42 @@ fragment float4 notchDrainFragment(VertexOut in [[stage_in]],
     float q = clamp(p * (1.0 + u.falloff) - u.falloff * d, qMin, 1.0);
 
     // Motion blur: average a handful of samples at slightly smaller q, i.e. where
-    // this pixel's content was a moment ago along its path into the sink.
+    // this pixel's content was a moment ago along its path into the sink. The
+    // samples also sweep along an arc whose length grows toward the sink: that is
+    // the whirlpool. Doing the spin here, as a smear centred on the radial path,
+    // gives the streaking of water at a drain without displacing content into the
+    // void above the notch.
     int samples = (u.reduceTransparency > 0.5) ? 1 : max(u.blurSamples, 1);
     float spread = u.blurStrength * 0.12 * max(q, 0.0);
+    float arc = u.vortex * 0.9 * max(q, 0.0) * (1.0 - d) * (1.0 - d);   // radians of sweep
     float3 rgb = float3(0.0);
     for (int i = 0; i < samples; i++) {
         float t = samples > 1 ? float(i) / float(samples - 1) : 0.0;
         float qi = max(q - spread * t, qMin);
-        rgb += sampleSnapshot(snapshot, drainSource(v, qi, u), u.snapshotSize);
+        float thetaI = arc * (t - 0.5);
+        rgb += sampleSnapshot(snapshot, drainSource(v, qi, thetaI, u), u);
     }
     rgb /= float(samples);
 
     // Chromatic aberration: red and blue read from slightly different radii, so
-    // edges fringe as content streams past. Scaled by q so a still image is clean.
+    // edges fringe as content streams past. Scaled by q so a still image is clean,
+    // and skipped where any of the three samples is fading off-screen, otherwise
+    // the surviving green channel tints the sheet's edge.
     if (u.aberration > 0.0 && q > 0.0) {
         float2 dir = v / max(r, 1.0);
         float2 offset = dir * u.aberration * q;
-        float2 src = drainSource(v, q, u);
-        rgb.r = mix(rgb.r, sampleSnapshot(snapshot, src + offset, u.snapshotSize).r, 0.7);
-        rgb.b = mix(rgb.b, sampleSnapshot(snapshot, src - offset, u.snapshotSize).b, 0.7);
+        float2 src = drainSource(v, q, 0.0, u);
+        float fades = min(edgeFade(src, u), min(edgeFade(src + offset, u), edgeFade(src - offset, u)));
+        if (fades > 0.999) {
+            rgb.r = mix(rgb.r, sampleSnapshot(snapshot, src + offset, u).r, 0.7);
+            rgb.b = mix(rgb.b, sampleSnapshot(snapshot, src - offset, u).b, 0.7);
+        }
     }
 
     // Darken as content approaches the sink; the drain is a hole, not a spotlight.
-    rgb *= 1.0 - u.darken * max(q, 0.0);
+    // Weighted toward the sink so the edges of the screen keep their light longer.
+    float radial = 0.35 + 0.65 * (1.0 - d);
+    rgb *= 1.0 - u.darken * max(q, 0.0) * radial;
 
     // The sink itself swallows whatever reaches it.
     float hole = 1.0 - smoothstep(u.sinkRadius * 0.5, u.sinkRadius * 1.5, r);
