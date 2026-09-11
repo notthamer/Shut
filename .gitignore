@@ -17,3 +17,6 @@ build/
 
 # macOS
 .DS_Store
+
+# Per-machine signing override (see App/Signing.xcconfig)
+App/Local.xcconfig

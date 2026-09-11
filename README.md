@@ -43,6 +43,13 @@ Sinkhole needs **Screen Recording** permission (System Settings → Privacy & Se
 to snapshot the desktop. Snapshots live in GPU memory only and are released the
 moment a transition ends; nothing is ever written to disk.
 
+**Keeping the permission across rebuilds.** macOS ties the grant to the app's code
+signature. With plain "Sign to Run Locally" every build is a new identity and the
+switch resets. Either add your Apple ID in Xcode (Settings → Accounts) and pick
+your Personal Team under Signing & Capabilities, or create `App/Local.xcconfig`
+with `CODE_SIGN_IDENTITY = Sinkhole Dev` after adding a self-signed code-signing
+certificate of that name in Keychain Access. See `App/Signing.xcconfig`.
+
 ## How Notch Drain works
 
 The shader answers one question for every pixel: *which pixel of the frozen

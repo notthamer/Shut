@@ -18,6 +18,7 @@
 		A100000000000000000000F2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A100000000000000000000F3 /* Sinkhole.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sinkhole.entitlements; sourceTree = "<group>"; };
 		A100000000000000000000F4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A100000000000000000000F5 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +48,7 @@
 				A100000000000000000000F2 /* Info.plist */,
 				A100000000000000000000F3 /* Sinkhole.entitlements */,
 				A100000000000000000000F4 /* Assets.xcassets */,
+				A100000000000000000000F5 /* Signing.xcconfig */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -185,13 +187,12 @@
 		};
 		A100000000000000000000X2 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A100000000000000000000F5 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/Sinkhole.entitlements;
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -209,13 +210,12 @@
 		};
 		A100000000000000000000X3 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A100000000000000000000F5 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/Sinkhole.entitlements;
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;

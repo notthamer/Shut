@@ -29,8 +29,14 @@ else
   echo "warning: $BUNDLE not found; shaders will be missing" >&2
 fi
 
-codesign --force --sign - --entitlements App/Sinkhole.entitlements "$APP"
-echo "Built $APP"
+# Prefer a stable local certificate so Screen Recording permission survives
+# rebuilds (see App/Signing.xcconfig); fall back to ad-hoc.
+IDENTITY="${SINKHOLE_SIGN_IDENTITY:-}"
+if [ -z "$IDENTITY" ] && security find-identity -p codesigning 2>/dev/null | grep -q '"Sinkhole Dev"'; then
+  IDENTITY="Sinkhole Dev"
+fi
+codesign --force --sign "${IDENTITY:--}" --entitlements App/Sinkhole.entitlements "$APP"
+echo "Built $APP (signed with ${IDENTITY:-ad-hoc identity})"
 
 if [ "${1:-}" = "--zip" ]; then
   ZIP="build/Sinkhole-$VERSION.zip"
