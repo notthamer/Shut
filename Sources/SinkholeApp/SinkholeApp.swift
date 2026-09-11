@@ -49,6 +49,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let permissionWindow = PermissionWindowController()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Two copies (one from Xcode, one relaunched) would each draw an overlay
+        // and fight over the sensor. The newer one wins; the older one quits.
+        if let bundleID = Bundle.main.bundleIdentifier {
+            let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+                .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+            for other in others {
+                Log.app.warning("terminating older instance pid \(other.processIdentifier)")
+                other.terminate()
+            }
+        }
+
         settings = AppSettings()
         sensor = LidSensorMonitor(smoothing: settings.smoothing)
         registry = TransitionRegistry(transitions: TransitionCatalog.make(), currentID: settings.transitionID)

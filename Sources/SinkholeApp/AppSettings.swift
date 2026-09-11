@@ -15,8 +15,8 @@ public final class AppSettings: ObservableObject {
     @Published public var showAngleInMenu: Bool { didSet { defaults.set(showAngleInMenu, forKey: "showAngleInMenu") } }
 
     /// PRD 4.5 defaults. End angle 12° is the fallback until calibrated with lidangle-cli.
-    public static let defaultStartAngle = 80.0
-    public static let defaultEndAngle = 12.0
+    public static let defaultStartAngle = 95.0
+    public static let defaultEndAngle = 10.0
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults

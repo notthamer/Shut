@@ -4,8 +4,8 @@ import Tuner
 /// PRD 4.5 "Trigger (shared)": how the lid angle becomes progress. Lives in
 /// Tuner like everything else so it can be tuned live and saved in presets.
 struct TriggerParams: TunableParameters {
-    var startAngle: Double = 80      // degrees; transition begins below this
-    var endAngle: Double = 12        // degrees; fully complete (calibrate with lidangle-cli)
+    var startAngle: Double = 95      // degrees; transition begins below this. Higher = more lid travel = slower effect
+    var endAngle: Double = 10        // degrees; fully complete. A 14" M2 Pro sleeps its display at ~5° (sensor lags a little)
     var smoothing: Smoothing = .medium
     var followLag: Double = 0.03     // seconds; glide time constant toward the lid
     var prediction: Double = 0.0     // extra seconds of velocity look-ahead (sensor tracker already predicts)

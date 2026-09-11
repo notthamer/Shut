@@ -195,7 +195,7 @@ public final class AppController: ObservableObject {
                     self.beginClose()
                 }
             } catch {
-                Log.capture.error("capture failed: \(error.localizedDescription)")
+                Log.capture.error("capture failed: \(error.localizedDescription, privacy: .public)")
                 self?.captureTask = nil
             }
         }
@@ -224,7 +224,7 @@ public final class AppController: ObservableObject {
         shownAt = Date()
         state = .closing
         onTransitionVisibilityChanged?(true)
-        Log.overlay.info("overlay shown (\(transition.id))")
+        Log.overlay.info("overlay shown (\(transition.id, privacy: .public))")
 
         if displayLink == nil { displayLink = DisplayLinkDriver(screen: screen) }
         displayLink?.onFrame = { [weak self] dt in self?.frame(dt: dt) }
@@ -252,7 +252,7 @@ public final class AppController: ObservableObject {
         captureTask?.cancel()
         captureTask = nil
         renderer.clearSnapshot()
-        if state != .idle { Log.overlay.info("teardown: \(reason)") }
+        if state != .idle { Log.overlay.info("teardown: \(reason, privacy: .public)") }
         if shownAt != nil { onTransitionVisibilityChanged?(false) }
         shownAt = nil
         progress = 0
@@ -296,7 +296,7 @@ public final class AppController: ObservableObject {
     // MARK: - Power and pour-out (PRD 5.7)
 
     @objc private func willSleep(_ note: Notification) {
-        Log.app.info("sleep: \(note.name.rawValue)")
+        Log.app.info("sleep: \(note.name.rawValue, privacy: .public)")
         enterDrained()
     }
 
@@ -307,7 +307,7 @@ public final class AppController: ObservableObject {
     }
 
     @objc private func didWake(_ note: Notification) {
-        Log.app.info("wake: \(note.name.rawValue)")
+        Log.app.info("wake: \(note.name.rawValue, privacy: .public)")
         wakeUp()
     }
 
@@ -394,13 +394,13 @@ public final class AppController: ObservableObject {
                 self.state = .pouring
                 self.blackSince = nil
                 self.shownAt = Date()
-                Log.overlay.info("pour-out started (\(transition.id))")
+                Log.overlay.info("pour-out started (\(transition.id, privacy: .public))")
 
                 if self.displayLink == nil { self.displayLink = DisplayLinkDriver(screen: screen) }
                 self.displayLink?.onFrame = { [weak self] dt in self?.frame(dt: dt) }
                 self.displayLink?.start()
             } catch {
-                Log.capture.error("pour-out capture failed: \(error.localizedDescription); hiding")
+                Log.capture.error("pour-out capture failed: \(error.localizedDescription, privacy: .public); hiding")
                 self?.teardown(reason: "pour-out capture failed")
             }
         }
@@ -413,7 +413,7 @@ public final class AppController: ObservableObject {
         guard awakeAndUnlocked else { blackSince = nil; return }
         if blackSince == nil { blackSince = Date(); return }
         if Date().timeIntervalSince(blackSince!) > blackScreenLimit {
-            Log.overlay.error("SAFETY: black overlay visible \(self.blackScreenLimit)s while awake+unlocked in state \(self.state.rawValue); force hiding")
+            Log.overlay.error("SAFETY: black overlay visible \(self.blackScreenLimit)s while awake+unlocked in state \(self.state.rawValue, privacy: .public); force hiding")
             teardown(reason: "black screen safety")
         }
     }

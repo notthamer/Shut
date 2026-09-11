@@ -9,7 +9,7 @@ enum LaunchAtLogin {
             if isEnabled { try SMAppService.mainApp.unregister() }
             else { try SMAppService.mainApp.register() }
         } catch {
-            Log.app.error("launch at login failed: \(error.localizedDescription)")
+            Log.app.error("launch at login failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 }
