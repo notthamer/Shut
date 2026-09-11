@@ -18,6 +18,7 @@ final class TunerHost {
     let notchDrain: TunerStore<NotchDrainParams>
     let fade: TunerStore<FadeParams>
     let frost: TunerStore<FrostParams>
+    let trigger: TunerStore<TriggerParams>
 
     init(registry: TransitionRegistry, previewModel: PreviewModel, controller: AppController, settings: AppSettings) {
         self.registry = registry
@@ -28,15 +29,28 @@ final class TunerHost {
         notchDrain = TunerStore(presets: presets, builtIns: BuiltInPresets.notchDrain)
         fade = TunerStore(presets: presets, builtIns: [])
         frost = TunerStore(presets: presets, builtIns: BuiltInPresets.frost)
+        trigger = TunerStore(presets: presets, builtIns: [("Default", TriggerParams())])
 
         bind(notchDrain, to: NotchDrainTransition.self)
         bind(fade, to: FadeTransition.self)
         bind(frost, to: FrostTransition.self)
 
+        applyTrigger(trigger.values)
+        trigger.onChange = { [weak self] values in self?.applyTrigger(values) }
+
         controller.onTransitionVisibilityChanged = { [weak self] playing in
             self?.panel?.setHiddenForTransition(playing)
         }
         cancellable = registry.$current.sink { [weak self] _ in self?.refreshContent() }
+    }
+
+    private func applyTrigger(_ t: TriggerParams) {
+        settings.startAngle = t.startAngle
+        settings.endAngle = t.endAngle
+        settings.smoothing = t.smoothing
+        controller.sensor.smoothing = t.smoothing
+        controller.followLag = t.followLag
+        controller.prediction = t.prediction
     }
 
     /// Pushes store values into the live transition object now and on every edit.
@@ -66,13 +80,14 @@ final class TunerHost {
 
     private func makeContent() -> AnyView {
         let preview = PreviewArea(model: previewModel, registry: registry, aspect: BuiltInDisplayAspect.ratio)
+        let triggerFolders = TunerFoldersView(store: trigger)
         switch registry.current.id {
         case NotchDrainTransition.id:
-            return AnyView(TunerPanelView(store: notchDrain) { preview })
+            return AnyView(TunerPanelView(store: notchDrain, preview: { preview }, extra: { triggerFolders }))
         case FrostTransition.id:
-            return AnyView(TunerPanelView(store: frost) { preview })
+            return AnyView(TunerPanelView(store: frost, preview: { preview }, extra: { triggerFolders }))
         default:
-            return AnyView(TunerPanelView(store: fade) { preview })
+            return AnyView(TunerPanelView(store: fade, preview: { preview }, extra: { triggerFolders }))
         }
     }
 

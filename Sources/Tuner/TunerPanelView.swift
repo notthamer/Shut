@@ -4,18 +4,21 @@ import UniformTypeIdentifiers
 /// The panel body: preview slot, presets bar, one collapsible folder per schema
 /// folder, and JSON actions. Generic over the parameter struct and whatever
 /// preview the host app supplies.
-public struct TunerPanelView<P: TunableParameters, Preview: View>: View {
+public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: View {
     @ObservedObject var store: TunerStore<P>
     let preview: Preview
-    @State private var expanded: Set<Int>
+    let extra: Extra
     @State private var newPresetName = ""
     @State private var showingSave = false
     @State private var flash: String?
 
-    public init(store: TunerStore<P>, @ViewBuilder preview: () -> Preview) {
+    /// - Parameters:
+    ///   - preview: shown above the controls (the host app's live preview).
+    ///   - extra: shown below the folders, e.g. `TunerFoldersView` for a second store.
+    public init(store: TunerStore<P>, @ViewBuilder preview: () -> Preview, @ViewBuilder extra: () -> Extra) {
         self.store = store
         self.preview = preview()
-        _expanded = State(initialValue: Set(P.schema.folders.indices))
+        self.extra = extra()
     }
 
     public var body: some View {
@@ -25,9 +28,9 @@ public struct TunerPanelView<P: TunableParameters, Preview: View>: View {
 
                 presetsBar
 
-                ForEach(Array(P.schema.folders.enumerated()), id: \.offset) { index, folder in
-                    folderView(index: index, folder: folder)
-                }
+                TunerFoldersView(store: store)
+
+                extra
 
                 footer
             }
@@ -102,45 +105,6 @@ public struct TunerPanelView<P: TunableParameters, Preview: View>: View {
         .padding(12)
     }
 
-    // MARK: Folders
-
-    @ViewBuilder
-    private func folderView(index: Int, folder: TunerFolder<P>) -> some View {
-        DisclosureGroup(isExpanded: Binding(
-            get: { expanded.contains(index) },
-            set: { if $0 { expanded.insert(index) } else { expanded.remove(index) } }
-        )) {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(folder.controls.enumerated()), id: \.offset) { _, control in
-                    controlView(control)
-                }
-            }
-            .padding(.top, 6)
-        } label: {
-            HStack {
-                Text(folder.name).font(.headline)
-                Spacer()
-                Button("Reset") { store.reset(folder: index) }
-                    .buttonStyle(.borderless)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func controlView(_ control: TunerControl<P>) -> some View {
-        switch control {
-        case .slider(let spec): SliderControlView(values: $store.values, spec: spec)
-        case .toggle(let spec): ToggleControlView(values: $store.values, spec: spec)
-        case .color(let spec): ColorControlView(values: $store.values, spec: spec)
-        case .spring(let spec): SpringEditorView(values: $store.values, spec: spec)
-        case .bezier(let spec): BezierEditorView(values: $store.values, spec: spec)
-        case .segmented(let spec): SegmentedControlView(values: $store.values, spec: spec)
-        case .action(let spec): ActionButtonView(values: $store.values, spec: spec)
-        }
-    }
-
     // MARK: Footer
 
     private var footer: some View {
@@ -190,5 +154,68 @@ public struct TunerPanelView<P: TunableParameters, Preview: View>: View {
     private func showFlash(_ text: String) {
         withAnimation { flash = text }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { withAnimation { flash = nil } }
+    }
+}
+
+public extension TunerPanelView where Extra == EmptyView {
+    init(store: TunerStore<P>, @ViewBuilder preview: () -> Preview) {
+        self.init(store: store, preview: preview, extra: { EmptyView() })
+    }
+}
+
+/// The schema's folders as collapsible groups, each with a Reset. Usable on its
+/// own for a secondary parameter struct inside another panel.
+public struct TunerFoldersView<P: TunableParameters>: View {
+    @ObservedObject var store: TunerStore<P>
+    @State private var expanded: Set<Int>
+
+    public init(store: TunerStore<P>) {
+        self.store = store
+        _expanded = State(initialValue: Set(P.schema.folders.indices))
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(Array(P.schema.folders.enumerated()), id: \.offset) { index, folder in
+                folderView(index: index, folder: folder)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func folderView(index: Int, folder: TunerFolder<P>) -> some View {
+        DisclosureGroup(isExpanded: Binding(
+            get: { expanded.contains(index) },
+            set: { if $0 { expanded.insert(index) } else { expanded.remove(index) } }
+        )) {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(folder.controls.enumerated()), id: \.offset) { _, control in
+                    controlView(control)
+                }
+            }
+            .padding(.top, 6)
+        } label: {
+            HStack {
+                Text(folder.name).font(.headline)
+                Spacer()
+                Button("Reset") { store.reset(folder: index) }
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func controlView(_ control: TunerControl<P>) -> some View {
+        switch control {
+        case .slider(let spec): SliderControlView(values: $store.values, spec: spec)
+        case .toggle(let spec): ToggleControlView(values: $store.values, spec: spec)
+        case .color(let spec): ColorControlView(values: $store.values, spec: spec)
+        case .spring(let spec): SpringEditorView(values: $store.values, spec: spec)
+        case .bezier(let spec): BezierEditorView(values: $store.values, spec: spec)
+        case .segmented(let spec): SegmentedControlView(values: $store.values, spec: spec)
+        case .action(let spec): ActionButtonView(values: $store.values, spec: spec)
+        }
     }
 }

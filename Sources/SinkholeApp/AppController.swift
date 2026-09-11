@@ -59,6 +59,10 @@ public final class AppController: ObservableObject {
     /// Set by the Tuner host so the panel can hide while a real transition plays.
     public var onTransitionVisibilityChanged: ((Bool) -> Void)?
 
+    /// Follow-mode glide, from TriggerParams.
+    public var followLag: Double = 0.045
+    public var prediction: Double = 0.03
+
     public init(settings: AppSettings, sensor: LidSensorMonitor, registry: TransitionRegistry, renderer: TransitionRenderer) {
         self.settings = settings
         self.sensor = sensor
@@ -206,6 +210,8 @@ public final class AppController: ObservableObject {
         driver.reset()
         driver.curve = curveFor(transition)
         driver.commitThreshold = commitThresholdFor(transition)
+        driver.followLag = followLag
+        driver.prediction = prediction
 
         if overlay == nil {
             overlay = OverlayWindow(screen: screen, renderer: renderer, transition: transition, context: context)
@@ -265,7 +271,7 @@ public final class AppController: ObservableObject {
             return
         }
 
-        var p = driver.step(dt: dt, angle: lastAngle)
+        var p = driver.step(dt: dt, angle: lastAngle, velocity: sensor.velocity)
         if state == .pouring {
             // The spring may dip below zero; the transition's overshoot parameter
             // caps how far, which the shader turns into the splash.

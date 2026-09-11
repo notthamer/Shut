@@ -21,6 +21,12 @@ struct ProgressDriver {
     /// finishes the close on its own. 1.0 means "follow the lid all the way".
     var commitThreshold: Double = 1.0
     var commitSpring = (response: 0.35, damping: 1.0)
+    /// The sensor reports whole degrees at its own cadence, so the raw target
+    /// moves in steps. In follow mode progress glides toward the target with this
+    /// time constant (seconds), and `prediction` seconds of the lid's velocity are
+    /// added first so the glide doesn't read as lag.
+    var followLag: Double = 0.045
+    var prediction: Double = 0.03
 
     private(set) var mode: Mode = .follow
     private(set) var spring: Spring?
@@ -64,20 +70,25 @@ struct ProgressDriver {
 
     var isSpringSettled: Bool { spring?.isSettled ?? true }
 
-    /// Advance one frame. `angle` is only consulted in follow mode.
+    /// Advance one frame. `angle` and `velocity` (°/s) are only consulted in
+    /// follow mode.
     @discardableResult
-    mutating func step(dt: Double, angle: Double?) -> Double {
+    mutating func step(dt: Double, angle: Double?, velocity: Double = 0) -> Double {
         switch mode {
         case .follow:
             guard let angle else { return progress }
-            let raw = rawProgress(angle: angle)
+            let predicted = angle + velocity * prediction
+            let raw = rawProgress(angle: predicted)
             if commitThreshold < 1, raw >= commitThreshold, !committed {
                 committed = true
                 progress = curve.value(at: raw)
                 animate(to: 1, response: commitSpring.response, damping: commitSpring.damping)
-                return step(dt: dt, angle: angle)
+                return step(dt: dt, angle: angle, velocity: velocity)
             }
-            progress = curve.value(at: raw)
+            let target = curve.value(at: raw)
+            let alpha = followLag > 0 ? 1 - exp(-dt / followLag) : 1
+            progress += (target - progress) * alpha
+            if abs(target - progress) < 0.0005 { progress = target }
         case .spring:
             guard var s = spring else { return progress }
             progress = s.step(dt: dt)
