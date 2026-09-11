@@ -12,7 +12,7 @@ import LidSensor
 // No third-party argument parser: the surface is tiny and readability wins.
 
 enum Mode {
-    case live, report, log(String), debug
+    case live, report, log(String), debug, calibration
 }
 
 func parseArguments(_ args: [String]) -> Mode? {
@@ -22,6 +22,7 @@ func parseArguments(_ args: [String]) -> Mode? {
         switch arg {
         case "--report": mode = .report
         case "--debug": mode = .debug
+        case "--calibration": mode = .calibration
         case "--log":
             guard let path = iterator.next() else {
                 print("--log needs a file path, e.g. --log angles.csv")
@@ -46,6 +47,7 @@ func printUsage() {
       lidangle-cli --report        compatibility report for a GitHub issue
       lidangle-cli --log FILE.csv  append timestamp,angle per sample
       lidangle-cli --debug         show raw report bytes with every sample
+      lidangle-cli --calibration   sample 5 s and print the learned closed/open angles
     """)
 }
 
@@ -67,8 +69,8 @@ func noSensorMessage() {
 }
 
 func formatLine(_ sample: LidSample) -> String {
-    String(format: "angle %6.1f°   velocity %7.1f°/s   rate %3.0f Hz",
-           sample.angle, sample.velocity, sample.pollRateHz)
+    String(format: "angle %6.1f°   velocity %7.1f°/s   progress %.2f   rate %3.0f Hz",
+           sample.angle, sample.degreesPerSecond, sample.progress, sample.pollRateHz)
 }
 
 // MARK: - Modes
@@ -87,16 +89,29 @@ func runLive(debug: Bool) {
             fflush(stdout)
         }
     }
-    guard monitor.start() else { noSensorMessage(); return }
+    guard monitor.start() == .continuousAngle else { noSensorMessage(); return }
     print("Reading lid angle. Press Ctrl-C to stop.")
     RunLoop.main.run()
+}
+
+func runCalibration() {
+    let monitor = LidSensorMonitor(defaults: nil)
+    guard monitor.start() == .continuousAngle else { noSensorMessage(); return }
+    print("Sampling for 5 seconds...")
+    RunLoop.main.run(until: Date().addingTimeInterval(5))
+    let c = monitor.calibration
+    let band = monitor.animationRange
+    print(String(format: "closed %.1f°   open (resting) %.1f°   effect band %.1f°…%.1f°", c.closedAngle, c.openAngle, band.lowerBound, band.upperBound))
+    print("The app learns these as you use it; the CLI starts from defaults each run.")
+    monitor.stop()
 }
 
 func runReport() {
     let model = sysctlString("hw.model")
     let os = ProcessInfo.processInfo.operatingSystemVersionString
-    let monitor = LidSensorMonitor()
-    let found = monitor.start()
+    let monitor = LidSensorMonitor(defaults: nil)
+    let capability = monitor.start()
+    let found = capability == .continuousAngle
 
     var samples: [LidSample] = []
     let lock = NSLock()
@@ -127,6 +142,8 @@ func runReport() {
     | Model | `\(model)` |
     | macOS | \(os) |
     | Sensor found | \(found ? "yes" : "no") |
+    | Capability | \(capability.rawValue) |
+    | Lid state (IOPMrootDomain) | \(LidStateProvider.currentClamshellState().map { $0 ? "closed" : "open" } ?? "unavailable") |
     | Samples in 5 s | \(samples.count) |
     | Angle range | \(minAngle) to \(maxAngle) |
     | Raw report | `\(rawBytes)` |
@@ -158,7 +175,7 @@ func runLog(path: String) {
         print("\r\(formatLine(sample))   ", terminator: "")
         fflush(stdout)
     }
-    guard monitor.start() else { noSensorMessage(); return }
+    guard monitor.start() == .continuousAngle else { noSensorMessage(); return }
     print("Logging to \(path). Close the lid slowly until the screen turns off, then Ctrl-C.")
     RunLoop.main.run()
 }
@@ -180,4 +197,5 @@ case .live: runLive(debug: false)
 case .debug: runLive(debug: true)
 case .report: runReport()
 case .log(let path): runLog(path: path)
+case .calibration: runCalibration()
 }

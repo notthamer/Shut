@@ -62,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         settings = AppSettings()
-        sensor = LidSensorMonitor(smoothing: settings.smoothing)
+        sensor = LidSensorMonitor(smoothing: settings.smoothing, bandDegrees: settings.bandDegrees)
         registry = TransitionRegistry(transitions: TransitionCatalog.make(), currentID: settings.transitionID)
 
         do {
@@ -84,11 +84,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.openTuner = { [weak self] in self?.tunerHost?.toggle() }
         menuBar.presetMenuProvider = { [weak self] in self?.tunerHost?.presetMenuItems() ?? [] }
 
-        if sensor.start() {
-            Log.lid.info("lid sensor online")
-        } else {
-            Log.lid.warning("no lid sensor; Tuner and preview still work")
-        }
+        let capability = sensor.start()
+        Log.lid.info("hinge capability: \(capability.rawValue, privacy: .public)")
 
         menuBar.showPermissionWindow = { [weak self] in self?.permissionWindow.show() }
         if !ScreenRecordingPermission.isGranted {

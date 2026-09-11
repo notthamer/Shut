@@ -28,6 +28,8 @@ public final class PreviewModel: ObservableObject {
 
     /// Set by the SwiftUI representable when the Metal view exists.
     weak var metalView: MetalTransitionView?
+    private var previewVelocity = 0.0
+    private var lastRenderedProgress = 0.0
 
     /// Spring parameters for "Play pour-out", read from the current transition's
     /// params (Sinkhole has them; Fade and Frost fall back to the defaults).
@@ -43,25 +45,26 @@ public final class PreviewModel: ObservableObject {
         self.registry = registry
         self.settings = settings
         self.sensor = sensor
-        driver = ProgressDriver(startAngle: settings.startAngle, endAngle: settings.endAngle)
+        driver = ProgressDriver()
 
         registry.$current.sink { [weak self] _ in self?.render() }.store(in: &cancellables)
-        sensor.$angle.receive(on: DispatchQueue.main).sink { [weak self] angle in
-            guard let self, self.followLid, let angle else { return }
-            self.driver.startAngle = self.settings.startAngle
-            self.driver.endAngle = self.settings.endAngle
-            self.progress = self.driver.rawProgress(angle: angle)
+        sensor.$state.receive(on: DispatchQueue.main).sink { [weak self] state in
+            guard let self, self.followLid, let state else { return }
+            self.progress = state.progress
         }.store(in: &cancellables)
     }
 
     public var context: RenderContext {
         let geometry = NotchDetector.geometry(for: BuiltInDisplay.screen)
+        let range = sensor.animationRange
         return RenderContext(snapshotSize: renderer.snapshotSize,
                              sinkPoint: geometry.sinkPoint,
                              notchSize: geometry.notchSize,
                              usesVirtualNotch: geometry.isVirtual,
                              reduceTransparency: NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
-                             scale: Float(BuiltInDisplay.screen?.backingScaleFactor ?? 2))
+                             scale: Float(BuiltInDisplay.screen?.backingScaleFactor ?? 2),
+                             velocity: Float(previewVelocity),
+                             hingeTravelDegrees: Float(max(range.upperBound - range.lowerBound, 10)))
     }
 
     /// Grabs a fresh desktop snapshot (excluding our own windows).
@@ -96,8 +99,10 @@ public final class PreviewModel: ObservableObject {
     public func render() {
         guard let view = metalView else { return }
         view.transition = registry.current
+        view.isTransparent = registry.current.isTransparent
         view.context = context
         view.progress = progress
+        lastRenderedProgress = progress
         let start = CACurrentMediaTime()
         view.render()
         recordFrameTime((CACurrentMediaTime() - start) * 1000)
@@ -123,7 +128,9 @@ public final class PreviewModel: ObservableObject {
             guard let self else { return false }
             elapsed += dt
             let raw = min(elapsed / duration, 1)
-            self.progress = self.driver.curve.value(at: raw)
+            let next = self.driver.curve.value(at: raw)
+            self.previewVelocity += ((next - self.progress) / max(dt, 0.001) - self.previewVelocity) * min(1, dt / 0.05)
+            self.progress = next
             return raw < 1
         }
     }
@@ -138,9 +145,11 @@ public final class PreviewModel: ObservableObject {
         driver.animate(to: 0, response: spring.response, damping: spring.damping)
         run { [weak self] dt in
             guard let self else { return false }
-            let p = self.driver.step(dt: dt, angle: nil)
-            self.progress = max(p, -spring.overshoot)
-            return !self.driver.isSpringSettled
+            let p = self.driver.step(dt: dt, hinge: nil)
+            let next = max(p, -spring.overshoot)
+            self.previewVelocity += ((next - self.progress) / max(dt, 0.001) - self.previewVelocity) * min(1, dt / 0.05)
+            self.progress = next
+            return !self.driver.isSettled
         }
     }
 
@@ -148,6 +157,7 @@ public final class PreviewModel: ObservableObject {
         playTimer?.invalidate()
         playTimer = nil
         isPlaying = false
+        previewVelocity = 0
     }
 
     private func run(_ tick: @escaping (Double) -> Bool) {

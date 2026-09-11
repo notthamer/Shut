@@ -55,12 +55,12 @@ final class TunerHost {
     }
 
     private func applyTrigger(_ t: TriggerParams) {
-        settings.startAngle = t.startAngle
-        settings.endAngle = t.endAngle
+        settings.bandDegrees = t.startAngle
         settings.smoothing = t.smoothing
+        settings.animateOpening = t.animateOpening
+        controller.sensor.bandDegrees = t.startAngle
         controller.sensor.smoothing = t.smoothing
-        controller.followLag = t.followLag
-        controller.prediction = t.prediction
+        controller.followLag = t.glide
     }
 
     /// Creates the store for one style, pushes its values into the live

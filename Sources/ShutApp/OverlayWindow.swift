@@ -32,6 +32,14 @@ final class OverlayWindow: NSWindow {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
+    /// Opaque black for snapshot styles; clear for mask styles that composite over
+    /// the live desktop. Safe to call while ordered in.
+    func setTransparent(_ transparent: Bool) {
+        isOpaque = !transparent
+        backgroundColor = transparent ? .clear : .black
+        metalView.isTransparent = transparent
+    }
+
     func show(on screen: NSScreen) {
         setFrame(screen.frame, display: false)
         orderFrontRegardless()

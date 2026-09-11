@@ -22,13 +22,18 @@ public final class TransitionRegistry: ObservableObject {
         all.first { $0.id == id }
     }
 
-    /// The transition to actually play on the lid. Reduce Motion swaps in Fade
-    /// so users who asked for less motion never see a swirl.
+    /// Updated by the controller's 2 s poll; keeps CGPreflight off the sensor path.
+    @Published public var captureAvailable: Bool = ScreenRecordingPermission.isGranted
+
+    /// The transition to actually play on the lid. Reduce Motion, or a snapshot
+    /// style without Screen Recording, substitutes Fade rather than showing nothing.
     public var effectiveForLid: AnyTransition {
-        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
-           let fade = transition(id: FadeTransition.id) {
-            return fade
-        }
+        guard let fade = transition(id: FadeTransition.id) else { return current }
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { return fade }
+        if current.needsSnapshot && !captureAvailable { return fade }
         return current
     }
+
+    /// True when the chosen style is not the one being rendered.
+    public var isSubstituting: Bool { effectiveForLid.id != current.id }
 }

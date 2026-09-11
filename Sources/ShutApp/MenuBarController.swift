@@ -114,12 +114,18 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     private func updateAngle() {
         angleItem.isHidden = !settings.showAngleInMenu
-        guard controller.sensor.isAvailable else {
-            angleItem.title = "Lid sensor not found"
-            return
+        switch controller.sensor.capability {
+        case .continuousAngle:
+            if let angle = controller.sensor.angle {
+                angleItem.title = String(format: "Lid angle: %.0f°  (%@)", angle, controller.state.rawValue)
+            }
+        case .lidStateOnly:
+            angleItem.title = "Lid: open/close events only  (\(controller.state.rawValue))"
+        case .unsupported:
+            angleItem.title = "No lid sensor on this Mac"
         }
-        if let angle = controller.sensor.angle {
-            angleItem.title = String(format: "Lid angle: %.0f°  (%@)", angle, controller.state.rawValue)
+        if registry.isSubstituting {
+            angleItem.title += "  · playing Fade until Screen Recording is granted"
         }
     }
 

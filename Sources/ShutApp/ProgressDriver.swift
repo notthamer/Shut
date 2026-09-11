@@ -2,51 +2,37 @@ import Foundation
 import TransitionKit
 import Tuner
 
-/// Turns lid angle (or a spring) into transition progress `p` in 0...1.
+/// Turns hinge progress (or a spring, or a timeline) into the progress a style
+/// renders, 0 = open, 1 = shut.
 ///
-/// Three modes, per PRD 5.5:
-/// - follow: p tracks the lid between start and end angle, through the easing curve.
-/// - spring: a spring animates p toward a target (commit "gulp", reverse on reopen,
-///   or pour-out from 1 back to 0 with overshoot below 0).
+/// - follow: tracks `HingeState.progress` through the style's easing curve, with a
+///   short per-frame glide. Works in both directions, so reopening the lid simply
+///   plays the style backwards.
+/// - spring: animates toward a target (commit "gulp", pour-out from 1 back to 0).
+/// - timed: a fixed-duration ease, for Macs that only report open/closed.
 struct ProgressDriver {
-    enum Mode: Equatable {
-        case follow
-        case spring
-    }
+    enum Mode: Equatable { case follow, spring, timed }
 
-    var startAngle: Double
-    var endAngle: Double
     var curve: TunerBezier = .linear
-    /// Below 1.0, crossing this raw progress hands control to a spring that
+    /// Below 1.0, crossing this hinge progress hands control to a spring that
     /// finishes the close on its own. 1.0 means "follow the lid all the way".
     var commitThreshold: Double = 1.0
     var commitSpring = (response: 0.35, damping: 1.0)
-    /// The sensor reports whole degrees at its own cadence, so the raw target
-    /// moves in steps. In follow mode progress glides toward the target with this
-    /// time constant (seconds), and `prediction` seconds of the lid's velocity are
-    /// added first so the glide doesn't read as lag.
+    /// Per-frame glide time constant in follow mode.
     var followLag: Double = 0.03
-    var prediction: Double = 0.0
 
     private(set) var mode: Mode = .follow
     private(set) var spring: Spring?
     private(set) var progress: Double = 0
     private(set) var committed = false
+    private var tween: (from: Double, to: Double, duration: Double, elapsed: Double)?
 
-    init(startAngle: Double, endAngle: Double) {
-        self.startAngle = startAngle
-        self.endAngle = endAngle
-    }
-
-    /// Raw 0...1 progress from the lid, before easing.
-    func rawProgress(angle: Double) -> Double {
-        let span = max(startAngle - endAngle, 1)
-        return min(max((startAngle - angle) / span, 0), 1)
-    }
+    init() {}
 
     mutating func reset() {
         mode = .follow
         spring = nil
+        tween = nil
         progress = 0
         committed = false
     }
@@ -54,36 +40,46 @@ struct ProgressDriver {
     mutating func follow() {
         mode = .follow
         spring = nil
+        tween = nil
         committed = false
     }
 
-    /// Start a spring from the current progress to `target`.
     mutating func animate(to target: Double, response: Double, damping: Double) {
         spring = Spring(response: response, dampingFraction: damping, from: progress, to: target)
+        tween = nil
         mode = .spring
     }
 
-    /// Jump straight to a value (used to start pour-out from p = 1).
+    /// Fixed-duration ease-in-out from the current progress to `target`.
+    mutating func timed(to target: Double, duration: Double) {
+        tween = (progress, target, max(duration, 0.05), 0)
+        spring = nil
+        mode = .timed
+    }
+
     mutating func set(progress value: Double) {
         progress = value
     }
 
-    var isSpringSettled: Bool { spring?.isSettled ?? true }
+    var isSettled: Bool {
+        switch mode {
+        case .follow: return true
+        case .spring: return spring?.isSettled ?? true
+        case .timed: return tween.map { $0.elapsed >= $0.duration - 1e-6 } ?? true
+        }
+    }
 
-    /// Advance one frame. `angle` and `velocity` (°/s) are only consulted in
-    /// follow mode.
+    /// Advance one frame. `hinge` is `HingeState.progress`, consulted in follow mode.
     @discardableResult
-    mutating func step(dt: Double, angle: Double?, velocity: Double = 0) -> Double {
+    mutating func step(dt: Double, hinge: Double?) -> Double {
         switch mode {
         case .follow:
-            guard let angle else { return progress }
-            let predicted = angle + velocity * prediction
-            let raw = rawProgress(angle: predicted)
+            guard let raw = hinge else { return progress }
             if commitThreshold < 1, raw >= commitThreshold, !committed {
                 committed = true
                 progress = curve.value(at: raw)
                 animate(to: 1, response: commitSpring.response, damping: commitSpring.damping)
-                return step(dt: dt, angle: angle, velocity: velocity)
+                return step(dt: dt, hinge: hinge)
             }
             let target = curve.value(at: raw)
             let alpha = followLag > 0 ? 1 - exp(-dt / followLag) : 1
@@ -93,6 +89,13 @@ struct ProgressDriver {
             guard var s = spring else { return progress }
             progress = s.step(dt: dt)
             spring = s
+        case .timed:
+            guard var t = tween else { return progress }
+            t.elapsed = min(t.elapsed + dt, t.duration)
+            let x = t.elapsed / t.duration
+            let eased = x < 0.5 ? 4 * x * x * x : 1 - pow(-2 * x + 2, 3) / 2
+            progress = t.from + (t.to - t.from) * eased
+            tween = t
         }
         return progress
     }

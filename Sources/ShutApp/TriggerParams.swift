@@ -1,25 +1,26 @@
 import LidSensor
 import Tuner
 
-/// PRD 4.5 "Trigger (shared)": how the lid angle becomes progress. Lives in
-/// Tuner like everything else so it can be tuned live and saved in presets.
+/// How the lid becomes progress. Lives in Tuner like everything else so it can be
+/// tuned live and saved in presets. The closed and open angles themselves are
+/// learned automatically; nobody types them.
 struct TriggerParams: TunableParameters {
-    var startAngle: Double = 95      // degrees; transition begins below this. Higher = more lid travel = slower effect
-    var endAngle: Double = 10        // degrees; fully complete. A 14" M2 Pro sleeps its display at ~5° (sensor lags a little)
-    var smoothing: Smoothing = .medium
-    var followLag: Double = 0.03     // seconds; glide time constant toward the lid
-    var prediction: Double = 0.0     // extra seconds of velocity look-ahead (sensor tracker already predicts)
+    /// Degrees above shut the effect spans. This is the popover's Speed slider.
+    var startAngle: Double = 45
+    var smoothing: Double = 0.25
+    var glide: Double = 0.03
+    var animateOpening = true
 
     static let tunerID = "trigger"
     static let tunerDisplayName = "Trigger"
     static let defaults = TriggerParams()
     static let schema = TunerSchema<TriggerParams>([
         TunerFolder("Trigger", [
-            .slider(\.startAngle, "Start angle", 40...110, step: 1, unit: "°", decimals: 0),
-            .slider(\.endAngle, "Fully complete angle", 0...35, step: 1, unit: "°", decimals: 0),
-            .segmented(\.smoothing, "Smoothing"),
-            .slider(\.followLag, "Glide", 0...0.15, step: 0.005, unit: "s", decimals: 3),
-            .slider(\.prediction, "Look-ahead", 0...0.1, step: 0.005, unit: "s", decimals: 3),
+            .slider(\.startAngle, "Starts at", 20...100, step: 1, unit: "°", decimals: 0, featured: true,
+                    help: "How far above shut the effect begins in earnest. Less is faster."),
+            .slider(\.smoothing, "Smoothing", 0...1, help: "More is steadier and slightly slower to answer. Less follows the hinge harder."),
+            .slider(\.glide, "Glide", 0...0.12, step: 0.005, unit: "s", decimals: 3, help: "Per-frame easing toward the hinge. Hides the sensor's steps."),
+            .toggle(\.animateOpening, "Animate opening"),
         ]),
     ])
 }
