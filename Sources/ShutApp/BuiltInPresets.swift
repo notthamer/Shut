@@ -40,6 +40,14 @@ enum BuiltInPresets {
         return [("Gentle", gentle), ("Default", SinkholeParams()), ("Black Hole", blackHole)]
     }
 
+    static var fold: [(String, FoldParams)] {
+        var subtle = FoldParams()
+        subtle.intensity = 0.6
+        subtle.blur = 0.5
+        subtle.washout = 0.5
+        return [("Default", FoldParams()), ("Subtle", subtle)]
+    }
+
     static var frost: [(String, FrostParams)] {
         var light = FrostParams()
         light.maxBlur = 24

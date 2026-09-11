@@ -23,6 +23,7 @@ public enum ShutApp {
         }
         try write(BuiltInPresets.sinkhole)
         try write(BuiltInPresets.frost)
+        try write(BuiltInPresets.fold)
         return written
     }
 

@@ -15,9 +15,14 @@ final class TunerHost {
     private var panel: TunerPanelController?
     private var cancellable: Any?
 
-    let sinkhole: TunerStore<SinkholeParams>
-    let fade: TunerStore<FadeParams>
-    let frost: TunerStore<FrostParams>
+    /// Everything the host needs per style, type-erased so eleven styles don't
+    /// become an eleven-way switch.
+    private struct Registration {
+        let content: (PreviewArea, TunerFoldersView<TriggerParams>) -> AnyView
+        let presetItems: () -> [NSMenuItem]
+        let featured: () -> AnyView
+    }
+    private var registrations: [String: Registration] = [:]
     let trigger: TunerStore<TriggerParams>
 
     init(registry: TransitionRegistry, previewModel: PreviewModel, controller: AppController, settings: AppSettings) {
@@ -26,14 +31,19 @@ final class TunerHost {
         self.controller = controller
         self.settings = settings
 
-        sinkhole = TunerStore(presets: presets, builtIns: BuiltInPresets.sinkhole)
-        fade = TunerStore(presets: presets, builtIns: [])
-        frost = TunerStore(presets: presets, builtIns: BuiltInPresets.frost)
         trigger = TunerStore(presets: presets, builtIns: [("Default", TriggerParams())])
 
-        bind(sinkhole, to: SinkholeTransition.self)
-        bind(fade, to: FadeTransition.self)
-        bind(frost, to: FrostTransition.self)
+        register(SinkholeTransition.self, builtIns: BuiltInPresets.sinkhole)
+        register(FrostTransition.self, builtIns: BuiltInPresets.frost)
+        register(FoldTransition.self, builtIns: BuiltInPresets.fold)
+        register(CurlTransition.self, builtIns: [])
+        register(CreaseTransition.self, builtIns: [])
+        register(RecedeTransition.self, builtIns: [])
+        register(SlideTransition.self, builtIns: [])
+        register(ApertureTransition.self, builtIns: [])
+        register(ShutterTransition.self, builtIns: [])
+        register(BlindsTransition.self, builtIns: [])
+        register(FadeTransition.self, builtIns: [])
 
         applyTrigger(trigger.values)
         trigger.onChange = { [weak self] values in self?.applyTrigger(values) }
@@ -53,14 +63,32 @@ final class TunerHost {
         controller.prediction = t.prediction
     }
 
-    /// Pushes store values into the live transition object now and on every edit.
-    private func bind<T: TransitionKit.Transition>(_ store: TunerStore<T.Params>, to type: T.Type) {
-        guard let transition = registry.transition(id: T.id)?.base as? T else { return }
-        transition.params = store.values
-        store.onChange = { [weak self, weak transition] values in
-            transition?.params = values
-            self?.previewModel.paramsChanged()
+    /// Creates the store for one style, pushes its values into the live
+    /// transition now and on every edit, and records how to show it.
+    private func register<T: TransitionKit.Transition>(_ type: T.Type, builtIns: [(String, T.Params)]) {
+        let store = TunerStore<T.Params>(presets: presets, builtIns: builtIns)
+        if let transition = registry.transition(id: T.id)?.base as? T {
+            transition.params = store.values
+            store.onChange = { [weak self, weak transition] values in
+                transition?.params = values
+                self?.previewModel.paramsChanged()
+            }
         }
+        registrations[T.id] = Registration(
+            content: { preview, triggerFolders in
+                AnyView(TunerPanelView(store: store, preview: { preview }, extra: { triggerFolders }))
+            },
+            presetItems: {
+                store.allPresets.map { preset in
+                    let item = NSMenuItem(title: preset.name, action: #selector(PresetMenuTarget.apply(_:)), keyEquivalent: "")
+                    item.target = PresetMenuTarget.shared
+                    item.representedObject = { store.apply(preset: preset) } as () -> Void
+                    item.state = store.activePresetName == preset.name ? .on : .off
+                    return item
+                }
+            },
+            featured: { AnyView(TunerFoldersView(store: store)) }
+        )
     }
 
     func toggle() {
@@ -81,32 +109,13 @@ final class TunerHost {
     private func makeContent() -> AnyView {
         let preview = PreviewArea(model: previewModel, registry: registry, aspect: BuiltInDisplayAspect.ratio)
         let triggerFolders = TunerFoldersView(store: trigger)
-        switch registry.current.id {
-        case SinkholeTransition.id:
-            return AnyView(TunerPanelView(store: sinkhole, preview: { preview }, extra: { triggerFolders }))
-        case FrostTransition.id:
-            return AnyView(TunerPanelView(store: frost, preview: { preview }, extra: { triggerFolders }))
-        default:
-            return AnyView(TunerPanelView(store: fade, preview: { preview }, extra: { triggerFolders }))
-        }
+        guard let registration = registrations[registry.current.id] else { return AnyView(preview) }
+        return registration.content(preview, triggerFolders)
     }
 
     /// Menu bar "Preset" submenu for the current transition.
     func presetMenuItems() -> [NSMenuItem] {
-        func items<P: TunableParameters>(_ store: TunerStore<P>) -> [NSMenuItem] {
-            store.allPresets.map { preset in
-                let item = NSMenuItem(title: preset.name, action: #selector(PresetMenuTarget.apply(_:)), keyEquivalent: "")
-                item.target = PresetMenuTarget.shared
-                item.representedObject = { store.apply(preset: preset) } as () -> Void
-                item.state = store.activePresetName == preset.name ? .on : .off
-                return item
-            }
-        }
-        switch registry.current.id {
-        case SinkholeTransition.id: return items(sinkhole)
-        case FrostTransition.id: return items(frost)
-        default: return items(fade)
-        }
+        registrations[registry.current.id]?.presetItems() ?? []
     }
 }
 

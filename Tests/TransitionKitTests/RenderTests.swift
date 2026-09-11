@@ -54,6 +54,20 @@ final class RenderTests: XCTestCase {
         return out
     }
 
+    func meanAlpha(_ bytes: [UInt8]) -> Double {
+        var sum = 0
+        var i = 3
+        while i < bytes.count { sum += Int(bytes[i]); i += 4 }
+        return Double(sum) / Double(bytes.count / 4) / 255
+    }
+
+    func meanAbsDiff(_ a: [UInt8], _ b: [UInt8]) -> Double {
+        var sum = 0
+        var i = 0
+        while i < a.count { if i % 4 != 3 { sum += abs(Int(a[i]) - Int(b[i])) }; i += 1 }
+        return Double(sum) / Double(a.count / 4 * 3) / 255
+    }
+
     func meanBrightness(_ bytes: [UInt8]) -> Double {
         var sum = 0
         var i = 0
@@ -75,8 +89,10 @@ final class RenderTests: XCTestCase {
     }
 
     func testFadeGoesToBlack() throws {
+        // Fade is a transparent overlay: clear at 0, opaque black at 1.
         let frames = try renderFrames(AnyTransition(FadeTransition()), progresses: [0, 0.5, 1])
-        XCTAssertGreaterThan(meanBrightness(frames[0].1), 0.3)
+        XCTAssertLessThan(meanAlpha(frames[0].1), 0.01)
+        XCTAssertGreaterThan(meanAlpha(frames[2].1), 0.99)
         XCTAssertLessThan(meanBrightness(frames[2].1), 0.01)
     }
 
@@ -99,5 +115,67 @@ extension RenderTests {
         XCTAssertGreaterThan(b[0], 0.3)
         XCTAssertGreaterThan(b[1], b[2], "darkens after darknessStart")
         XCTAssertLessThan(b[3], 0.01, "p = 1 is black")
+    }
+}
+
+
+extension RenderTests {
+    static let imageStyles: [AnyTransition] = [
+        AnyTransition(FoldTransition()), AnyTransition(CreaseTransition()), AnyTransition(CurlTransition()),
+        AnyTransition(RecedeTransition()), AnyTransition(SlideTransition()),
+    ]
+    static let maskStyles: [AnyTransition] = [
+        AnyTransition(ApertureTransition()), AnyTransition(ShutterTransition()),
+        AnyTransition(BlindsTransition()), AnyTransition(FadeTransition()),
+    ]
+
+    /// At progress 0 every snapshot style must show the snapshot untouched.
+    func testImageStylesAreIdentityAtZero() throws {
+        let reference = try renderFrames(AnyTransition(RecedeTransition()), progresses: [0])[0].1
+        XCTAssertGreaterThan(meanBrightness(reference), 0.3)
+        for style in Self.imageStyles {
+            let frame = try renderFrames(style, progresses: [0])[0].1
+            XCTAssertLessThan(meanAbsDiff(frame, reference), 1.5 / 255, "\(style.id) is not identity at 0")
+            XCTAssertGreaterThan(meanAlpha(frame), 0.99, "\(style.id) must be opaque at 0")
+        }
+    }
+
+    func testImageStylesDarkenMonotonicallyAndEndBlack() throws {
+        for style in Self.imageStyles {
+            let b = try renderFrames(style, progresses: [0, 0.25, 0.5, 0.75, 1]).map { meanBrightness($0.1) }
+            for i in 1..<b.count {
+                XCTAssertLessThanOrEqual(b[i], b[i - 1] + 0.01, "\(style.id) brightened between \(i - 1) and \(i)")
+            }
+            XCTAssertLessThan(b[4], 0.02, "\(style.id) must end black")
+        }
+    }
+
+    /// Mask styles composite over the live desktop: clear at 0, opaque black at 1.
+    func testMaskStylesSeeThrough() throws {
+        for style in Self.maskStyles {
+            let frames = try renderFrames(style, progresses: [0, 0.5, 1])
+            XCTAssertLessThan(meanAlpha(frames[0].1), 0.01, "\(style.id) should be clear at 0")
+            // The iris and blinds close quickly by design, so mid-travel can already
+            // be mostly covered; the point is that it is neither clear nor sealed.
+            let mid = meanAlpha(frames[1].1)
+            XCTAssertTrue((0.02...0.98).contains(mid), "\(style.id) mid alpha \(mid)")
+            XCTAssertGreaterThan(meanAlpha(frames[2].1), 0.99, "\(style.id) should be opaque at 1")
+            XCTAssertLessThan(meanBrightness(frames[2].1), 0.01, "\(style.id) should be black at 1")
+        }
+    }
+
+    /// Proves the placeholder-texture path: no snapshot was ever set.
+    func testMaskStylesNeedNoSnapshot() throws {
+        let renderer = try TransitionRenderer()
+        let w = Self.width, h = Self.height
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: TransitionRenderer.pixelFormat, width: w, height: h, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]; desc.storageMode = .shared
+        let target = renderer.device.makeTexture(descriptor: desc)!
+        let context = RenderContext(snapshotSize: SIMD2(Float(w), Float(h)), sinkPoint: .zero, notchSize: .zero, usesVirtualNotch: true)
+        renderer.render(to: target, transition: AnyTransition(ApertureTransition()), progress: 0.5, context: context)
+        var bytes = [UInt8](repeating: 0, count: w * h * 4)
+        target.getBytes(&bytes, bytesPerRow: w * 4, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+        let alpha = meanAlpha(bytes)
+        XCTAssertTrue((0.02...0.98).contains(alpha), "aperture without a snapshot rendered alpha \(alpha)")
     }
 }

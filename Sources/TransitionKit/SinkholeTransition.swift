@@ -80,6 +80,8 @@ public struct SinkholeParams: TunableParameters {
 public final class SinkholeTransition: Transition {
     public static let id = "sinkhole"
     public static let displayName = "Sinkhole"
+    public static let summary = "The desktop swirls and drains into the notch, then pours back out when you unlock."
+    public static let thumbnailProgress = 0.3
     public static let fragmentFunctionName = "sinkholeFragment"
 
     public var params = SinkholeParams()

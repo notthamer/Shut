@@ -138,3 +138,38 @@ final class SinkholeTests: XCTestCase {
         XCTAssertEqual(p.progressCurve, TunerBezier(0.45, 0, 0.85, 0.55))
     }
 }
+
+final class PanelTests: XCTestCase {
+    func testPanelFrameToUniformsClamps() {
+        var frame = PanelFrame()
+        frame.opacity = 1.5
+        frame.mask = .aperture(blades: 2, openness: 2)
+        var u = frame.uniforms(progress: 0.5)
+        XCTAssertEqual(u.opacity, 1); XCTAssertEqual(u.maskKind, 1); XCTAssertEqual(u.blades, 3); XCTAssertEqual(u.maskOpenness, 1)
+        frame.mask = .blinds(slats: 40, openness: 0.5)
+        u = frame.uniforms(progress: 0.5)
+        XCTAssertEqual(u.maskKind, 3); XCTAssertEqual(u.blades, 24)
+        frame.usesSnapshot = false
+        XCTAssertEqual(frame.uniforms(progress: 0).useTexture, 0)
+    }
+
+    func testFoldIsDegreeForDegree() {
+        let fold = FoldTransition()
+        let still = RenderContext(snapshotSize: SIMD2(100, 100), sinkPoint: .zero, notchSize: .zero,
+                                  usesVirtualNotch: false, velocity: 0, hingeTravelDegrees: 80)
+        XCTAssertEqual(fold.frame(progress: 0.5, context: still).foldAngle, 40 * .pi / 180, accuracy: 1e-6)
+        XCTAssertEqual(fold.frame(progress: 0, context: still).foldAngle, 0)
+        let moving = RenderContext(snapshotSize: SIMD2(100, 100), sinkPoint: .zero, notchSize: .zero,
+                                   usesVirtualNotch: false, velocity: 1, hingeTravelDegrees: 80)
+        XCTAssertGreaterThan(fold.frame(progress: 0.5, context: moving).foldAngle,
+                             fold.frame(progress: 0.5, context: still).foldAngle, "a fast close leads a little")
+    }
+
+    func testEveryStyleDeclaresConsistentFlags() {
+        for t in [AnyTransition(FoldTransition()), AnyTransition(ApertureTransition()), AnyTransition(FadeTransition()),
+                  AnyTransition(SinkholeTransition()), AnyTransition(FrostTransition())] {
+            if t.isTransparent { XCTAssertFalse(t.needsSnapshot, "\(t.id): transparent styles don't need a snapshot") }
+            XCTAssertFalse(t.summary.isEmpty, "\(t.id) needs a summary for the gallery")
+        }
+    }
+}

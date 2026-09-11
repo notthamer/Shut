@@ -1,0 +1,14 @@
+{
+  "name" : "Default",
+  "transition" : "fold",
+  "values" : {
+    "blur" : 1,
+    "corners" : 1,
+    "dimming" : 1,
+    "intensity" : 1,
+    "perspective" : 1,
+    "tilt" : 1,
+    "variableBlur" : 0.85,
+    "washout" : 1
+  }
+}

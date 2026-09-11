@@ -144,6 +144,10 @@ public struct SliderSpec<P> {
     public var step: Double?
     public var unit: String
     public var decimals: Int
+    /// Surfaced in a host's compact "Feel" section; the full panel shows everything.
+    public var featured: Bool
+    /// One plain-English line about what the dial does to the picture.
+    public var help: String
     public var get: (P) -> Double
     public var set: (inout P, Double) -> Void
 }
@@ -195,16 +199,19 @@ public struct ActionSpec<P> {
 public extension TunerControl {
     static func slider(_ keyPath: WritableKeyPath<P, Double>, _ label: String,
                        _ range: ClosedRange<Double>, step: Double? = nil,
-                       unit: String = "", decimals: Int = 2) -> TunerControl {
+                       unit: String = "", decimals: Int = 2,
+                       featured: Bool = false, help: String = "") -> TunerControl {
         .slider(SliderSpec(label: label, range: range, step: step, unit: unit, decimals: decimals,
+                           featured: featured, help: help,
                            get: { $0[keyPath: keyPath] },
                            set: { $0[keyPath: keyPath] = $1 }))
     }
 
     static func slider(_ keyPath: WritableKeyPath<P, Int>, _ label: String,
-                       _ range: ClosedRange<Int>, unit: String = "") -> TunerControl {
+                       _ range: ClosedRange<Int>, unit: String = "",
+                       featured: Bool = false, help: String = "") -> TunerControl {
         .slider(SliderSpec(label: label, range: Double(range.lowerBound)...Double(range.upperBound),
-                           step: 1, unit: unit, decimals: 0,
+                           step: 1, unit: unit, decimals: 0, featured: featured, help: help,
                            get: { Double($0[keyPath: keyPath]) },
                            set: { $0[keyPath: keyPath] = Int($1.rounded()) }))
     }

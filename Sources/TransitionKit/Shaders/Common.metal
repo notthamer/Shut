@@ -90,13 +90,3 @@ vertex VertexOut fullscreenVertex(uint vid [[vertex_id]]) {
     out.uv = float2((positions[vid].x + 1) * 0.5, 1 - (positions[vid].y + 1) * 0.5);
     return out;
 }
-
-// The simplest possible transition: fade to black. It exists to prove the
-// pipeline and as the Reduce Motion fallback.
-fragment float4 fadeFragment(VertexOut in [[stage_in]],
-                             texture2d<float> snapshot [[texture(0)]],
-                             constant TransitionUniforms &u [[buffer(0)]]) {
-    constexpr sampler s(address::clamp_to_edge, filter::linear);
-    float4 color = snapshot.sample(s, in.uv);
-    return float4(color.rgb * (1.0 - u.progress), 1.0);
-}

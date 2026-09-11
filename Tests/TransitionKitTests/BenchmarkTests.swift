@@ -26,7 +26,8 @@ final class BenchmarkTests: XCTestCase {
         let context = RenderContext(snapshotSize: SIMD2(Float(w), Float(h)), sinkPoint: SIMD2(1512, 64),
                                     notchSize: SIMD2(360, 64), usesVirtualNotch: false, scale: 2)
 
-        for transition in [AnyTransition(SinkholeTransition()), AnyTransition(FrostTransition()), AnyTransition(FadeTransition())] {
+        for transition in [AnyTransition(SinkholeTransition()), AnyTransition(FrostTransition()), AnyTransition(FoldTransition()),
+                           AnyTransition(RecedeTransition()), AnyTransition(ApertureTransition()), AnyTransition(FadeTransition())] {
             renderer.render(to: target, transition: transition, progress: 0.4, context: context)  // warm up + prepare
             let frames = 60
             let start = CACurrentMediaTime()
