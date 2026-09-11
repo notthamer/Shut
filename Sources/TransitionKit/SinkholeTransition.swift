@@ -2,9 +2,9 @@ import Foundation
 import simd
 import Tuner
 
-/// Every knob for Notch Drain, with the PRD 4.5 defaults. The Tuner schema at the
+/// Every knob for Sinkhole, with the PRD 4.5 defaults. The Tuner schema at the
 /// bottom is the single source of truth for ranges and grouping.
-public struct NotchDrainParams: TunableParameters {
+public struct SinkholeParams: TunableParameters {
     // Motion
     public var progressCurve: TunerBezier = .easeIn
     public var falloff: Double = 0.5          // how much near-notch content leads
@@ -38,10 +38,10 @@ public struct NotchDrainParams: TunableParameters {
 
     public init() {}
 
-    public static let tunerID = "notchDrain"
-    public static let tunerDisplayName = "Notch Drain"
-    public static let defaults = NotchDrainParams()
-    public static let schema = TunerSchema<NotchDrainParams>([
+    public static let tunerID = "sinkhole"
+    public static let tunerDisplayName = "Sinkhole"
+    public static let defaults = SinkholeParams()
+    public static let schema = TunerSchema<SinkholeParams>([
         TunerFolder("Motion", [
             .bezier(\.progressCurve, "Progress curve"),
             .slider(\.falloff, "Falloff", 0...3),
@@ -76,13 +76,13 @@ public struct NotchDrainParams: TunableParameters {
 }
 
 /// The headline transition: the desktop spirals into the notch. All the visual
-/// work is in Shaders/NotchDrain.metal; this just packs the uniforms.
-public final class NotchDrainTransition: Transition {
-    public static let id = "notchDrain"
-    public static let displayName = "Notch Drain"
-    public static let fragmentFunctionName = "notchDrainFragment"
+/// work is in Shaders/Sinkhole.metal; this just packs the uniforms.
+public final class SinkholeTransition: Transition {
+    public static let id = "sinkhole"
+    public static let displayName = "Sinkhole"
+    public static let fragmentFunctionName = "sinkholeFragment"
 
-    public var params = NotchDrainParams()
+    public var params = SinkholeParams()
 
     public init() {}
 

@@ -2,7 +2,7 @@ import AppKit
 import CoreGraphics
 import ScreenCaptureKit
 
-/// Screen Recording permission helpers. The only permission Sinkhole needs.
+/// Screen Recording permission helpers. The only permission Shut needs.
 public enum ScreenRecordingPermission {
     public static var isGranted: Bool { CGPreflightScreenCaptureAccess() }
 

@@ -22,7 +22,7 @@ public struct TransitionUniforms {
     public var time: Float = 0
     public var maxDistance: Float = 1   // D in the PRD: sink to farthest corner
 
-    // Notch Drain
+    // Sinkhole
     public var falloff: Float = 0
     public var twist: Float = 0
     public var stretch: Float = 0
@@ -43,8 +43,8 @@ public struct TransitionUniforms {
 
     // Shared
     public var reduceTransparency: Float = 0
-    public var pull: Float = 1.0        // Notch Drain contraction exponent (γ in the PRD)
-    public var vortex: Float = 0        // Notch Drain whirlpool strength near the sink
+    public var pull: Float = 1.0        // Sinkhole contraction exponent (γ in the PRD)
+    public var vortex: Float = 0        // Sinkhole whirlpool strength near the sink
     public var edgeSoftness: Float = 0  // px over which out-of-snapshot samples fade to black
     public var holeGrowth: Float = 0    // how much the notch hole widens by full progress (× sinkRadius)
     public var pad2: Float = 0

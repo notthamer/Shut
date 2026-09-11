@@ -3,8 +3,8 @@ import Tuner
 
 /// Presets that ship with the app. Mirrored as JSON in presets/ for the README.
 enum BuiltInPresets {
-    static var notchDrain: [(String, NotchDrainParams)] {
-        var gentle = NotchDrainParams()
+    static var sinkhole: [(String, SinkholeParams)] {
+        var gentle = SinkholeParams()
         gentle.falloff = 0.3
         gentle.twist = 0.15
         gentle.vortex = 0.5
@@ -19,7 +19,7 @@ enum BuiltInPresets {
         gentle.pourOutDamping = 0.85
         gentle.overshoot = 0.03
 
-        var blackHole = NotchDrainParams()
+        var blackHole = SinkholeParams()
         blackHole.falloff = 1.2
         blackHole.twist = 0.8
         blackHole.vortex = 1.8
@@ -37,7 +37,7 @@ enum BuiltInPresets {
         blackHole.pourOutDamping = 0.55
         blackHole.overshoot = 0.12
 
-        return [("Gentle", gentle), ("Default", NotchDrainParams()), ("Black Hole", blackHole)]
+        return [("Gentle", gentle), ("Default", SinkholeParams()), ("Black Hole", blackHole)]
     }
 
     static var frost: [(String, FrostParams)] {

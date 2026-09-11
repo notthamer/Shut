@@ -1,27 +1,27 @@
 {
-  "name" : "Default",
-  "transition" : "notchDrain",
+  "name" : "Gentle",
+  "transition" : "sinkhole",
   "values" : {
-    "aberration" : 2,
+    "aberration" : 0.5,
     "autoDetectNotch" : true,
     "blurSamples" : 8,
-    "blurStrength" : 0.5,
+    "blurStrength" : 0.3,
     "commitThreshold" : 1,
-    "darken" : 0.6,
+    "darken" : 0.4,
     "edgeSoftness" : 90,
-    "falloff" : 0.5,
-    "glow" : 0.5,
+    "falloff" : 0.3,
+    "glow" : 0.3,
     "glowColor" : {
       "alpha" : 1,
       "blue" : 1,
       "green" : 1,
       "red" : 1
     },
-    "holeGrowth" : 2,
+    "holeGrowth" : 1,
     "offsetX" : 0,
     "offsetY" : 0,
-    "overshoot" : 0.06,
-    "pourOutDamping" : 0.72,
+    "overshoot" : 0.03,
+    "pourOutDamping" : 0.85,
     "pourOutDelayMs" : 0,
     "pourOutResponse" : 0.55,
     "progressCurve" : {
@@ -30,10 +30,10 @@
       "y1" : 0,
       "y2" : 0.55
     },
-    "pull" : 0.7,
-    "sinkRadius" : 40,
-    "stretch" : 0.6,
-    "twist" : 0.3,
-    "vortex" : 1
+    "pull" : 0.6,
+    "sinkRadius" : 28,
+    "stretch" : 0.4,
+    "twist" : 0.15,
+    "vortex" : 0.5
   }
 }

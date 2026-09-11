@@ -8,7 +8,7 @@ import Foundation
 /// A struct of tunable values. Conformers are plain `Codable` structs so presets
 /// are just JSON of the struct.
 public protocol TunableParameters: Codable, Equatable {
-    /// Stable identifier used for UserDefaults keys and preset folders, e.g. "notchDrain".
+    /// Stable identifier used for UserDefaults keys and preset folders, e.g. "sinkhole".
     static var tunerID: String { get }
     /// Human-readable name shown in pickers.
     static var tunerDisplayName: String { get }

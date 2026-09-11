@@ -1,6 +1,6 @@
-# Sinkhole — conventions for contributors (human or AI)
+# Shut — conventions for contributors (human or AI)
 
-Sinkhole is an open-source, MIT-licensed macOS menu bar app built in public.
+Shut is an open-source, MIT-licensed macOS menu bar app built in public.
 The full spec is in `docs/PRD.md`; the milestone prompts are in `docs/prompts.md`.
 
 ## Rules
@@ -24,8 +24,8 @@ The full spec is in `docs/PRD.md`; the milestone prompts are in `docs/prompts.md
 ## Layout
 
 - `Package.swift` is the source of truth for all library and executable targets.
-- `Sinkhole.xcodeproj` contains a single app target that is a 3-line shim over the
-  `SinkholeApp` library product, so Xcode builds a real `.app` bundle for testing.
+- `Shut.xcodeproj` contains a single app target that is a 3-line shim over the
+  `ShutApp` library product, so Xcode builds a real `.app` bundle for testing.
 - `scripts/build.sh` produces the same `.app` from SwiftPM without Xcode.
 - `App/` holds files owned by the Xcode target (Info.plist, entitlements, assets).
 
@@ -41,7 +41,7 @@ The full spec is in `docs/PRD.md`; the milestone prompts are in `docs/prompts.md
 
 - `swift build` and `swift test` must pass before every commit.
 - Render tests draw each transition offscreen on a synthetic image. Set
-  `SINKHOLE_FRAME_DUMP=/some/dir` to get PNGs of the frames (and of the Tuner panel).
-- After changing `BuiltInPresets.swift`, run `swift run sinkhole --export-presets presets`.
-- `xcodebuild -project Sinkhole.xcodeproj -scheme Sinkhole build` must pass too.
+  `SHUT_FRAME_DUMP=/some/dir` to get PNGs of the frames (and of the Tuner panel).
+- After changing `BuiltInPresets.swift`, run `swift run shut --export-presets presets`.
+- `xcodebuild -project Shut.xcodeproj -scheme Shut build` must pass too.
 - Manual lid tests are listed in `README.md` under "Testing".

@@ -1,4 +1,4 @@
-# Contributing to Sinkhole
+# Contributing to Shut
 
 Thanks for stopping by. Two kinds of contribution are especially welcome.
 
@@ -7,14 +7,14 @@ Thanks for stopping by. Two kinds of contribution are especially welcome.
 1. Open Tuner (menu bar → Open Tuner, or ⌃⌥T), dial in your look, and click the
    save icon to name it.
 2. Choose **Copy JSON** from the ⋯ menu, or find the file in
-   `~/Library/Application Support/Sinkhole/Presets/<transition>/`.
+   `~/Library/Application Support/Shut/Presets/<transition>/`.
 3. Add it to `presets/<transition>/<your-preset-name>.json` in this repo. The file
    looks like:
 
    ```json
    {
      "name" : "Black Hole",
-     "transition" : "notchDrain",
+     "transition" : "sinkhole",
      "values" : { "twist" : 1.4, "falloff" : 1.8, ... }
    }
    ```
@@ -28,7 +28,7 @@ Presets are loaded by Tuner's **Paste JSON** or by dropping the file onto the pa
 A transition is one Swift file and one Metal fragment function.
 
 1. **Params.** Add a `struct MyParams: TunableParameters` in `Sources/TransitionKit/`
-   with defaults and a `schema` describing its controls (see `NotchDrainParams`).
+   with defaults and a `schema` describing its controls (see `SinkholeParams`).
 2. **Transition.** Add `final class MyTransition: Transition` with `id`,
    `displayName`, `fragmentFunctionName`, and `uniforms(progress:context:)` that
    packs your params into `TransitionUniforms`. If you need per-snapshot work
@@ -40,7 +40,7 @@ A transition is one Swift file and one Metal fragment function.
    `TunerHost` (three lines). Optionally add built-ins to `BuiltInPresets`.
 5. **Test.** Add a case to `RenderTests` asserting the broad shape (starts intact,
    ends black). Run `swift test` and, if you like, dump frames with
-   `SINKHOLE_FRAME_DUMP`.
+   `SHUT_FRAME_DUMP`.
 
 ## Conventions
 

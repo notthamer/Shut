@@ -3,9 +3,9 @@ import LidSensor
 import TransitionKit
 import Tuner
 
-/// Entry point shared by the Xcode app target and the SwiftPM `sinkhole`
-/// executable. Both call `SinkholeApp.run()` and nothing else.
-public enum SinkholeApp {
+/// Entry point shared by the Xcode app target and the SwiftPM `shut`
+/// executable. Both call `ShutApp.run()` and nothing else.
+public enum ShutApp {
     /// Writes every built-in preset to `dir/<transition>/<name>.json`, the same
     /// format Tuner saves and the repo's presets/ folder uses.
     public static func exportBuiltInPresets(to dir: URL) throws -> [URL] {
@@ -21,7 +21,7 @@ public enum SinkholeApp {
                 written.append(file)
             }
         }
-        try write(BuiltInPresets.notchDrain)
+        try write(BuiltInPresets.sinkhole)
         try write(BuiltInPresets.frost)
         return written
     }
@@ -69,7 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             previewModel = try PreviewModel(registry: registry, settings: settings, sensor: sensor)
         } catch {
             let alert = NSAlert()
-            alert.messageText = "Sinkhole can't start"
+            alert.messageText = "Shut can't start"
             alert.informativeText = "Metal is unavailable or the shaders failed to compile.\n\n\(error)"
             alert.runModal()
             NSApp.terminate(nil)

@@ -1,6 +1,6 @@
 ---
 name: Lid sensor compatibility report
-about: Sinkhole says "Lid sensor not found", or the angle looks wrong
+about: Shut says "Lid sensor not found", or the angle looks wrong
 title: "Sensor: <your Mac model>"
 labels: sensor
 ---
@@ -25,4 +25,4 @@ tail -5 angles.csv
 
 ### Anything else
 
-<!-- Did the angle track the lid? Any errors in Console.app under subsystem com.sinkhole.app? -->
+<!-- Did the angle track the lid? Any errors in Console.app under subsystem app.shut? -->

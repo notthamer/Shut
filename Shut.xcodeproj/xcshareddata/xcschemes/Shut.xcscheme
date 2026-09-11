@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A100000000000000000000T1"
-               BuildableName = "Sinkhole.app"
-               BlueprintName = "Sinkhole"
-               ReferencedContainer = "container:Sinkhole.xcodeproj">
+               BuildableName = "Shut.app"
+               BlueprintName = "Shut"
+               ReferencedContainer = "container:Shut.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A100000000000000000000T1"
-            BuildableName = "Sinkhole.app"
-            BlueprintName = "Sinkhole"
-            ReferencedContainer = "container:Sinkhole.xcodeproj">
+            BuildableName = "Shut.app"
+            BlueprintName = "Shut"
+            ReferencedContainer = "container:Shut.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A100000000000000000000T1"
-            BuildableName = "Sinkhole.app"
-            BlueprintName = "Sinkhole"
-            ReferencedContainer = "container:Sinkhole.xcodeproj">
+            BuildableName = "Shut.app"
+            BlueprintName = "Shut"
+            ReferencedContainer = "container:Shut.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

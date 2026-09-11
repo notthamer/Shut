@@ -1,4 +1,4 @@
-// Notch Drain: the whole screen swirls and funnels into the notch.
+// Sinkhole: the whole screen swirls and funnels into the notch.
 //
 // The idea is an *inverse* mapping. For every output pixel we ask "which pixel of
 // the frozen snapshot should be shown here?" and sample it. Pixels whose source
@@ -72,7 +72,7 @@ static float notchDistance(float2 x, float cornerRadius, constant TransitionUnif
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
 }
 
-fragment float4 notchDrainFragment(VertexOut in [[stage_in]],
+fragment float4 sinkholeFragment(VertexOut in [[stage_in]],
                                    texture2d<float> snapshot [[texture(0)]],
                                    constant TransitionUniforms &u [[buffer(0)]]) {
     float2 x = in.uv * u.snapshotSize;

@@ -4,7 +4,7 @@ import Metal
 @testable import TransitionKit
 
 /// Renders each transition offscreen on a synthetic image (never a real screen
-/// capture) and checks the broad shape of the output. Set SINKHOLE_FRAME_DUMP to
+/// capture) and checks the broad shape of the output. Set SHUT_FRAME_DUMP to
 /// a directory to also write PNGs for eyeballing.
 final class RenderTests: XCTestCase {
     static let width = 756, height = 491  // 1/4 of a 14" MacBook Pro
@@ -62,7 +62,7 @@ final class RenderTests: XCTestCase {
     }
 
     func dump(_ bytes: [UInt8], name: String) {
-        guard let dir = ProcessInfo.processInfo.environment["SINKHOLE_FRAME_DUMP"] else { return }
+        guard let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"] else { return }
         let w = Self.width, h = Self.height
         let data = Data(bytes)
         let provider = CGDataProvider(data: data as CFData)!
@@ -80,8 +80,8 @@ final class RenderTests: XCTestCase {
         XCTAssertLessThan(meanBrightness(frames[2].1), 0.01)
     }
 
-    func testNotchDrainStartsIntactAndEndsBlack() throws {
-        let frames = try renderFrames(AnyTransition(NotchDrainTransition()), progresses: [0, 0.25, 0.5, 0.75, 1, -0.06, 0.05, 0.15, 0.35, 0.6])
+    func testSinkholeStartsIntactAndEndsBlack() throws {
+        let frames = try renderFrames(AnyTransition(SinkholeTransition()), progresses: [0, 0.25, 0.5, 0.75, 1, -0.06, 0.05, 0.15, 0.35, 0.6])
         let b = frames.map { meanBrightness($0.1) }
         XCTAssertGreaterThan(b[0], 0.3, "p = 0 shows the snapshot untouched")
         XCTAssertGreaterThan(b[0], b[1], "brightness falls as content drains")

@@ -1,6 +1,6 @@
 {
   "name" : "Black Hole",
-  "transition" : "notchDrain",
+  "transition" : "sinkhole",
   "values" : {
     "aberration" : 5,
     "autoDetectNotch" : true,

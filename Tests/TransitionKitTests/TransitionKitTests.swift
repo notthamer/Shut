@@ -56,9 +56,9 @@ final class TransitionKitTests: XCTestCase {
     }
 }
 
-final class NotchDrainTests: XCTestCase {
+final class SinkholeTests: XCTestCase {
     func testSinkGeometryAndMaxDistance() {
-        let t = NotchDrainTransition()
+        let t = SinkholeTransition()
         let context = RenderContext(snapshotSize: SIMD2(3024, 1964), sinkPoint: SIMD2(1512, 64),
                                     notchSize: SIMD2(360, 64), usesVirtualNotch: false, scale: 2)
         let u = t.uniforms(progress: 0.3, context: context)
@@ -69,7 +69,7 @@ final class NotchDrainTests: XCTestCase {
     }
 
     func testOffsetsAndAutoDetectOff() {
-        let t = NotchDrainTransition()
+        let t = SinkholeTransition()
         t.params.autoDetectNotch = false
         t.params.offsetX = 10
         let context = RenderContext(snapshotSize: SIMD2(3024, 1964), sinkPoint: SIMD2(1512, 64),
@@ -82,7 +82,7 @@ final class NotchDrainTests: XCTestCase {
     /// Defaults follow PRD 4.5 except where visual tuning moved them (falloff,
     /// twist, stretch were softened after judging rendered frames).
     func testDefaultsMatchTunedValues() {
-        let p = NotchDrainParams.defaults
+        let p = SinkholeParams.defaults
         XCTAssertEqual(p.falloff, 0.5); XCTAssertEqual(p.twist, 0.3); XCTAssertEqual(p.stretch, 0.6)
         XCTAssertEqual(p.blurSamples, 8); XCTAssertEqual(p.darken, 0.6); XCTAssertEqual(p.sinkRadius, 40)
         XCTAssertEqual(p.pourOutResponse, 0.55); XCTAssertEqual(p.pourOutDamping, 0.72)

@@ -5,7 +5,7 @@ import XCTest
 
 /// Lays the panel out in an offscreen window and rasterises it. Proves every
 /// control type renders without throwing, and dumps a PNG for review when
-/// SINKHOLE_FRAME_DUMP is set.
+/// SHUT_FRAME_DUMP is set.
 @MainActor
 final class PanelSnapshotTests: XCTestCase {
     func testPanelRendersEveryControlType() throws {
@@ -36,7 +36,7 @@ final class PanelSnapshotTests: XCTestCase {
         container.cacheDisplay(in: container.bounds, to: rep)
         XCTAssertGreaterThan(rep.pixelsWide, 0)
 
-        if let dir = ProcessInfo.processInfo.environment["SINKHOLE_FRAME_DUMP"],
+        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"],
            let png = rep.representation(using: .png, properties: [:]) {
             try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("tuner-panel.png"))
         }

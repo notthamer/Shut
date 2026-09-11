@@ -199,12 +199,12 @@ enum ShaderLibrary {
         return try device.makeLibrary(source: source, options: options)
     }
 
-    /// Locates `Sinkhole_TransitionKit.bundle` without using `Bundle.module`, whose
+    /// Locates `Shut_TransitionKit.bundle` without using `Bundle.module`, whose
     /// generated accessor crashes when the bundle isn't in one of its two fixed spots.
     static func resourceBundle() -> Bundle? {
-        let name = "Sinkhole_TransitionKit.bundle"
+        let name = "Shut_TransitionKit.bundle"
         var candidates: [URL] = []
-        if let url = Bundle.main.resourceURL { candidates.append(url) }        // Sinkhole.app/Contents/Resources
+        if let url = Bundle.main.resourceURL { candidates.append(url) }        // Shut.app/Contents/Resources
         candidates.append(Bundle.main.bundleURL)                                // .app root, or swift build dir
         if let exe = Bundle.main.executableURL { candidates.append(exe.deletingLastPathComponent()) }
         let hostBundle = Bundle(for: TransitionRenderer.self)

@@ -1,7 +1,7 @@
 import AppKit
 import XCTest
 import TransitionKit
-@testable import SinkholeApp
+@testable import ShutApp
 
 /// Constructs the overlay exactly as AppController does, without ordering it on
 /// screen. Guards against NSWindow subclass initializer traps, which only show up

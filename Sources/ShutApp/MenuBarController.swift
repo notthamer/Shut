@@ -14,7 +14,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private var angleTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
-    private let enableItem = NSMenuItem(title: "Enable Sinkhole", action: #selector(toggleEnabled), keyEquivalent: "")
+    private let enableItem = NSMenuItem(title: "Enable Shut", action: #selector(toggleEnabled), keyEquivalent: "")
     private let angleItem = NSMenuItem(title: "Lid angle: —", action: nil, keyEquivalent: "")
     private let transitionMenu = NSMenu()
     private let presetMenu = NSMenu()
@@ -35,7 +35,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         super.init()
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "water.waves", accessibilityDescription: "Sinkhole")
+            button.image = NSImage(systemSymbolName: "water.waves", accessibilityDescription: "Shut")
             button.image?.isTemplate = true
         }
         menu.delegate = self
@@ -76,7 +76,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(login)
         menu.addItem(.separator())
 
-        let quit = NSMenuItem(title: "Quit Sinkhole", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quit Shut", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
     }
 

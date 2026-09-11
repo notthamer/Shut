@@ -1,4 +1,4 @@
-# Sinkhole
+# Shut
 
 > **Demo video coming.** Placeholder: _lid closes, desktop swirls into the notch._
 
@@ -7,7 +7,7 @@ unlock and it pours back out. Open source, MIT, built in public.
 
 ## Two transitions
 
-- **Notch Drain** — as the lid closes, the desktop spirals inward and funnels up
+- **Sinkhole** — as the lid closes, the desktop spirals inward and funnels up
   into the notch, darkening as it goes, with a faint glow around the rim. On unlock
   it pours back out with a springy overshoot. Original to this project.
 - **Frost** — the classic iPhone Duo look. The image stays put, frosts over from the
@@ -29,17 +29,17 @@ Check your sensor: `swift run lidangle-cli` prints the live angle.
 ## Install from source
 
 ```bash
-git clone https://github.com/notthamer/sinkhole
-cd sinkhole
-scripts/build.sh            # → build/Sinkhole.app
-open build/Sinkhole.app
+git clone https://github.com/notthamer/shut
+cd shut
+scripts/build.sh            # → build/Shut.app
+open build/Shut.app
 ```
 
-Or open **`Sinkhole.xcodeproj`** (not the folder or `Package.swift`) in Xcode, make sure
-the scheme next to the Run button says **Sinkhole**, and press Run. The `lidangle-cli`
-and `sinkhole` schemes are the command-line tools, not the app.
+Or open **`Shut.xcodeproj`** (not the folder or `Package.swift`) in Xcode, make sure
+the scheme next to the Run button says **Shut**, and press Run. The `lidangle-cli`
+and `shut` schemes are the command-line tools, not the app.
 
-Sinkhole needs **Screen Recording** permission (System Settings → Privacy & Security)
+Shut needs **Screen Recording** permission (System Settings → Privacy & Security)
 to snapshot the desktop. Snapshots live in GPU memory only and are released the
 moment a transition ends; nothing is ever written to disk.
 
@@ -47,10 +47,10 @@ moment a transition ends; nothing is ever written to disk.
 signature. With plain "Sign to Run Locally" every build is a new identity and the
 switch resets. Either add your Apple ID in Xcode (Settings → Accounts) and pick
 your Personal Team under Signing & Capabilities, or create `App/Local.xcconfig`
-with `CODE_SIGN_IDENTITY = Sinkhole Dev` after adding a self-signed code-signing
+with `CODE_SIGN_IDENTITY = Shut Dev` after adding a self-signed code-signing
 certificate of that name in Keychain Access. See `App/Signing.xcconfig`.
 
-## How Notch Drain works
+## How Sinkhole works
 
 The shader answers one question for every pixel: *which pixel of the frozen
 snapshot should be here right now?* Everything else is that mapping, tuned.
@@ -82,7 +82,7 @@ The lid sensor itself only updates ten times a second in whole degrees, so
 `LidSensor` reconstructs a smooth angle by dead-reckoning from the lid's velocity
 between readings. Without that, the drain pulses.
 
-The full walk-through is in `Sources/TransitionKit/Shaders/NotchDrain.metal`.
+The full walk-through is in `Sources/TransitionKit/Shaders/Sinkhole.metal`.
 
 ## Tuner
 
@@ -95,13 +95,13 @@ Menu bar → **Open Tuner**, or **⌃⌥T** from anywhere.
   easing editor with draggable handles.
 - **Presets**: save, duplicate, delete, **Copy JSON**, **Paste JSON**, or drop a
   `.json` file on the panel. Presets live in
-  `~/Library/Application Support/Sinkhole/Presets/`.
+  `~/Library/Application Support/Shut/Presets/`.
 - The panel hides itself while a real lid transition plays.
 
 ### Using Tuner in your own app
 
 `Tuner` is a standalone Swift package target with no dependency on the rest of
-Sinkhole. Describe your parameters with key paths and the panel builds itself:
+Shut. Describe your parameters with key paths and the panel builds itself:
 
 ```swift
 import Tuner
@@ -155,7 +155,7 @@ swift run lidangle-cli --debug          # raw HID report bytes
 ## Testing
 
 Automated: `swift test` (sensor decoding, easing, springs, presets, and offscreen
-renders of every transition; set `SINKHOLE_FRAME_DUMP=dir` to get PNGs).
+renders of every transition; set `SHUT_FRAME_DUMP=dir` to get PNGs).
 
 Manual, before a release:
 
@@ -164,12 +164,12 @@ Manual, before a release:
 - Sleep from the lid and from the Apple menu, with and without a password on wake:
   the desktop pours out after unlock, and there is never a black screen for more
   than 1.5 s while unlocked.
-- Console.app, subsystem `com.sinkhole.app`, shows every lock/unlock event.
+- Console.app, subsystem `app.shut`, shows every lock/unlock event.
 
 ## Credits
 
 - [samhenrigold/LidAngleSensor](https://github.com/samhenrigold/LidAngleSensor) for
-  the research into the lid angle HID sensor. Sinkhole's sensor code is written from
+  the research into the lid angle HID sensor. Shut's sensor code is written from
   scratch.
 - Josh Puckett's DialKit, the inspiration for Tuner.
 - The many open-source recreations of the iPhone Duo frost transition, which set

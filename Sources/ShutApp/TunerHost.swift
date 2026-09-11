@@ -11,11 +11,11 @@ final class TunerHost {
     private let previewModel: PreviewModel
     private let controller: AppController
     private let settings: AppSettings
-    private let presets = PresetStore(appName: "Sinkhole")
+    private let presets = PresetStore(appName: "Shut")
     private var panel: TunerPanelController?
     private var cancellable: Any?
 
-    let notchDrain: TunerStore<NotchDrainParams>
+    let sinkhole: TunerStore<SinkholeParams>
     let fade: TunerStore<FadeParams>
     let frost: TunerStore<FrostParams>
     let trigger: TunerStore<TriggerParams>
@@ -26,12 +26,12 @@ final class TunerHost {
         self.controller = controller
         self.settings = settings
 
-        notchDrain = TunerStore(presets: presets, builtIns: BuiltInPresets.notchDrain)
+        sinkhole = TunerStore(presets: presets, builtIns: BuiltInPresets.sinkhole)
         fade = TunerStore(presets: presets, builtIns: [])
         frost = TunerStore(presets: presets, builtIns: BuiltInPresets.frost)
         trigger = TunerStore(presets: presets, builtIns: [("Default", TriggerParams())])
 
-        bind(notchDrain, to: NotchDrainTransition.self)
+        bind(sinkhole, to: SinkholeTransition.self)
         bind(fade, to: FadeTransition.self)
         bind(frost, to: FrostTransition.self)
 
@@ -82,8 +82,8 @@ final class TunerHost {
         let preview = PreviewArea(model: previewModel, registry: registry, aspect: BuiltInDisplayAspect.ratio)
         let triggerFolders = TunerFoldersView(store: trigger)
         switch registry.current.id {
-        case NotchDrainTransition.id:
-            return AnyView(TunerPanelView(store: notchDrain, preview: { preview }, extra: { triggerFolders }))
+        case SinkholeTransition.id:
+            return AnyView(TunerPanelView(store: sinkhole, preview: { preview }, extra: { triggerFolders }))
         case FrostTransition.id:
             return AnyView(TunerPanelView(store: frost, preview: { preview }, extra: { triggerFolders }))
         default:
@@ -103,7 +103,7 @@ final class TunerHost {
             }
         }
         switch registry.current.id {
-        case NotchDrainTransition.id: return items(notchDrain)
+        case SinkholeTransition.id: return items(sinkhole)
         case FrostTransition.id: return items(frost)
         default: return items(fade)
         }

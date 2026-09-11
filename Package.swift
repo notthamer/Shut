@@ -1,20 +1,20 @@
 // swift-tools-version: 6.0
-// Sinkhole — lid transitions for MacBook. See docs/PRD.md.
+// Shut — lid transitions for MacBook. See docs/PRD.md.
 //
 // Every library here depends only on Apple frameworks. `Tuner` intentionally has no
-// dependency on `TransitionKit` or `SinkholeApp` so it can be extracted later.
+// dependency on `TransitionKit` or `ShutApp` so it can be extracted later.
 import PackageDescription
 
 let package = Package(
-    name: "Sinkhole",
+    name: "Shut",
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "LidSensor", targets: ["LidSensor"]),
         .library(name: "TransitionKit", targets: ["TransitionKit"]),
         .library(name: "Tuner", targets: ["Tuner"]),
-        .library(name: "SinkholeApp", targets: ["SinkholeApp"]),
+        .library(name: "ShutApp", targets: ["ShutApp"]),
         .executable(name: "lidangle-cli", targets: ["lidangle-cli"]),
-        .executable(name: "sinkhole", targets: ["sinkhole"]),
+        .executable(name: "shut", targets: ["shut"]),
     ],
     targets: [
         // Sensor access: IOKit HID, smoothing, velocity, adaptive polling.
@@ -51,7 +51,7 @@ let package = Package(
         // All app code lives in a library so both the Xcode target and the SwiftPM
         // executable are a 3-line shim over it.
         .target(
-            name: "SinkholeApp",
+            name: "ShutApp",
             dependencies: ["LidSensor", "TransitionKit", "Tuner"],
             linkerSettings: [
                 .linkedFramework("AppKit"),
@@ -60,14 +60,14 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "sinkhole",
-            dependencies: ["SinkholeApp"]
+            name: "shut",
+            dependencies: ["ShutApp"]
         ),
 
         .testTarget(name: "LidSensorTests", dependencies: ["LidSensor"]),
         .testTarget(name: "TransitionKitTests", dependencies: ["TransitionKit"]),
         .testTarget(name: "TunerTests", dependencies: ["Tuner"]),
-        .testTarget(name: "SinkholeAppTests", dependencies: ["SinkholeApp"]),
+        .testTarget(name: "ShutAppTests", dependencies: ["ShutApp"]),
     ],
     swiftLanguageModes: [.v5]
 )

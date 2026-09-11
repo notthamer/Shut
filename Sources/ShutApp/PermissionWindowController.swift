@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import TransitionKit
 
-/// Onboarding for the one permission Sinkhole needs. Shown at launch until
+/// Onboarding for the one permission Shut needs. Shown at launch until
 /// Screen Recording is granted, and from the menu bar at any time.
 ///
 /// macOS only shows its own prompt once per app identity, and it only honours a
@@ -17,7 +17,7 @@ final class PermissionWindowController {
         if window == nil {
             let hosting = NSHostingController(rootView: PermissionView(model: model))
             let w = NSWindow(contentViewController: hosting)
-            w.title = "Sinkhole"
+            w.title = "Shut"
             w.styleMask = [.titled, .closable]
             w.isReleasedWhenClosed = false
             w.setContentSize(NSSize(width: 460, height: 360))
@@ -94,10 +94,10 @@ struct PermissionView: View {
                     .font(.system(size: 34))
                     .foregroundStyle(model.granted ? .green : .accentColor)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(model.granted ? "Screen Recording is granted" : "Sinkhole needs Screen Recording")
+                    Text(model.granted ? "Screen Recording is granted" : "Shut needs Screen Recording")
                         .font(.title2.bold())
                     Text(model.granted ? "Relaunch so macOS applies it to this process."
-                                       : "To freeze your desktop as the lid closes, Sinkhole takes one snapshot of the screen. It stays in GPU memory and is never saved.")
+                                       : "To freeze your desktop as the lid closes, Shut takes one snapshot of the screen. It stays in GPU memory and is never saved.")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -105,7 +105,7 @@ struct PermissionView: View {
             if !model.granted {
                 VStack(alignment: .leading, spacing: 8) {
                     step(1, "Click **Open System Settings** below.")
-                    step(2, "Turn on **Sinkhole** under Screen & System Audio Recording. If you see several Sinkhole entries, enable the newest one.")
+                    step(2, "Turn on **Shut** under Screen & System Audio Recording. If you see several Shut entries, enable the newest one.")
                     step(3, "Come back here and click **Relaunch** when it turns green.")
                 }
                 .padding(12)
@@ -123,7 +123,7 @@ struct PermissionView: View {
             HStack {
                 Spacer()
                 if model.granted {
-                    Button("Relaunch Sinkhole") { model.relaunch() }
+                    Button("Relaunch Shut") { model.relaunch() }
                         .keyboardShortcut(.defaultAction)
                 } else {
                     Button("Open System Settings") { model.requestAndOpenSettings() }

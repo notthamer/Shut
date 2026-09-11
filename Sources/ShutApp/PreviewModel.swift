@@ -30,7 +30,7 @@ public final class PreviewModel: ObservableObject {
     weak var metalView: MetalTransitionView?
 
     /// Spring parameters for "Play pour-out", read from the current transition's
-    /// params (Notch Drain has them; Fade and Frost fall back to the defaults).
+    /// params (Sinkhole has them; Fade and Frost fall back to the defaults).
     public var pourOutSpring: (response: Double, damping: Double, overshoot: Double) {
         let t = registry.current
         return (t.doubleParam("pourOutResponse", default: 0.55),

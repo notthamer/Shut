@@ -35,7 +35,7 @@ public final class LidSensorMonitor: ObservableObject {
         set { queue.sync { smoother.smoothing = newValue } }
     }
 
-    private let queue = DispatchQueue(label: "com.sinkhole.lidsensor", qos: .userInteractive)
+    private let queue = DispatchQueue(label: "app.shut.lidsensor", qos: .userInteractive)
     private var device: LidAngleDevice?
     private var timer: DispatchSourceTimer?
     private var smoother: AngleSmoother

@@ -21,7 +21,7 @@ public final class AppSettings: ObservableObject {
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         isEnabled = defaults.object(forKey: "isEnabled") as? Bool ?? true
-        transitionID = defaults.string(forKey: "transitionID") ?? "notchDrain"
+        transitionID = defaults.string(forKey: "transitionID") ?? "sinkhole"
         startAngle = defaults.object(forKey: "startAngle") as? Double ?? Self.defaultStartAngle
         endAngle = defaults.object(forKey: "endAngle") as? Double ?? Self.defaultEndAngle
         smoothing = Smoothing(rawValue: defaults.string(forKey: "smoothing") ?? "") ?? .medium

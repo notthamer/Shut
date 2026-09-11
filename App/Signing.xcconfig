@@ -5,7 +5,7 @@
 // each time you press Run. To keep it, give the app a stable certificate by
 // creating App/Local.xcconfig (gitignored) containing one of:
 //
-//   CODE_SIGN_IDENTITY = Sinkhole Dev        // a self-signed cert in your keychain
+//   CODE_SIGN_IDENTITY = Shut Dev        // a self-signed cert in your keychain
 //   DEVELOPMENT_TEAM = ABCDE12345            // or your (free) Apple Personal Team
 //   CODE_SIGN_STYLE = Automatic
 //
