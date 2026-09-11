@@ -57,7 +57,8 @@ static float3 sampleSnapshot(texture2d<float> snapshot, float2 src, constant Tra
     constexpr sampler s(address::clamp_to_edge, filter::linear);
     float fade = edgeFade(src, u);
     if (fade <= 0.0) return float3(0.0);
-    return snapshot.sample(s, src / u.snapshotSize).rgb * fade;
+    // The pipeline is linear-light; pow keeps the softness we tuned by eye.
+    return snapshot.sample(s, src / u.snapshotSize).rgb * pow(fade, 2.2);
 }
 
 // Signed distance to a rounded rectangle hanging from the top edge of the
@@ -123,7 +124,7 @@ fragment float4 sinkholeFragment(VertexOut in [[stage_in]],
     // Darken as content approaches the sink; the drain is a hole, not a spotlight.
     // Weighted toward the sink so the edges of the screen keep their light longer.
     float radial = 0.35 + 0.65 * (1.0 - d);
-    rgb *= 1.0 - u.darken * max(q, 0.0) * radial;
+    rgb *= pow(max(1.0 - u.darken * max(q, 0.0) * radial, 0.0), 2.2);
 
     // The hole. A dark mouth that hugs the notch outline, there from the first
     // frame so the destination is obvious, and widening as the drain progresses.
@@ -139,15 +140,17 @@ fragment float4 sinkholeFragment(VertexOut in [[stage_in]],
     // Inside the mouth, content darkens steeply toward the notch rather than
     // vanishing at a line, so it reads as depth.
     float depth = 1.0 - smoothstep(-margin, holeSoft, holeEdge);
-    rgb *= 1.0 - visible * max(hole * 0.85, depth * 0.55);
+    rgb *= pow(max(1.0 - visible * max(hole * 0.85, depth * 0.55), 0.0), 2.2);
 
     // Rim glow along the mouth's edge, plus a faint halo, present through the
     // transition and fading out just before black.
     float presence = smoothstep(0.0, 0.15, abs(p)) * (1.0 - smoothstep(0.8, 1.0, pp));
     float ringWidth = holeSoft * 0.7;
     float ring = exp(-pow(holeEdge / ringWidth, 2.0));
-    float halo = exp(-max(holeEdge, 0.0) / (margin * 3.0 + 40.0));
-    rgb += u.glowColor.rgb * u.glowColor.a * u.glow * presence * (ring * 0.9 + halo * 0.3);
+    float halo = exp(-max(holeEdge, 0.0) / (margin * 2.0 + 24.0));
+    // Additive light in linear space reads brighter than it did in gamma space,
+    // so the weights are small; the ring carries the look, the halo just warms it.
+    rgb += u.glowColor.rgb * u.glowColor.a * u.glow * presence * (ring * 0.45 + halo * 0.06);
 
     // Virtual notch: fade in a black pill so the drain has a visible destination
     // on Macs without a hardware notch (or when auto-detect is off).

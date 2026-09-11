@@ -9,11 +9,23 @@ import QuartzCore
 /// fragment function, the snapshot texture, and a small uniform buffer. Drawing a
 /// frame is: bind the snapshot, write uniforms, draw one triangle.
 public final class TransitionRenderer {
+    /// sRGB everywhere: the GPU decodes on sample and re-encodes on store, so
+    /// dimming, washout, blending and mip averaging all happen in linear light and
+    /// a fade reaches the same black the overlay sits on.
+    public static let pixelFormat: MTLPixelFormat = .bgra8Unorm_srgb
+    /// Cells per side of the panel mesh. Enough for the fold's bow to look smooth.
+    static let gridResolution = 48
+
     public let device: MTLDevice
     public let commandQueue: MTLCommandQueue
-    private let library: MTLLibrary
-    private var pipelines: [String: MTLRenderPipelineState] = [:]
+    let library: MTLLibrary
+    private struct PipelineKey: Hashable { let vertex: String; let fragment: String; let blended: Bool }
+    private var pipelines: [PipelineKey: MTLRenderPipelineState] = [:]
     private let uniformBuffer: MTLBuffer
+    private let gridBuffer: MTLBuffer
+    private let gridVertexCount: Int
+    /// Bound when a transition needs no snapshot, so the pipeline always has a texture.
+    private let placeholderTexture: MTLTexture
 
     /// The raw captured frame. Set with `setSnapshot`; released with `clearSnapshot`.
     public private(set) var snapshot: MTLTexture?
@@ -39,6 +51,39 @@ public final class TransitionRenderer {
             throw RendererError.noDevice
         }
         uniformBuffer = buffer
+
+        let grid = Self.makeGrid(resolution: Self.gridResolution)
+        guard let gridBuffer = device.makeBuffer(bytes: grid, length: grid.count * MemoryLayout<SIMD2<Float>>.stride,
+                                                 options: .storageModeShared) else {
+            throw RendererError.noDevice
+        }
+        self.gridBuffer = gridBuffer
+        gridVertexCount = grid.count
+
+        let placeholderDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: Self.pixelFormat,
+                                                                             width: 1, height: 1, mipmapped: false)
+        placeholderDescriptor.usage = [.shaderRead]
+        placeholderDescriptor.storageMode = .shared
+        guard let placeholder = device.makeTexture(descriptor: placeholderDescriptor) else { throw RendererError.noDevice }
+        var black: [UInt8] = [0, 0, 0, 255]
+        placeholder.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &black, bytesPerRow: 4)
+        placeholderTexture = placeholder
+    }
+
+    /// Two triangles per cell, UVs in 0...1 with y down, matching the snapshot.
+    static func makeGrid(resolution: Int) -> [SIMD2<Float>] {
+        var vertices: [SIMD2<Float>] = []
+        vertices.reserveCapacity(resolution * resolution * 6)
+        let step = 1 / Float(resolution)
+        for row in 0..<resolution {
+            for column in 0..<resolution {
+                let x0 = Float(column) * step, x1 = x0 + step
+                let y0 = Float(row) * step, y1 = y0 + step
+                vertices += [SIMD2(x0, y0), SIMD2(x1, y0), SIMD2(x0, y1),
+                             SIMD2(x1, y0), SIMD2(x1, y1), SIMD2(x0, y1)]
+            }
+        }
+        return vertices
     }
 
     // MARK: - Snapshot
@@ -54,16 +99,18 @@ public final class TransitionRenderer {
         let bytesPerRow = width * 4
         var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
         let bitmapInfo = CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+        // Draw into sRGB explicitly so a Display P3 capture is converted, not reinterpreted.
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
         try pixels.withUnsafeMutableBytes { buffer in
             guard let context = CGContext(data: buffer.baseAddress, width: width, height: height,
                                           bitsPerComponent: 8, bytesPerRow: bytesPerRow,
-                                          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: bitmapInfo) else {
+                                          space: colorSpace, bitmapInfo: bitmapInfo) else {
                 throw RendererError.noDevice
             }
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         }
 
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm,
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: Self.pixelFormat,
                                                                   width: width, height: height, mipmapped: false)
         descriptor.usage = [.shaderRead]
         descriptor.storageMode = .shared   // unified memory on Apple silicon: no blit needed
@@ -125,14 +172,22 @@ public final class TransitionRenderer {
 
     private func encode(to target: MTLTexture, transition: AnyTransition,
                         progress: Double, context: RenderContext) -> MTLCommandBuffer? {
-        guard let snapshot else { return nil }
-        guard let pipeline = pipeline(for: transition.fragmentFunctionName) else { return nil }
+        guard let pipeline = pipeline(for: transition) else { return nil }
 
-        if preparedForTransitionID != transition.id || preparedTexture == nil {
-            preparedTexture = transition.prepare(snapshot: snapshot, device: device, commandQueue: commandQueue)
-            preparedForTransitionID = transition.id
+        // Snapshot styles sample their (possibly mip-mapped) capture; mask styles
+        // draw over the live desktop and get a 1×1 black stand-in.
+        let source: MTLTexture
+        if transition.needsSnapshot {
+            guard let snapshot else { return nil }
+            if preparedForTransitionID != transition.id || preparedTexture == nil {
+                preparedTexture = transition.prepare(snapshot: snapshot, device: device, commandQueue: commandQueue)
+                preparedForTransitionID = transition.id
+            }
+            guard let prepared = preparedTexture else { return nil }
+            source = prepared
+        } else {
+            source = placeholderTexture
         }
-        guard let source = preparedTexture else { return nil }
 
         var uniforms = transition.uniforms(progress: progress, context: context)
         uniforms.snapshotSize = context.snapshotSize
@@ -140,12 +195,16 @@ public final class TransitionRenderer {
         uniforms.time = context.time
         uniforms.reduceTransparency = context.reduceTransparency ? 1 : 0
         uniforms.mipLevels = Float(source.mipmapLevelCount)
+        uniforms.aspect = Float(target.width) / Float(max(target.height, 1))
+        // Stop three levels short of the smallest mip so a full blur stays legible.
+        uniforms.maxLOD = max(Float(source.mipmapLevelCount - 1) - 3, 0)
         memcpy(uniformBuffer.contents(), &uniforms, MemoryLayout<TransitionUniforms>.stride)
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = target
         pass.colorAttachments[0].loadAction = .clear
-        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0,
+                                                             alpha: transition.isTransparent ? 0 : 1)
         pass.colorAttachments[0].storeAction = .store
 
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -153,24 +212,51 @@ public final class TransitionRenderer {
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentTexture(source, index: 0)
         encoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        if transition.usesPanelMesh {
+            encoder.setVertexBuffer(gridBuffer, offset: 0, index: 0)
+            encoder.setVertexBuffer(uniformBuffer, offset: 0, index: 1)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: gridVertexCount)
+        } else {
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        }
         encoder.endEncoding()
         return commandBuffer
     }
 
-    private func pipeline(for fragmentName: String) -> MTLRenderPipelineState? {
-        if let cached = pipelines[fragmentName] { return cached }
-        guard let vertex = library.makeFunction(name: "fullscreenVertex"),
-              let fragment = library.makeFunction(name: fragmentName) else {
+    private func pipeline(for transition: AnyTransition) -> MTLRenderPipelineState? {
+        let key = PipelineKey(vertex: transition.vertexFunctionName,
+                              fragment: transition.fragmentFunctionName,
+                              blended: transition.usesPanelMesh)
+        if let cached = pipelines[key] { return cached }
+        guard let vertex = library.makeFunction(name: key.vertex),
+              let fragment = library.makeFunction(name: key.fragment) else {
+            NSLog("TransitionKit: missing shader function \(key.vertex)/\(key.fragment)")
             return nil
         }
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertex
         descriptor.fragmentFunction = fragment
-        descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        guard let state = try? device.makeRenderPipelineState(descriptor: descriptor) else { return nil }
-        pipelines[fragmentName] = state
-        return state
+        descriptor.colorAttachments[0].pixelFormat = Self.pixelFormat
+        if key.blended {
+            // Premultiplied source-over: the panel blends onto the cleared backdrop,
+            // which is what lets rounded corners and the mask styles resolve cleanly.
+            let attachment = descriptor.colorAttachments[0]!
+            attachment.isBlendingEnabled = true
+            attachment.rgbBlendOperation = .add
+            attachment.alphaBlendOperation = .add
+            attachment.sourceRGBBlendFactor = .one
+            attachment.sourceAlphaBlendFactor = .one
+            attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
+            attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        }
+        do {
+            let state = try device.makeRenderPipelineState(descriptor: descriptor)
+            pipelines[key] = state
+            return state
+        } catch {
+            NSLog("TransitionKit: pipeline \(key.vertex)/\(key.fragment) failed: \(error)")
+            return nil
+        }
     }
 }
 

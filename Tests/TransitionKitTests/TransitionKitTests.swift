@@ -12,11 +12,60 @@ final class TransitionKitTests: XCTestCase {
         XCTAssertNotNil(renderer.device)
     }
 
+    func testGridCoversUnitSquare() {
+        let grid = TransitionRenderer.makeGrid(resolution: 4)
+        XCTAssertEqual(grid.count, 4 * 4 * 6)
+        XCTAssertEqual(grid.map(\.x).min(), 0); XCTAssertEqual(grid.map(\.x).max(), 1)
+        XCTAssertEqual(grid.map(\.y).min(), 0); XCTAssertEqual(grid.map(\.y).max(), 1)
+    }
+
     func testUniformsLayoutMatchesMetalExpectations() {
-        // float4 (16) + 4×float2 (32) + 24 scalars (96) = 144, a multiple of 16.
-        XCTAssertEqual(MemoryLayout<TransitionUniforms>.stride, 144)
+        // Original block: float4 (16) + 4×float2 (32) + 24 scalars (96) = 144.
+        // Panel block: 2×float2 (16) + 20 scalars (80) = 96. Total 240, a multiple of 16.
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.stride, 240)
         XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.snapshotSize), 16)
         XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.progress), 48)
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.pad2), 140)
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.meshScale), 144)
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.meshTranslate), 152)
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.foldAngle), 160)
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.aspect), 180)
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.maskOpenness), 216)
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.maskKind), 220)
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.useTexture), 228)
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.maxLOD), 232)
+        XCTAssertEqual(MemoryLayout<TransitionUniforms>.offset(of: \.pad3), 236)
+    }
+
+    /// Runs the probe kernel so the GPU itself confirms it reads every field where
+    /// Swift wrote it. MemoryLayout arithmetic cannot catch a Metal-side mismatch.
+    func testUniformsLayoutOnGPU() throws {
+        let renderer = try TransitionRenderer()
+        var u = TransitionUniforms()
+        u.glowColor.w = 0.25; u.notchSize.y = 64; u.progress = 0.5; u.blurSamples = 7; u.pad2 = 9
+        u.meshScale.y = 0.7; u.meshTranslate.x = -0.3; u.foldAngle = 1.25; u.aspect = 1.54
+        u.maskOpenness = 0.33; u.maskKind = 3; u.blades = 6; u.useTexture = 0; u.maxLOD = 4; u.pad3 = 11
+        let expected: [Float] = [0.25, 64, 0.5, 7, 9, 0.7, -0.3, 1.25, 1.54, 0.33, 3, 6, 0, 4, 11]
+
+        let device = renderer.device
+        let function = try XCTUnwrap(renderer.library.makeFunction(name: "uniformsLayoutProbe"))
+        let pipeline = try device.makeComputePipelineState(function: function)
+        let input = try XCTUnwrap(device.makeBuffer(bytes: &u, length: MemoryLayout<TransitionUniforms>.stride, options: .storageModeShared))
+        let output = try XCTUnwrap(device.makeBuffer(length: 16 * MemoryLayout<Float>.stride, options: .storageModeShared))
+        let commandBuffer = try XCTUnwrap(renderer.commandQueue.makeCommandBuffer())
+        let encoder = try XCTUnwrap(commandBuffer.makeComputeCommandEncoder())
+        encoder.setComputePipelineState(pipeline)
+        encoder.setBuffer(input, offset: 0, index: 0)
+        encoder.setBuffer(output, offset: 0, index: 1)
+        encoder.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        let got = Array(UnsafeBufferPointer(start: output.contents().assumingMemoryBound(to: Float.self), count: 15))
+        for (i, (g, e)) in zip(got, expected).enumerated() {
+            XCTAssertEqual(g, e, accuracy: 1e-5, "field \(i) read back wrong on the GPU")
+        }
     }
 
     func testSpringSettlesAtTarget() {

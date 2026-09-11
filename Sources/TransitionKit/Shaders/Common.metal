@@ -37,7 +37,44 @@ struct TransitionUniforms {
     float edgeSoftness;
     float holeGrowth;
     float pad2;
+
+    // Panel family. Same order as TransitionUniforms.swift.
+    float2 meshScale;
+    float2 meshTranslate;
+    float foldAngle;
+    float foldPosition;
+    float perspective;
+    float curvature;
+    float creaseHighlight;
+    float aspect;
+    float blur;
+    float blurGradient;
+    float wash;
+    float cornerRadius;
+    float brightness;
+    float opacity;
+    float vignette;
+    float edgeOcclusion;
+    float maskOpenness;
+    uint  maskKind;
+    uint  blades;
+    uint  useTexture;
+    float maxLOD;
+    float pad3;
 };
+
+// Copies a spread of fields into a buffer so a test can prove the Swift and
+// Metal layouts agree on the GPU, not just in MemoryLayout arithmetic.
+kernel void uniformsLayoutProbe(constant TransitionUniforms &u [[buffer(0)]],
+                                device float *out [[buffer(1)]],
+                                uint id [[thread_position_in_grid]]) {
+    if (id != 0) return;
+    out[0] = u.glowColor.w;      out[1] = u.notchSize.y;       out[2] = u.progress;
+    out[3] = float(u.blurSamples); out[4] = u.pad2;            out[5] = u.meshScale.y;
+    out[6] = u.meshTranslate.x;  out[7] = u.foldAngle;         out[8] = u.aspect;
+    out[9] = u.maskOpenness;     out[10] = float(u.maskKind);  out[11] = float(u.blades);
+    out[12] = float(u.useTexture); out[13] = u.maxLOD;         out[14] = u.pad3;
+}
 
 struct VertexOut {
     float4 position [[position]];

@@ -38,7 +38,7 @@ final class RenderTests: XCTestCase {
         let context = RenderContext(snapshotSize: SIMD2(Float(w), Float(h)),
                                     sinkPoint: SIMD2(Float(w) / 2, 18), notchSize: SIMD2(90, 18),
                                     usesVirtualNotch: true, scale: 0.5)
-        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: TransitionRenderer.pixelFormat, width: w, height: h, mipmapped: false)
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .shared
         let target = renderer.device.makeTexture(descriptor: desc)!

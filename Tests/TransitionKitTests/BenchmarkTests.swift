@@ -14,13 +14,13 @@ final class BenchmarkTests: XCTestCase {
             let i = (y * w + x) * 4
             pixels[i] = UInt8(x * 255 / w); pixels[i + 1] = UInt8(y * 255 / h); pixels[i + 2] = 128; pixels[i + 3] = 255
         } }
-        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: TransitionRenderer.pixelFormat, width: w, height: h, mipmapped: false)
         desc.usage = [.shaderRead]; desc.storageMode = .shared
         let snapshot = renderer.device.makeTexture(descriptor: desc)!
         snapshot.replace(region: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0, withBytes: pixels, bytesPerRow: w * 4)
         renderer.setSnapshot(texture: snapshot)
 
-        let targetDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
+        let targetDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: TransitionRenderer.pixelFormat, width: w, height: h, mipmapped: false)
         targetDesc.usage = [.renderTarget]; targetDesc.storageMode = .private
         let target = renderer.device.makeTexture(descriptor: targetDesc)!
         let context = RenderContext(snapshotSize: SIMD2(Float(w), Float(h)), sinkPoint: SIMD2(1512, 64),

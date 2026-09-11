@@ -44,14 +44,15 @@ fragment float4 frostFragment(VertexOut in [[stage_in]],
 
     // Ice: lift toward a cool white and add fine grain where it's frosted.
     float luma = dot(rgb, float3(0.299, 0.587, 0.114));
-    float3 icy = mix(rgb, float3(luma) * float3(0.92, 0.97, 1.05) + 0.08, 0.35);
+    // Linear-light pipeline: small additive constants go a long way.
+    float3 icy = mix(rgb, float3(luma) * float3(0.92, 0.97, 1.05) + 0.03, 0.35);
     rgb = mix(rgb, icy, local);
-    float grain = (hash12(uv * u.snapshotSize) - 0.5) * 0.08 * local;
+    float grain = (hash12(uv * u.snapshotSize) - 0.5) * 0.035 * local;
     rgb += grain;
 
-    // Fade to black once past darknessStart.
+    // Fade to black once past darknessStart; pow keeps the perceptual ramp.
     float dark = smoothstep(u.darknessStart, 1.0, p);
-    rgb *= 1.0 - dark;
+    rgb *= pow(1.0 - dark, 2.2);
 
     return float4(rgb, 1.0);
 }

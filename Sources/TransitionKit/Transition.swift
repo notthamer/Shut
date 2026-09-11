@@ -21,9 +21,17 @@ public struct RenderContext: Equatable {
     public var time: Float
     /// Snapshot pixels per screen point (2 on every Retina MacBook).
     public var scale: Float
+    /// dp/dt in progress units per second, positive while closing. Drives motion
+    /// blur and the small velocity lead in Fold and Crease. 0 when scrubbing.
+    public var velocity: Float
+    /// Degrees of lid travel the effect spans. Fold and Crease turn their panel
+    /// by exactly the degrees the lid has swept, so this makes the counter-rotation
+    /// degree-for-degree.
+    public var hingeTravelDegrees: Float
 
     public init(snapshotSize: SIMD2<Float>, sinkPoint: SIMD2<Float>, notchSize: SIMD2<Float>,
-                usesVirtualNotch: Bool, reduceTransparency: Bool = false, time: Float = 0, scale: Float = 2) {
+                usesVirtualNotch: Bool, reduceTransparency: Bool = false, time: Float = 0, scale: Float = 2,
+                velocity: Float = 0, hingeTravelDegrees: Float = 85) {
         self.snapshotSize = snapshotSize
         self.sinkPoint = sinkPoint
         self.notchSize = notchSize
@@ -31,6 +39,8 @@ public struct RenderContext: Equatable {
         self.reduceTransparency = reduceTransparency
         self.time = time
         self.scale = scale
+        self.velocity = velocity
+        self.hingeTravelDegrees = hingeTravelDegrees
     }
 }
 
@@ -43,8 +53,21 @@ public protocol Transition: AnyObject {
 
     static var id: String { get }
     static var displayName: String { get }
+    /// One line for the gallery, e.g. "The desktop drains into the notch."
+    static var summary: String { get }
     /// Name of the fragment function in the TransitionKit Metal library.
     static var fragmentFunctionName: String { get }
+    /// Vertex function paired with the fragment. Default: the full-screen triangle.
+    static var vertexFunctionName: String { get }
+    /// True: draw the 48×48 panel grid with premultiplied blending instead of one triangle.
+    static var usesPanelMesh: Bool { get }
+    /// True: the output has alpha and composites over the live desktop, so the
+    /// overlay window goes transparent for it.
+    static var isTransparent: Bool { get }
+    /// False: plays without a snapshot, and therefore without Screen Recording.
+    static var needsSnapshot: Bool { get }
+    /// Progress at which the gallery thumbnail is rendered.
+    static var thumbnailProgress: Double { get }
 
     var params: Params { get set }
 
@@ -57,6 +80,13 @@ public protocol Transition: AnyObject {
 }
 
 public extension Transition {
+    static var summary: String { "" }
+    static var vertexFunctionName: String { "fullscreenVertex" }
+    static var usesPanelMesh: Bool { false }
+    static var isTransparent: Bool { false }
+    static var needsSnapshot: Bool { true }
+    static var thumbnailProgress: Double { 0.35 }
+
     var id: String { Self.id }
     var displayName: String { Self.displayName }
     var fragmentFunctionName: String { Self.fragmentFunctionName }
@@ -71,7 +101,13 @@ public extension Transition {
 public final class AnyTransition {
     public let id: String
     public let displayName: String
+    public let summary: String
     public let fragmentFunctionName: String
+    public let vertexFunctionName: String
+    public let usesPanelMesh: Bool
+    public let isTransparent: Bool
+    public let needsSnapshot: Bool
+    public let thumbnailProgress: Double
     private let prepareImpl: (MTLTexture, MTLDevice, MTLCommandQueue) -> MTLTexture
     private let uniformsImpl: (Double, RenderContext) -> TransitionUniforms
     private let jsonGet: () -> Data?
@@ -83,7 +119,13 @@ public final class AnyTransition {
         base = transition
         id = T.id
         displayName = T.displayName
+        summary = T.summary
         fragmentFunctionName = T.fragmentFunctionName
+        vertexFunctionName = T.vertexFunctionName
+        usesPanelMesh = T.usesPanelMesh
+        isTransparent = T.isTransparent
+        needsSnapshot = T.needsSnapshot
+        thumbnailProgress = T.thumbnailProgress
         prepareImpl = { transition.prepare(snapshot: $0, device: $1, commandQueue: $2) }
         uniformsImpl = { transition.uniforms(progress: $0, context: $1) }
         jsonGet = { try? JSONEncoder().encode(transition.params) }

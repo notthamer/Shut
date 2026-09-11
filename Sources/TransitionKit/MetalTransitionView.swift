@@ -30,14 +30,27 @@ public final class MetalTransitionView: NSView {
     public override func makeBackingLayer() -> CALayer {
         let layer = CAMetalLayer()
         layer.device = renderer.device
-        layer.pixelFormat = .bgra8Unorm
+        layer.pixelFormat = TransitionRenderer.pixelFormat
+        // Tagged sRGB: untagged content would be stretched on a P3 display.
+        layer.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
         layer.framebufferOnly = true
-        layer.isOpaque = true
-        layer.backgroundColor = NSColor.black.cgColor
+        layer.maximumDrawableCount = 3
+        layer.isOpaque = !isTransparent
+        layer.backgroundColor = isTransparent ? nil : NSColor.black.cgColor
         return layer
     }
 
-    public override var isOpaque: Bool { true }
+    /// Transparent mode: the layer and view report non-opaque and the pass clears
+    /// to alpha 0, so mask styles composite over the live desktop.
+    public var isTransparent = false {
+        didSet {
+            guard isTransparent != oldValue, let layer = layer as? CAMetalLayer else { return }
+            layer.isOpaque = !isTransparent
+            layer.backgroundColor = isTransparent ? nil : NSColor.black.cgColor
+        }
+    }
+
+    public override var isOpaque: Bool { !isTransparent }
 
     public override func layout() {
         super.layout()
