@@ -60,12 +60,14 @@ static float3 sampleSnapshot(texture2d<float> snapshot, float2 src, constant Tra
     return snapshot.sample(s, src / u.snapshotSize).rgb * fade;
 }
 
-// Signed distance to a pill with its flat edge on the top of the screen and
-// rounded bottom corners, used for the virtual notch on Macs without one.
-static float pillDistance(float2 x, float2 center, float2 halfSize) {
-    float r = halfSize.y;                       // fully rounded bottom
+// Signed distance to a rounded rectangle hanging from the top edge of the
+// screen, i.e. the notch (or the virtual notch pill). Negative inside. The top
+// is treated as extending past the screen so only the bottom corners round.
+static float notchDistance(float2 x, float cornerRadius, constant TransitionUniforms &u) {
+    float2 halfSize = u.notchSize * 0.5;
+    float2 center = float2(u.sink.x, u.sink.y - halfSize.y);
+    float r = min(cornerRadius, min(halfSize.x, halfSize.y));
     float2 q = abs(x - center) - halfSize + r;
-    // only round the bottom edge: treat the top as extended past the screen
     if (x.y < center.y) q.y = min(q.y, 0.0);
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
 }
@@ -123,26 +125,35 @@ fragment float4 notchDrainFragment(VertexOut in [[stage_in]],
     float radial = 0.35 + 0.65 * (1.0 - d);
     rgb *= 1.0 - u.darken * max(q, 0.0) * radial;
 
-    // The sink itself swallows whatever reaches it.
-    float hole = 1.0 - smoothstep(u.sinkRadius * 0.5, u.sinkRadius * 1.5, r);
-    rgb = mix(rgb, float3(0.0), hole * clamp(q * 2.0, 0.0, 1.0));
+    // The hole. A dark mouth that hugs the notch outline, there from the first
+    // frame so the destination is obvious, and widening as the drain progresses.
+    // `sinkRadius` is its starting margin around the notch; `holeGrowth` how much
+    // wider it gets by the end.
+    float visible = clamp(abs(p) * 6.0, 0.0, 1.0);
+    float pp = clamp(p, 0.0, 1.0);
+    float margin = u.sinkRadius * (1.0 + u.holeGrowth * pp * pp);
+    float nd = notchDistance(x, u.notchSize.y * 0.45, u);   // < 0 inside the notch itself
+    float holeEdge = nd - margin;
+    float holeSoft = margin * 0.6 + 6.0;
+    float hole = 1.0 - smoothstep(-holeSoft * 0.3, holeSoft, holeEdge);
+    // Inside the mouth, content darkens steeply toward the notch rather than
+    // vanishing at a line, so it reads as depth.
+    float depth = 1.0 - smoothstep(-margin, holeSoft, holeEdge);
+    rgb *= 1.0 - visible * max(hole * 0.85, depth * 0.55);
 
-    // Rim glow around the notch, strongest mid-transition, plus a faint halo.
-    float peak = sin(M_PI_F * clamp(abs(p), 0.0, 1.0));
-    float ringWidth = u.sinkRadius * 0.6 + 6.0;
-    float ring = exp(-pow((r - u.sinkRadius) / ringWidth, 2.0));
-    float halo = exp(-r / (u.sinkRadius * 6.0 + 30.0));
-    rgb += u.glowColor.rgb * u.glowColor.a * u.glow * peak * (ring * 0.9 + halo * 0.35);
+    // Rim glow along the mouth's edge, plus a faint halo, present through the
+    // transition and fading out just before black.
+    float presence = smoothstep(0.0, 0.15, abs(p)) * (1.0 - smoothstep(0.8, 1.0, pp));
+    float ringWidth = holeSoft * 0.7;
+    float ring = exp(-pow(holeEdge / ringWidth, 2.0));
+    float halo = exp(-max(holeEdge, 0.0) / (margin * 3.0 + 40.0));
+    rgb += u.glowColor.rgb * u.glowColor.a * u.glow * presence * (ring * 0.9 + halo * 0.3);
 
     // Virtual notch: fade in a black pill so the drain has a visible destination
     // on Macs without a hardware notch (or when auto-detect is off).
     if (u.virtualNotch > 0.5) {
-        float2 halfSize = u.notchSize * 0.5;
-        float2 center = float2(u.sink.x, u.sink.y - halfSize.y);
-        float dist = pillDistance(x, center, halfSize);
-        float alpha = 1.0 - smoothstep(-1.0, 1.0, dist);
-        float fadeIn = clamp(abs(p) * 3.0, 0.0, 1.0);
-        rgb = mix(rgb, float3(0.0), alpha * fadeIn);
+        float pill = 1.0 - smoothstep(-1.0, 1.0, notchDistance(x, u.notchSize.y * 0.5, u));
+        rgb = mix(rgb, float3(0.0), pill * visible);
     }
 
     return float4(rgb, 1.0);

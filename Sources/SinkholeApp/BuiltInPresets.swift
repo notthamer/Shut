@@ -13,7 +13,9 @@ enum BuiltInPresets {
         gentle.blurStrength = 0.3
         gentle.darken = 0.4
         gentle.aberration = 0.5
-        gentle.glow = 0.2
+        gentle.glow = 0.3
+        gentle.sinkRadius = 28
+        gentle.holeGrowth = 1
         gentle.pourOutDamping = 0.85
         gentle.overshoot = 0.03
 
@@ -29,7 +31,8 @@ enum BuiltInPresets {
         blackHole.aberration = 5
         blackHole.glow = 0.7
         blackHole.glowColor = TunerColor(red: 0.6, green: 0.8, blue: 1.0)
-        blackHole.sinkRadius = 28
+        blackHole.sinkRadius = 60
+        blackHole.holeGrowth = 3
         blackHole.commitThreshold = 0.6
         blackHole.pourOutDamping = 0.55
         blackHole.overshoot = 0.12

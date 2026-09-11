@@ -64,7 +64,7 @@ final class NotchDrainTests: XCTestCase {
         let u = t.uniforms(progress: 0.3, context: context)
         XCTAssertEqual(u.sink, SIMD2(1512, 64))
         XCTAssertEqual(u.maxDistance, simd_length(SIMD2<Float>(1512, 1900)), accuracy: 0.5)
-        XCTAssertEqual(u.sinkRadius, 32, "16 pt × scale 2")
+        XCTAssertEqual(u.sinkRadius, 80, "40 pt × scale 2")
         XCTAssertEqual(u.virtualNotch, 0)
     }
 
@@ -84,7 +84,7 @@ final class NotchDrainTests: XCTestCase {
     func testDefaultsMatchTunedValues() {
         let p = NotchDrainParams.defaults
         XCTAssertEqual(p.falloff, 0.5); XCTAssertEqual(p.twist, 0.3); XCTAssertEqual(p.stretch, 0.6)
-        XCTAssertEqual(p.blurSamples, 8); XCTAssertEqual(p.darken, 0.6); XCTAssertEqual(p.sinkRadius, 16)
+        XCTAssertEqual(p.blurSamples, 8); XCTAssertEqual(p.darken, 0.6); XCTAssertEqual(p.sinkRadius, 40)
         XCTAssertEqual(p.pourOutResponse, 0.55); XCTAssertEqual(p.pourOutDamping, 0.72)
         XCTAssertEqual(p.progressCurve, TunerBezier(0.45, 0, 0.85, 0.55))
     }

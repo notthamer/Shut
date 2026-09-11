@@ -35,7 +35,7 @@ struct TransitionUniforms {
     float pull;
     float vortex;
     float edgeSoftness;
-    float pad1;
+    float holeGrowth;
     float pad2;
 };
 

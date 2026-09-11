@@ -19,7 +19,7 @@ public struct NotchDrainParams: TunableParameters {
     public var blurStrength: Double = 0.5
     public var darken: Double = 0.6
     public var aberration: Double = 2         // px
-    public var glow: Double = 0.35
+    public var glow: Double = 0.5
     public var glowColor: TunerColor = .white
     public var edgeSoftness: Double = 90      // pt; how softly content fades where it leaves the screen
 
@@ -27,7 +27,8 @@ public struct NotchDrainParams: TunableParameters {
     public var autoDetectNotch: Bool = true
     public var offsetX: Double = 0            // pt
     public var offsetY: Double = 0            // pt
-    public var sinkRadius: Double = 16        // pt
+    public var sinkRadius: Double = 40        // pt; dark margin around the notch at the start
+    public var holeGrowth: Double = 2.0       // how much that margin widens by the end (× sink radius)
 
     // Pour-out
     public var pourOutResponse: Double = 0.55
@@ -63,7 +64,8 @@ public struct NotchDrainParams: TunableParameters {
             .toggle(\.autoDetectNotch, "Auto-detect notch"),
             .slider(\.offsetX, "Offset X", -200...200, step: 1, unit: "pt", decimals: 0),
             .slider(\.offsetY, "Offset Y", -200...200, step: 1, unit: "pt", decimals: 0),
-            .slider(\.sinkRadius, "Sink radius", 0...60, unit: "pt", decimals: 0),
+            .slider(\.sinkRadius, "Hole size", 0...120, step: 1, unit: "pt", decimals: 0),
+            .slider(\.holeGrowth, "Hole growth", 0...4, decimals: 1),
         ]),
         TunerFolder("Pour-out", [
             .spring(response: \.pourOutResponse, damping: \.pourOutDamping, "Spring"),
@@ -127,6 +129,7 @@ public final class NotchDrainTransition: Transition {
         u.glow = Float(p.glow)
         u.glowColor = SIMD4(Float(p.glowColor.red), Float(p.glowColor.green), Float(p.glowColor.blue), Float(p.glowColor.alpha))
         u.sinkRadius = Float(p.sinkRadius) * scale
+        u.holeGrowth = Float(p.holeGrowth)
         return u
     }
 }

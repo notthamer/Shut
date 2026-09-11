@@ -17,6 +17,7 @@
       "green" : 0.8,
       "red" : 0.6
     },
+    "holeGrowth" : 3,
     "offsetX" : 0,
     "offsetY" : 0,
     "overshoot" : 0.12,
@@ -30,7 +31,7 @@
       "y2" : 0.55
     },
     "pull" : 1.1,
-    "sinkRadius" : 28,
+    "sinkRadius" : 60,
     "stretch" : 1.2,
     "twist" : 0.8,
     "vortex" : 1.8

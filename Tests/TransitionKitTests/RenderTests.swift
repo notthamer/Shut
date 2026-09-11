@@ -36,8 +36,8 @@ final class RenderTests: XCTestCase {
         try renderer.setSnapshot(makeSyntheticSnapshot())
         let w = Self.width, h = Self.height
         let context = RenderContext(snapshotSize: SIMD2(Float(w), Float(h)),
-                                    sinkPoint: SIMD2(Float(w) / 2, 16), notchSize: SIMD2(90, 16),
-                                    usesVirtualNotch: false, scale: 0.5)
+                                    sinkPoint: SIMD2(Float(w) / 2, 18), notchSize: SIMD2(90, 18),
+                                    usesVirtualNotch: true, scale: 0.5)
         let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .shared
@@ -81,7 +81,7 @@ final class RenderTests: XCTestCase {
     }
 
     func testNotchDrainStartsIntactAndEndsBlack() throws {
-        let frames = try renderFrames(AnyTransition(NotchDrainTransition()), progresses: [0, 0.25, 0.5, 0.75, 1, -0.06, 0.15, 0.35, 0.6])
+        let frames = try renderFrames(AnyTransition(NotchDrainTransition()), progresses: [0, 0.25, 0.5, 0.75, 1, -0.06, 0.05, 0.15, 0.35, 0.6])
         let b = frames.map { meanBrightness($0.1) }
         XCTAssertGreaterThan(b[0], 0.3, "p = 0 shows the snapshot untouched")
         XCTAssertGreaterThan(b[0], b[1], "brightness falls as content drains")
