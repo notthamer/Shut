@@ -53,6 +53,7 @@ let package = Package(
         .target(
             name: "ShutApp",
             dependencies: ["LidSensor", "TransitionKit", "Tuner"],
+            resources: [.copy("Resources")],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),

@@ -59,3 +59,18 @@ final class PopoverSnapshotTests: XCTestCase {
         XCTAssertEqual(settings.timedCloseDuration, 1.6, accuracy: 0.001)
     }
 }
+
+@MainActor
+final class AssetTests: XCTestCase {
+    func testLogoAndMenuBarIconLoad() throws {
+        let logo = try XCTUnwrap(AppAssets.logo, "logo.png must ship in the ShutApp resource bundle")
+        XCTAssertGreaterThan(logo.size.width, 100)
+        let icon = try XCTUnwrap(AppAssets.menuBarIcon)
+        XCTAssertTrue(icon.isTemplate)
+        XCTAssertEqual(icon.size, NSSize(width: 18, height: 18))
+        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"], let cg = icon.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+            try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+                .write(to: URL(fileURLWithPath: dir).appendingPathComponent("menubar-icon.png"))
+        }
+    }
+}

@@ -40,11 +40,7 @@ struct PopoverHeader: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "laptopcomputer")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(theme.textRoot)
-                .frame(width: 26, height: 26)
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(theme.surfaceActive))
+            LogoMark(size: 28)
             VStack(alignment: .leading, spacing: 1) {
                 Text("Shut.").font(TunerTheme.rootTitle).foregroundStyle(theme.textRoot)
                 Text(model.statusLine).font(.system(size: 10.5)).foregroundStyle(theme.textLabel)
@@ -114,5 +110,27 @@ struct QuietButton: View {
             .contentShape(Rectangle())
             .onHover { hover = $0 }
             .onTapGesture(perform: action)
+    }
+}
+
+
+/// The app's logo from the package bundle, with a symbol fallback.
+struct LogoMark: View {
+    let size: CGFloat
+    @Environment(\.tunerTheme) private var theme
+    var body: some View {
+        if let logo = AppAssets.logo {
+            Image(nsImage: logo)
+                .resizable()
+                .interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: size, height: size)
+        } else {
+            Image(systemName: "laptopcomputer")
+                .font(.system(size: size * 0.5, weight: .medium))
+                .foregroundStyle(theme.textRoot)
+                .frame(width: size, height: size)
+                .background(RoundedRectangle(cornerRadius: size * 0.27, style: .continuous).fill(theme.surfaceActive))
+        }
     }
 }

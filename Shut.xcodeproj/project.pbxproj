@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A100000000000000000000B1 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F1 /* main.swift */; };
 		A100000000000000000000B2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F4 /* Assets.xcassets */; };
+		A100000000000000000000B4 /* Shut.icns in Resources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F6 /* Shut.icns */; };
 		A100000000000000000000B3 /* ShutApp in Frameworks */ = {isa = PBXBuildFile; productRef = A100000000000000000000D1 /* ShutApp */; };
 /* End PBXBuildFile section */
 
@@ -19,6 +20,7 @@
 		A100000000000000000000F3 /* Shut.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Shut.entitlements; sourceTree = "<group>"; };
 		A100000000000000000000F4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A100000000000000000000F5 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
+		A100000000000000000000F6 /* Shut.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Shut.icns; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -49,6 +51,7 @@
 				A100000000000000000000F3 /* Shut.entitlements */,
 				A100000000000000000000F4 /* Assets.xcassets */,
 				A100000000000000000000F5 /* Signing.xcconfig */,
+				A100000000000000000000F6 /* Shut.icns */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -126,6 +129,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A100000000000000000000B2 /* Assets.xcassets in Resources */,
+				A100000000000000000000B4 /* Shut.icns in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

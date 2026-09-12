@@ -37,9 +37,7 @@ struct WelcomeView: View {
     var body: some View {
         VStack(spacing: 18) {
             Spacer()
-            Image(systemName: "laptopcomputer")
-                .font(.system(size: 40, weight: .light))
-                .foregroundStyle(theme.textRoot)
+            LogoMark(size: 88)
             Text("Choose how your Mac closes.")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(theme.textRoot)

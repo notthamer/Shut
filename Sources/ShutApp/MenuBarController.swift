@@ -38,8 +38,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         super.init()
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "laptopcomputer", accessibilityDescription: "Shut")
+            button.image = AppAssets.menuBarIcon ?? NSImage(systemSymbolName: "laptopcomputer", accessibilityDescription: "Shut")
             button.image?.isTemplate = true
+            button.image?.accessibilityDescription = "Shut"
             button.target = self
             button.action = #selector(statusItemClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])

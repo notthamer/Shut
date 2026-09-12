@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' App/Info.plist)
 APP=build/Shut.app
 BIN=.build/release/shut
-BUNDLE=.build/release/Shut_TransitionKit.bundle
+BUNDLES=.build/release/Shut_*.bundle
 
 echo "Building Shut $VERSION (release)…"
 swift build -c release --product shut 2>&1 | tail -1
@@ -23,11 +23,10 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Shut"
 cp App/Info.plist "$APP/Contents/Info.plist"
 echo -n 'APPL????' > "$APP/Contents/PkgInfo"
-if [ -d "$BUNDLE" ]; then
-  cp -R "$BUNDLE" "$APP/Contents/Resources/"
-else
-  echo "warning: $BUNDLE not found; shaders will be missing" >&2
-fi
+for bundle in $BUNDLES; do
+  [ -d "$bundle" ] && cp -R "$bundle" "$APP/Contents/Resources/"
+done
+cp App/Shut.icns "$APP/Contents/Resources/Shut.icns"
 
 # Prefer a stable local certificate so Screen Recording permission survives
 # rebuilds (see App/Signing.xcconfig); fall back to ad-hoc.

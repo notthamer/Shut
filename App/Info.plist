@@ -6,6 +6,8 @@
 	<string>en</string>
 	<key>CFBundleExecutable</key>
 	<string>Shut</string>
+	<key>CFBundleIconFile</key>
+	<string>Shut</string>
 	<key>CFBundleIdentifier</key>
 	<string>app.shut.mac</string>
 	<key>CFBundleInfoDictionaryVersion</key>
