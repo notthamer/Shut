@@ -42,3 +42,15 @@ final class PanelSnapshotTests: XCTestCase {
         }
     }
 }
+
+@MainActor
+final class PanelChromeTests: XCTestCase {
+    func testChromeInstallsContentAboveBlur() {
+        let chrome = PanelChrome(frame: NSRect(x: 0, y: 0, width: 100, height: 100))
+        let content = NSView(frame: .zero)
+        chrome.install(content)
+        XCTAssertEqual(chrome.subviews.count, 2, "blur plus content")
+        XCTAssertTrue(chrome.subviews.last === content, "content sits above the blur")
+        XCTAssertEqual(content.frame, chrome.bounds)
+    }
+}

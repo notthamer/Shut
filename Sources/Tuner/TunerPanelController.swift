@@ -45,9 +45,7 @@ public final class TunerPanelController {
 
         let container = PanelChrome(frame: NSRect(origin: .zero, size: size))
         container.hosting = hosting
-        hosting.frame = container.bounds
-        hosting.autoresizingMask = [.width, .height]
-        container.addSubview(hosting)
+        container.install(hosting)
         panel.contentView = container
 
         if let saved = UserDefaults.standard.string(forKey: frameKey), !saved.isEmpty {
@@ -145,7 +143,7 @@ public final class PanelChrome: NSView {
         blur.state = .active
         blur.frame = bounds
         blur.autoresizingMask = [.width, .height]
-        addSubview(blur, positioned: .below, relativeTo: nil)
+        super.addSubview(blur)
         // One point of light along the top edge.
         highlight.colors = [NSColor.white.withAlphaComponent(0.10).cgColor, NSColor.white.withAlphaComponent(0).cgColor]
         highlight.startPoint = CGPoint(x: 0.5, y: 0)
@@ -155,11 +153,11 @@ public final class PanelChrome: NSView {
         updateMask()
     }
 
-    public override func addSubview(_ view: NSView) {
-        super.addSubview(view)
-        // Keep the blur at the bottom whatever is added later.
-        blur.removeFromSuperview()
-        super.addSubview(blur, positioned: .below, relativeTo: nil)
+    /// Puts the content above the blur. Use this rather than addSubview.
+    public func install(_ content: NSView) {
+        content.frame = bounds
+        content.autoresizingMask = [.width, .height]
+        addSubview(content, positioned: .above, relativeTo: blur)
     }
 
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }

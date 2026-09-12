@@ -106,9 +106,7 @@ final class PopoverController {
         panel.animationBehavior = .none
 
         let chrome = PanelChrome(frame: NSRect(origin: .zero, size: frame.size))
-        hosting.frame = chrome.bounds
-        hosting.autoresizingMask = [.width, .height]
-        chrome.addSubview(hosting)
+        chrome.install(hosting)
         panel.contentView = chrome
         self.chrome = chrome
         return panel
