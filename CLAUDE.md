@@ -1,8 +1,10 @@
 # Shut — conventions for contributors (human or AI)
 
-Shut is an open-source, MIT-licensed macOS menu bar app built in public: ways to
-close your Mac. The original v1 spec (when the app was called Sinkhole) is in
-`docs/PRD.md`; the v2 direction is in this file and the README.
+Shut is an open-source, MIT-licensed macOS app built in public: ways to close your
+Mac. It lives in the menu bar and the Dock, plays a lid-driven transition on the
+built-in display, and ships a reusable tuning panel. The original v1 spec (when the
+app was called Sinkhole) is kept in `docs/PRD.md` for history; the current design
+is described in `README.md` and `docs/ARCHITECTURE.md`.
 
 ## Rules
 
@@ -14,7 +16,7 @@ close your Mac. The original v1 spec (when the app was called Sinkhole) is in
    Argument parsing, JSON, HID, Metal: all hand-rolled or from the SDK.
 4. **Never write screen content to disk.** Snapshots exist only as `MTLTexture`s in
    memory and are released the moment a transition ends. Logs never contain pixels.
-   Never use `print` on image data, never save debug PNGs.
+   Never use `print` on image data, never save debug PNGs outside the test dump.
 5. **`Tuner` must never import app code or `TransitionKit`.** It is a standalone
    SwiftUI package (a DialKit-style tuning panel) that other apps can reuse. It only
    imports SwiftUI, AppKit, Foundation, Combine, UniformTypeIdentifiers, and Carbon
@@ -25,16 +27,40 @@ close your Mac. The original v1 spec (when the app was called Sinkhole) is in
    the license. Never use the DialKit name in code or UI.
 7. **Match the visual system.** Every surface uses `TunerTheme`: 36-pt rows, 6-pt
    gaps, 8/14-pt radii, neutral alphas, no accent colour, springs on state changes,
-   plain-English `help` on every control.
+   plain-English `help` on every control. The theme is derived from the SwiftUI
+   colour scheme; never inject it from a view's own body.
 8. **Progress is 0 = open, 1 = shut** everywhere above the sensor.
+9. **The overlay belongs to the built-in display and to the Space the lid is
+   closing on.** Build it fresh per close, show it with `OverlayWindow.show(on:)`
+   (which verifies `isOnActiveSpace` and falls back to `moveToActiveSpace`), and
+   tear it down the moment the built-in display leaves the screen list. Never
+   fall back to `NSScreen.main`; a black overlay on an external monitor is the one
+   thing this app must never do.
+10. **Never block the main thread on the GPU or the sensor.** At most two frames
+    in flight; `nextDrawable()` is skipped, not awaited; the sensor clock is read
+    through a lock, not the main-thread state.
+11. **Idle must stay idle.** The sensor parks at 1 Hz; only a real hinge movement
+    (≥ 2°) wakes it; nothing draws unless progress changed. Any change that adds a
+    timer, a poll, or a per-frame publish needs a reason in the commit message.
 
 ## Layout
 
-- `Package.swift` is the source of truth for all library and executable targets.
+- `Package.swift` is the source of truth for all library and executable targets:
+  `LidSensor`, `TransitionKit`, `Tuner`, `ShutApp`, and the executables `shut` and
+  `lidangle-cli`.
 - `Shut.xcodeproj` contains a single app target that is a 3-line shim over the
-  `ShutApp` library product, so Xcode builds a real `.app` bundle for testing.
+  `ShutApp` library product, so Xcode builds a real signed `.app` for testing.
+  Scheme autocreation is off so the package schemes don't appear.
 - `scripts/build.sh` produces the same `.app` from SwiftPM without Xcode.
-- `App/` holds files owned by the Xcode target (Info.plist, entitlements, assets).
+- `App/` holds files owned by the Xcode target (Info.plist, entitlements, icon,
+  signing xcconfigs). `App/Info.plist` is the single source of the version.
+- `Sources/ShutApp/Popover/` is the panel UI. `PopoverView` + `PopoverModel` are
+  shown by both `PopoverController` (under the status item) and
+  `MainWindowController` (a titled, miniaturizable window). One `PreviewModel`
+  feeds both; `PreviewHostView` claims it for whichever window is key.
+- Shaders are `.metal` source files copied as resources and compiled at launch
+  (`Common.metal` first). `swift build` does not compile Metal, so a shader error
+  only shows up when the app or the render tests run.
 
 ## Swift settings
 
@@ -46,12 +72,18 @@ close your Mac. The original v1 spec (when the app was called Sinkhole) is in
 
 ## Testing
 
-- `swift build` and `swift test` must pass before every commit.
+- `swift build`, `swift test`, and `xcodebuild -project Shut.xcodeproj -scheme
+  Shut build` must pass before every commit.
 - Render tests draw each transition offscreen on a synthetic image. Set
-  `SHUT_FRAME_DUMP=/some/dir` to get PNGs of the frames (and of the Tuner panel).
+  `SHUT_FRAME_DUMP=/some/dir` to get PNGs of the frames, the Tuner panel, and the
+  panel UI (dark, light, window). Look at them before changing a layout. Metal
+  layers do not rasterise into these snapshots, so the preview area is black there.
+- `TransitionUniforms` is mirrored by hand in `Common.metal`; the GPU probe test
+  (`uniformsLayoutProbe`) is the only guard against layout drift. Run it after
+  touching either.
 - After changing `BuiltInPresets.swift`, run `swift run shut --export-presets presets`.
-- Popover and Tuner snapshots are tests; look at the PNGs before changing a layout.
 - Never publish an `@Published` property from inside a SwiftUI view update (for
   example from `updateNSView`); it loops forever.
-- `xcodebuild -project Shut.xcodeproj -scheme Shut build` must pass too.
-- Manual lid tests are listed in `README.md` under "Testing".
+- Manual lid tests are listed in `README.md` under "Testing". Spaces, full-screen
+  apps, and external displays can't be simulated in `swift test`; check them on
+  hardware and read Console (subsystem `app.shut`) for the placement lines.

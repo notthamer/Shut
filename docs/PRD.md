@@ -1,3 +1,10 @@
+> **Historical document.** This is the v0.3 spec the project started from, when the
+> app was called Sinkhole and shipped two transitions. The app is now **Shut**;
+> *Sinkhole* is the name of the notch-drain style. What actually shipped, and how it
+> differs (eleven styles, auto-calibrated hinge, popover and window UI, every
+> Apple-silicon MacBook), is described in `README.md` and `docs/ARCHITECTURE.md`.
+> Section numbers from this file are still referenced in code comments (PRD 5.7).
+
 # PRD: Sinkhole — Lid Transitions for MacBook
 
 | | |

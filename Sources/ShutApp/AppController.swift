@@ -94,6 +94,8 @@ public final class AppController: ObservableObject {
         workspace.addObserver(self, selector: #selector(screensSlept), name: NSWorkspace.screensDidSleepNotification, object: nil)
         workspace.addObserver(self, selector: #selector(didWake), name: NSWorkspace.didWakeNotification, object: nil)
         workspace.addObserver(self, selector: #selector(screensWoke), name: NSWorkspace.screensDidWakeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(screensChanged),
+                                               name: NSApplication.didChangeScreenParametersNotification, object: nil)
 
         // A Dock app with no visible window is a prime App Nap candidate, and a
         // napped process can't watch a hinge. The sensor parks itself when the
@@ -420,8 +422,35 @@ public final class AppController: ObservableObject {
         Log.overlay.info("drained: black overlay in place")
     }
 
+    /// External displays. The effect belongs to the lid's own panel and never
+    /// touches another screen. When the built-in display leaves the screen list
+    /// (clamshell mode: lid shut, external display, power and keyboard attached,
+    /// so the Mac stays awake), AppKit would move our full-screen window onto
+    /// the remaining display. Tear everything down first.
+    @objc private func screensChanged(_ note: Notification) {
+        let builtIn = BuiltInDisplay.screen
+        if Self.shouldTearDownForScreens(builtInPresent: builtIn != nil, state: state) {
+            Log.app.info("built-in display left the screen list; clearing the overlay")
+            teardown(reason: "built-in display went away")
+            return
+        }
+        if let overlay, let builtIn, overlay.frame != builtIn.frame {
+            overlay.setFrame(builtIn.frame, display: false)
+        }
+    }
+
+    /// Pure so it can be tested: anything on screen must go when the built-in
+    /// display does.
+    static func shouldTearDownForScreens(builtInPresent: Bool, state: State) -> Bool {
+        !builtInPresent && state != .idle
+    }
+
     private func wakeUp() {
         guard state == .drained else { return }
+        // Woke in clamshell mode (lid still shut, external display driving): there
+        // is no built-in display to pour out on, and the black overlay must not
+        // sit on the external one.
+        guard BuiltInDisplay.screen != nil else { teardown(reason: "woke without the built-in display"); return }
         unlock.refresh()
         overlay?.metalView.render()
         if unlock.isLocked {

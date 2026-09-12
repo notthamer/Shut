@@ -19,8 +19,18 @@ public enum ScreenRecordingPermission {
 
 /// Built-in display lookup shared by capture and overlay placement.
 public enum BuiltInDisplay {
+    /// The MacBook's own panel, or nil when it is not in the screen list: a
+    /// desktop Mac, or a MacBook running shut in clamshell mode on an external
+    /// display. Deliberately no fallback to `NSScreen.main`: the overlay and the
+    /// capture belong to the lid's display and nothing else, and a black overlay
+    /// on someone's external monitor is the one thing this app must never do.
     public static var screen: NSScreen? {
-        NSScreen.screens.first { CGDisplayIsBuiltin(displayID(of: $0)) != 0 } ?? NSScreen.main
+        NSScreen.screens.first { CGDisplayIsBuiltin(displayID(of: $0)) != 0 }
+    }
+
+    /// Screens other than the built-in one.
+    public static var externalCount: Int {
+        NSScreen.screens.filter { CGDisplayIsBuiltin(displayID(of: $0)) == 0 }.count
     }
 
     public static func displayID(of screen: NSScreen) -> CGDirectDisplayID {

@@ -1,3 +1,7 @@
+> **Historical document.** The Claude Code prompts used to build v1 (M0–M6), kept
+> as a record of how the project was made. Paths and names refer to the Sinkhole
+> era; see `README.md` for the current layout.
+
 # Sinkhole: Claude Code Prompts
 
 Use one prompt per milestone. Between milestones, commit your work and type `/clear` in Claude Code to start fresh. Every prompt asks Claude to plan first, so read the plan before approving.

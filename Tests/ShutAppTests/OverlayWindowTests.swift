@@ -25,6 +25,16 @@ final class OverlayWindowTests: XCTestCase {
         window.metalView.render()
     }
 
+    /// Clamshell mode: the built-in display leaves the screen list while the
+    /// overlay is up. Whatever the state, it must come down; idle stays idle.
+    func testBuiltInDisplayLeavingTearsDown() {
+        for state in [AppController.State.armed, .closing, .drained, .pouring] {
+            XCTAssertTrue(AppController.shouldTearDownForScreens(builtInPresent: false, state: state), "\(state)")
+            XCTAssertFalse(AppController.shouldTearDownForScreens(builtInPresent: true, state: state), "\(state)")
+        }
+        XCTAssertFalse(AppController.shouldTearDownForScreens(builtInPresent: false, state: .idle))
+    }
+
     func testProgressDriverFollowsHingeThenSprings() {
         var driver = ProgressDriver()
         driver.followLag = 0

@@ -50,16 +50,23 @@ final class PopoverModel: ObservableObject {
         }
         settings.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         sensor.$capability.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
+            .sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
     }
 
     var statusLine: String {
         if !settings.isEnabled { return "Paused" }
         if registry.isSubstituting { return "\(registry.current.displayName) needs Screen Recording" }
+        if BuiltInDisplay.screen == nil, BuiltInDisplay.externalCount > 0 {
+            return "Lid shut on an external display: nothing to play"
+        }
+        let base: String
         switch sensor.capability {
-        case .continuousAngle: return "Following the lid"
-        case .lidStateOnly: return "Plays when the lid closes"
+        case .continuousAngle: base = "Following the lid"
+        case .lidStateOnly: base = "Plays when the lid closes"
         case .unsupported: return "Preview only: no lid sensor on this Mac"
         }
+        return BuiltInDisplay.externalCount > 0 ? "\(base), on the built-in display" : base
     }
 
     var needsPermissionCard: Bool {
