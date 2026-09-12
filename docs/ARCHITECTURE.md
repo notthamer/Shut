@@ -66,6 +66,11 @@ on. `TunerHost` registers each style's parameters with the Tuner in one line.
   hidden by the fit, the 1€ filter, and the driver's per-frame glide.
 - No frame is drawn unless progress changed; the display link pauses after 0.5 s
   of stillness and resumes on the next hinge sample.
+- The snapshot is taken when the lid first moves and refreshed once a second for
+  six seconds while it rests near open; after that it is dropped. The close only
+  starts with a snapshot under 1.5 s old, re-capturing first otherwise, so the
+  picture always matches the Space the user is on. Console reports the age on
+  every `overlay shown` line.
 - The app opts out of App Nap (`LSAppNapIsDisabled` plus a `beginActivity`) so a
   close is never missed while the app is in the background on another Space.
 
