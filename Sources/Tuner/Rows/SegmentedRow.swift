@@ -27,24 +27,26 @@ public struct SegmentedRow: View {
             Spacer(minLength: 4)
             HStack(spacing: 0) {
                 ForEach(Array(options.enumerated()), id: \.offset) { index, name in
-                    Text(name)
-                        .font(TunerTheme.label)
-                        .foregroundStyle(index == selection ? theme.textPrimary : theme.textLabel)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background {
-                            if index == selection {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(theme.surfaceActive)
-                                    .matchedGeometryEffect(id: "pill", in: pill)
+                    Button { selection = index } label: {
+                        Text(name)
+                            .font(TunerTheme.label)
+                            .foregroundStyle(index == selection ? theme.textPrimary : theme.textLabel)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background {
+                                if index == selection {
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(theme.surfaceActive)
+                                        .matchedGeometryEffect(id: "pill", in: pill)
+                                }
                             }
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture { selection = index }
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressScaleStyle(scale: 0.97))
                 }
             }
             .padding(2)
-            .tunerAnimation(TunerTheme.quick, value: selection)
+            .tunerMotion(TunerTheme.quick, value: selection)
         }
         .padding(.leading, 12)
         .padding(.trailing, 2)

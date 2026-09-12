@@ -2,6 +2,7 @@ import AppKit
 import LidSensor
 import SwiftUI
 import TransitionKit
+import Tuner
 import XCTest
 @testable import ShutApp
 
@@ -25,9 +26,18 @@ final class PopoverSnapshotTests: XCTestCase {
         XCTAssertEqual(model.statusLine, "Fold needs Screen Recording")
         XCTAssertTrue(model.needsPermissionCard)
 
-        let variants: [(String, NSAppearance.Name, Bool)] = [("dark", .darkAqua, false), ("light", .aqua, false), ("window", .darkAqua, true)]
-        for (name, appearance, inWindow) in variants {
-            let hosting = NSHostingView(rootView: AnyView(PopoverView(model: model, hostedInWindow: inWindow)))
+        // dark, light, hosted in a window, and the solid look Reduce Transparency
+        // and Increase Contrast ask for.
+        let variants: [(String, NSAppearance.Name, Bool, Bool)] = [
+            ("dark", .darkAqua, false, false), ("light", .aqua, false, false),
+            ("window", .darkAqua, true, false), ("solid", .darkAqua, false, true),
+        ]
+        for (name, appearance, inWindow, solid) in variants {
+            var root = AnyView(PopoverView(model: model, hostedInWindow: inWindow))
+            if solid {
+                root = AnyView(root.environment(\.tunerTheme, TunerTheme(colorScheme: .dark, reduceTransparency: true, increaseContrast: true)))
+            }
+            let hosting = NSHostingView(rootView: root)
             hosting.frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: 640)
             let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless], backing: .buffered, defer: false)
             window.appearance = NSAppearance(named: appearance)

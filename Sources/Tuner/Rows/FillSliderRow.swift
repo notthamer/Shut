@@ -81,7 +81,8 @@ public struct FillSliderRow: View {
                         .tunerAnimation(TunerTheme.quick, value: dragging)
                 }
                 .scaleEffect(x: 1 + abs(stretch) / max(width, 1), y: 1, anchor: stretch > 0 ? .leading : .trailing)
-                .tunerAnimation(.spring(response: 0.35, dampingFraction: 0.85), value: stretch)
+                // The one bounce on the panel: a rubber band carries the drag's momentum.
+                .tunerMotion(.spring(response: 0.35, dampingFraction: 0.85), value: stretch)
 
                 // Hash marks fade in while active.
                 let marks = isDiscrete ? max(Int(((range.upperBound - range.lowerBound) / step).rounded()) - 1, 0) : 9
@@ -92,7 +93,7 @@ public struct FillSliderRow: View {
                         .offset(x: width * CGFloat(i + 1) / CGFloat(marks + 1))
                         .opacity(hovering || dragging ? 1 : 0)
                 }
-                .tunerAnimation(.easeOut(duration: 0.2), value: hovering || dragging)
+                .tunerAnimation(TunerTheme.easeOut(0.16), value: hovering || dragging)
 
                 // Handle
                 Capsule()
@@ -101,8 +102,8 @@ public struct FillSliderRow: View {
                     .scaleEffect(x: hovering || dragging ? 1 : 0.25, y: collides ? 0.75 : 1)
                     .offset(x: handleX)
                     .opacity(collides ? handleOpacity * 0.2 : handleOpacity)
-                    .tunerAnimation(TunerTheme.quick, value: hovering)
-                    .tunerAnimation(TunerTheme.quick, value: collides)
+                    .tunerMotion(TunerTheme.quick, value: hovering)
+                    .tunerMotion(TunerTheme.quick, value: collides)
 
                 HStack(spacing: 8) {
                     Text(label)

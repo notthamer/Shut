@@ -181,6 +181,13 @@ curve; easing curves have draggable handles. Versions save, switch and delete;
 starts-at angle, smoothing, glide and Animate opening. The panel hides itself while
 a real lid transition plays.
 
+Motion across the panel and the Tuner follows one set of rules: critically
+damped springs, a strong ease-out for anything entering or leaving, everything
+under 300 ms, feedback on mouse-down for every pressable, nothing animated on a
+keyboard shortcut, and Reduce Motion keeping short fades while dropping movement.
+Run Shut with `SHUT_MOTION_SCALE=4` in the environment to watch every animation
+four times slower.
+
 `Tuner` is a standalone Swift package target with no dependency on the rest of
 Shut. Describe your parameters with key paths and the panel builds itself:
 
@@ -289,6 +296,9 @@ the version.
   shape. License in `THIRD_PARTY_LICENSES.md`.
 - [DialKit](https://github.com/joshpuckett/dialkit), MIT © 2026 Josh Puckett: the
   design of the tuning panel. No code was copied; the name is not used in code.
+- [Emil Kowalski's skills](https://github.com/emilkowalski/skills), MIT: the motion
+  rules the interface follows (easing, durations, springs, press feedback, reduced
+  motion), translated from the web to SwiftUI and AppKit. Guidance only, no code.
 - [samhenrigold/LidAngleSensor](https://github.com/samhenrigold/LidAngleSensor) and
   [DuoBook](https://github.com/askmaddyy/DuoBook) for the sensor research. Shut's
   sensor code is written from scratch.

@@ -29,6 +29,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## Emil Kowalski's skills
+
+The interface's motion rules (curves, durations, spring damping, press feedback,
+reduced-motion behaviour) follow the design-engineering skills published at
+https://github.com/emilkowalski/skills, MIT License, Copyright (c) Emil Kowalski.
+They are guidance; no code from that repository is included here.
+
 ## DialKit
 
 The design of the Tuner panel is inspired by DialKit, https://github.com/joshpuckett/dialkit,

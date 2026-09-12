@@ -39,25 +39,49 @@ struct WelcomeView: View {
     let enable: () -> Void
     @Environment(\.tunerTheme) private var theme
 
+    /// Seen once, so this is the one screen that spends the delight budget: a
+    /// 40 ms stagger, each piece rising 6 pt as it fades in.
+    @State private var appeared = false
+
     var body: some View {
         VStack(spacing: 18) {
             Spacer()
             LogoMark(size: 88)
+                .modifier(Entrance(appeared: appeared, delay: 0))
             Text("Choose how your Mac closes.")
                 .font(.system(size: 20, weight: .semibold))
+                .tracking(-0.3)
                 .foregroundStyle(theme.textRoot)
+                .modifier(Entrance(appeared: appeared, delay: 0.04))
             Text(capability.explanation)
                 .font(.system(size: 12))
                 .foregroundStyle(theme.textLabel)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 320)
+                .modifier(Entrance(appeared: appeared, delay: 0.08))
             Spacer()
-            ActionRow("Enable", action: enable)
+            PrimaryButton("Enable", action: enable)
                 .frame(width: 180)
                 .padding(.bottom, 24)
+                .modifier(Entrance(appeared: appeared, delay: 0.12))
         }
         .frame(width: 420, height: 320)
         .background(theme.panel)
+        .onAppear { appeared = true }
         .tunerThemed()
+    }
+}
+
+/// Fade plus a small rise on the strong ease-out. Under Reduce Motion only the
+/// fade remains (the modifier resolves to the short reduced fade).
+private struct Entrance: ViewModifier {
+    let appeared: Bool
+    let delay: Double
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    func body(content: Content) -> some View {
+        content
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared || reduce ? 0 : 6)
+            .tunerAnimation(TunerTheme.easeOut(0.32).delay(delay), value: appeared)
     }
 }

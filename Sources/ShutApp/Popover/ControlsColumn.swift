@@ -31,10 +31,12 @@ struct ControlsColumn: View {
 
                 FeelSection(model: model)
                     .id(model.registry.current.id)
-                    .transition(.opacity)
+                    .transition(.blurFade)
             }
             .padding(14)
-            .tunerAnimation(TunerTheme.spring, value: model.registry.current.id)
+            // A style change swaps the dials: a blur-bridged fade so the outgoing
+            // and incoming rows read as one block changing, not two overlapping.
+            .tunerAnimation(TunerTheme.easeOut(0.18), value: model.registry.current.id)
             .tunerAnimation(TunerTheme.spring, value: model.needsPermissionCard)
         }
         // A soft fade at the bottom says "there's more" without a scrollbar.
@@ -56,39 +58,56 @@ struct StyleGallery: View {
             ForEach(model.registry.all, id: \.id) { transition in
                 StyleCard(transition: transition,
                           image: model.thumbnail(for: transition),
+                          version: model.thumbnailVersion(for: transition.id),
                           isSelected: transition.id == model.registry.current.id,
-                          needsPermission: transition.needsSnapshot && !model.registry.captureAvailable)
-                    .onTapGesture { model.select(transition.id) }
+                          needsPermission: transition.needsSnapshot && !model.registry.captureAvailable,
+                          select: { model.select(transition.id) })
             }
         }
-        .id(model.thumbnailGeneration)
     }
 }
 
 struct StyleCard: View {
     let transition: TransitionKit.AnyTransition
     let image: CGImage?
+    /// Bumps when this card's thumbnail was re-rendered; the image crossfades.
+    let version: Int
     let isSelected: Bool
     let needsPermission: Bool
+    let select: () -> Void
     @Environment(\.tunerTheme) private var theme
     @State private var hover = false
 
     var body: some View {
+        Button(action: select) { card }
+            .buttonStyle(PressScaleStyle(scale: 0.97))
+            .focusEffectDisabled()
+            .onHover { hover = $0 }
+            .accessibilityLabel(transition.displayName)
+            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private var card: some View {
         VStack(spacing: 0) {
             ZStack {
                 if let image {
                     Image(decorative: image, scale: 1)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
+                        .id(version)
+                        .transition(.opacity)
                 } else {
                     theme.surfaceActive
                 }
             }
             .frame(height: 46)
             .clipped()
+            .tunerAnimation(TunerTheme.easeOut(0.16), value: version)
             HStack(spacing: 4) {
                 Text(transition.displayName)
-                    .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular))
+                    .font(TunerTheme.cardTitle)
+                    .tracking(TunerTheme.cardTitleTracking)
+                    .fontWeight(isSelected ? .semibold : .medium)
                     .foregroundStyle(isSelected ? theme.textRoot : theme.textLabel)
                     .lineLimit(1)
                 Spacer(minLength: 0)
@@ -111,14 +130,11 @@ struct StyleCard: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .shadow(color: .black.opacity(hover ? 0.25 : 0), radius: 8, y: 4)
+        .shadow(color: .black.opacity(hover ? 0.18 : 0), radius: 8, y: 4)
         .scaleEffect(hover && !isSelected ? 1.02 : 1)
-        .onHover { hover = $0 }
         .tunerAnimation(TunerTheme.quick, value: hover)
+        .tunerMotion(TunerTheme.quick, value: hover)
         .tunerAnimation(TunerTheme.quick, value: isSelected)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(transition.displayName)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
 
@@ -134,10 +150,11 @@ struct SpeedRow: View {
                           showsValue: false)
             HStack {
                 Text("Slow"); Spacer()
-                Text(String(format: "starts %.0f° above shut", model.settings.bandDegrees)); Spacer()
+                Text(String(format: "starts %.0f° above shut", model.settings.bandDegrees)).monospacedDigit(); Spacer()
                 Text("Fast")
             }
-            .font(.system(size: 9.5)).foregroundStyle(theme.textTertiary)
+            .font(TunerTheme.captionSmall).tracking(TunerTheme.captionSmallTracking)
+            .foregroundStyle(theme.textTertiary)
             .padding(.horizontal, 2)
         }
     }

@@ -30,6 +30,8 @@ final class PopoverModel: ObservableObject {
 
     @Published var stateDescription = "idle"
     @Published var thumbnailGeneration = 0
+    /// Per-style counters so a changed dial re-draws one card, not the grid.
+    @Published private(set) var thumbnailVersions: [String: Int] = [:]
     private var cancellables = Set<AnyCancellable>()
 
     init(settings: AppSettings, registry: TransitionRegistry, preview: PreviewModel, sensor: LidSensorMonitor,
@@ -46,6 +48,7 @@ final class PopoverModel: ObservableObject {
             if let small = Self.downscale(image, to: PlaceholderDesktop.defaultSize),
                (try? thumbnails.setBackdrop(small, isPlaceholder: false)) != nil {
                 self.thumbnailGeneration += 1
+                for t in self.registry.all { self.thumbnailVersions[t.id, default: 0] += 1 }
             }
         }
         settings.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
@@ -102,5 +105,8 @@ final class PopoverModel: ObservableObject {
     func invalidateThumbnail(id: String) {
         thumbnails?.invalidate(id: id)
         thumbnailGeneration += 1
+        thumbnailVersions[id, default: 0] += 1
     }
+
+    func thumbnailVersion(for id: String) -> Int { thumbnailVersions[id] ?? 0 }
 }

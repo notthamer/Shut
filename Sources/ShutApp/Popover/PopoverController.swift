@@ -48,41 +48,65 @@ final class PopoverController {
         dock.retain("popover")
         installMonitors()
 
-        // Enter: fade + settle from 97 %, anchored at the top where it hangs from.
+        // Enter: 160 ms, strong ease-out, from 97 % anchored at the top edge where
+        // it hangs from the menu bar (the trigger), critically damped: a panel
+        // that merely appears has no momentum to spend on a bounce.
         chrome?.layer?.anchorPoint = CGPoint(x: 0.5, y: 1)
         chrome?.layer?.position = CGPoint(x: size.width / 2, y: size.height)
         panel.alphaValue = 0
-        chrome?.layer?.transform = CATransform3DMakeScale(0.97, 0.97, 1)
         panel.makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.18
-            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.3, 1.0)
+            ctx.duration = Self.duration(0.16)
+            ctx.timingFunction = Self.easeOut
             panel.animator().alphaValue = 1
         }
-        let spring = CASpringAnimation(keyPath: "transform")
-        spring.fromValue = CATransform3DMakeScale(0.97, 0.97, 1)
-        spring.toValue = CATransform3DIdentity
-        spring.damping = 18; spring.stiffness = 260; spring.mass = 1
-        spring.duration = spring.settlingDuration
-        chrome?.layer?.add(spring, forKey: "enter")
-        chrome?.layer?.transform = CATransform3DIdentity
+        scaleChrome(from: 0.97, to: 1, duration: Self.duration(0.16))
     }
 
-    func close() {
+    /// Click-outside and the status item close with a short exit that mirrors
+    /// the entrance. Escape closes instantly: keyboard actions never animate.
+    func close(animated: Bool = true) {
         guard let panel, panel.isVisible else { return }
         removeMonitors()
         model.preview.stop()
         model.preview.followLid = false
         anchorButton?.highlight(false)
+        guard animated else {
+            panel.orderOut(nil)
+            dock.release("popover")
+            return
+        }
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.12
+            ctx.duration = Self.duration(0.12)
+            ctx.timingFunction = Self.easeOut
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             Task { @MainActor in
                 panel.orderOut(nil)
+                self?.chrome?.layer?.transform = CATransform3DIdentity
                 self?.dock.release("popover")
             }
         })
+        scaleChrome(from: 1, to: 0.98, duration: Self.duration(0.12))
+    }
+
+    private static let easeOut = CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
+    private static var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    private static func duration(_ seconds: Double) -> Double { seconds * TunerTheme.motionScale }
+
+    /// The panel's scale, on the strong ease-out. Skipped under Reduce Motion,
+    /// where the fade alone carries the transition.
+    private func scaleChrome(from: CGFloat, to: CGFloat, duration: Double) {
+        guard let layer = chrome?.layer, !Self.reduceMotion else { return }
+        let scale = CABasicAnimation(keyPath: "transform")
+        scale.fromValue = CATransform3DMakeScale(from, from, 1)
+        scale.toValue = CATransform3DMakeScale(to, to, 1)
+        scale.duration = duration
+        scale.timingFunction = Self.easeOut
+        scale.fillMode = .forwards
+        scale.isRemovedOnCompletion = false
+        layer.add(scale, forKey: "scale")
+        layer.transform = CATransform3DMakeScale(to, to, 1)
     }
 
     private func makePanel() -> NSPanel {
@@ -120,7 +144,7 @@ final class PopoverController {
         } { monitors.append(global) }
         if let local = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { [weak self] event in
             guard let self, let panel = self.panel else { return event }
-            if event.type == .keyDown, event.keyCode == 53 { self.close(); return nil }   // Escape
+            if event.type == .keyDown, event.keyCode == 53 { self.close(animated: false); return nil }   // Escape
             if event.type != .keyDown, event.window !== panel {
                 // A click on the status item itself is handled by the button (toggle).
                 if let button = self.anchorButton, event.window === button.window { return event }

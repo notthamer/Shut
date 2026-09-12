@@ -39,7 +39,8 @@ struct PreviewColumn: View {
                 HStack {
                     Text("Open"); Spacer(); Text("Shut")
                 }
-                .font(.system(size: 9.5)).foregroundStyle(theme.textTertiary)
+                .font(TunerTheme.captionSmall).tracking(TunerTheme.captionSmallTracking)
+                .foregroundStyle(theme.textTertiary)
                 .padding(.horizontal, 2)
             }
             .padding(.top, 12)
@@ -53,8 +54,8 @@ struct PreviewColumn: View {
             }
             .padding(.top, 16)
             .id(model.registry.current.id)
-            .transition(.opacity)
-            .tunerAnimation(TunerTheme.quick, value: model.registry.current.id)
+            .transition(.blurFade)
+            .tunerAnimation(TunerTheme.easeOut(0.18), value: model.registry.current.id)
 
             Spacer(minLength: 10)
 

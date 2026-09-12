@@ -59,6 +59,7 @@ struct PopoverHeader: View {
                 Text("Shut.").font(TunerTheme.rootTitle).tracking(-0.2).foregroundStyle(theme.textRoot)
                 HStack(spacing: 5) {
                     Circle().fill(statusColor).frame(width: 5, height: 5)
+                        .tunerAnimation(TunerTheme.easeOut(0.2), value: statusColor)
                     Text(model.statusLine).font(.system(size: 10.5)).foregroundStyle(theme.textLabel)
                 }
             }
@@ -122,8 +123,9 @@ struct SmallPill: View {
                 }
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleStyle(scale: 0.96))
         .tunerAnimation(TunerTheme.quick, value: isOn)
+        .tunerMotion(TunerTheme.quick, value: isOn)
         .accessibilityValue(isOn ? "On" : "Off")
     }
 }
@@ -147,7 +149,7 @@ struct IconButton: View {
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover ? theme.surfaceHover : .clear))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleStyle(scale: 0.96))
         .onHover { hover = $0 }
         .help(help)
     }
@@ -168,7 +170,7 @@ struct QuietButton: View {
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover ? theme.surfaceHover : .clear))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleStyle(scale: 0.96))
         .onHover { hover = $0 }
     }
 }

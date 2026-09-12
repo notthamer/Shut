@@ -97,20 +97,38 @@ public final class TunerPanelController {
     public func toggleCollapsed() {
         isCollapsed.toggle()
         let chrome = panel.contentView as? PanelChrome
+        let target: NSRect
         if isCollapsed {
             expandedFrame = panel.frame
             let size = TunerTheme.collapsedSize
-            let frame = NSRect(x: panel.frame.maxX - size, y: panel.frame.maxY - size, width: size, height: size)
-            chrome?.isCollapsed = true
-            hosting.rootView = AnyView(CollapsedBubble { [weak self] in self?.toggleCollapsed() })
-            panel.setFrame(frame, display: true, animate: true)
+            target = NSRect(x: panel.frame.maxX - size, y: panel.frame.maxY - size, width: size, height: size)
         } else {
-            chrome?.isCollapsed = false
-            hosting.rootView = content
-            let target = expandedFrame.map { NSRect(x: panel.frame.maxX - $0.width, y: panel.frame.maxY - $0.height, width: $0.width, height: $0.height) }
+            target = expandedFrame.map { NSRect(x: panel.frame.maxX - $0.width, y: panel.frame.maxY - $0.height, width: $0.width, height: $0.height) }
                 ?? NSRect(origin: panel.frame.origin, size: Self.defaultSize)
-            panel.setFrame(target, display: true, animate: true)
         }
+        let collapsed = isCollapsed
+        // The content fades out, the panel resizes on the strong ease-out, and
+        // the new content fades in: the frame moves, the content never teleports.
+        let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = (reduce ? 0 : 0.08) * TunerTheme.motionScale
+            hosting.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                chrome?.isCollapsed = collapsed
+                self.hosting.rootView = collapsed ? AnyView(CollapsedBubble { [weak self] in self?.toggleCollapsed() }) : self.content
+                NSAnimationContext.runAnimationGroup { ctx in
+                    ctx.duration = (reduce ? 0 : 0.22) * TunerTheme.motionScale
+                    ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
+                    self.panel.animator().setFrame(target, display: true)
+                }
+                NSAnimationContext.runAnimationGroup { ctx in
+                    ctx.duration = (reduce ? 0 : 0.12) * TunerTheme.motionScale
+                    self.hosting.animator().alphaValue = 1
+                }
+            }
+        })
     }
 
     private func saveFrame() {
@@ -146,6 +164,7 @@ public final class PanelChrome: NSView {
     public var isCollapsed = false { didSet { needsDisplay = true; updateMask() } }
     private let blur = NSVisualEffectView()
     private let highlight = CAGradientLayer()
+    private var accessibilityObserver: NSObjectProtocol?
 
     public override init(frame: NSRect) {
         super.init(frame: frame)
@@ -158,6 +177,15 @@ public final class PanelChrome: NSView {
         blur.frame = bounds
         blur.autoresizingMask = [.width, .height]
         super.addSubview(blur)
+        // Reduce Transparency: no blur, and the SwiftUI content paints a solid
+        // panel colour (TunerTheme.panelGlass), so the surface reads as frosted
+        // solid rather than glass.
+        applyAccessibility()
+        accessibilityObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applyAccessibility() }
+        }
         // One point of light along the top edge.
         highlight.colors = [NSColor.white.withAlphaComponent(0.10).cgColor, NSColor.white.withAlphaComponent(0).cgColor]
         highlight.startPoint = CGPoint(x: 0.5, y: 0)
@@ -165,6 +193,11 @@ public final class PanelChrome: NSView {
         highlight.zPosition = 10
         layer?.addSublayer(highlight)
         updateMask()
+    }
+
+    private func applyAccessibility() {
+        blur.isHidden = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
+        hosting?.needsDisplay = true
     }
 
     /// Puts the content above the blur. Use this rather than addSubview.
@@ -205,7 +238,8 @@ struct CollapsedBubble: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(theme.textRoot)
         }
-        .scaleEffect(pressed ? 0.9 : 1)
+        .scaleEffect(pressed ? 0.94 : 1)
+        .tunerMotion(TunerTheme.press, value: pressed)
         .contentShape(Circle())
         .gesture(DragGesture(minimumDistance: 0)
             .onChanged { _ in pressed = true }

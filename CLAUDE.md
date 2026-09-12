@@ -29,6 +29,18 @@ is described in `README.md` and `docs/ARCHITECTURE.md`.
    gaps, 8/14-pt radii, neutral alphas, no accent colour, springs on state changes,
    plain-English `help` on every control. The theme is derived from the SwiftUI
    colour scheme; never inject it from a view's own body.
+   **Motion rules** (from Emil Kowalski's design-engineering skills, credited in
+   the README): keyboard-initiated actions never animate (⌃⌥T, Escape, arrow
+   nudges); everything else is critically damped (`TunerTheme.quick`/`spring`),
+   entrances and exits use `TunerTheme.easeOut(_:)`, on-screen moves
+   `easeInOut(_:)`, UI stays under 300 ms, exits are faster than entrances, nothing
+   enters from scale 0, popovers grow from their trigger. Every pressable gets
+   `PressScaleStyle` (0.97 rows and cards, 0.96 small buttons) so feedback lands on
+   mouse-down. Use `tunerMotion` for anything that moves or scales and
+   `tunerAnimation` for opacity, colour and fills: Reduce Motion drops the first
+   and shortens the second to a 120 ms fade. `PanelChrome` and `panelGlass` go
+   solid under Reduce Transparency. Review timing in slow motion with
+   `SHUT_MOTION_SCALE=4` in the scheme's environment.
 8. **Progress is 0 = open, 1 = shut** everywhere above the sensor.
 9. **The overlay belongs to the built-in display and to the Space the lid is
    closing on.** Build it fresh per close, show it with `OverlayWindow.show(on:)`

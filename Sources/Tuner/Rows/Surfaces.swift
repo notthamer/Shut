@@ -55,6 +55,24 @@ public extension View {
     }
 }
 
+/// A crossfade bridged by a 2-pt blur and a 4-pt rise, so the outgoing and the
+/// incoming content read as one thing changing rather than two things
+/// overlapping. Under Reduce Motion the rise is dropped and only the fade stays.
+struct BlurFade: ViewModifier {
+    let active: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    func body(content: Content) -> some View {
+        content
+            .opacity(active ? 0 : 1)
+            .blur(radius: active ? 2 : 0)
+            .offset(y: active && !reduce ? 4 : 0)
+    }
+}
+
+public extension AnyTransition {
+    static let blurFade = AnyTransition.modifier(active: BlurFade(active: true), identity: BlurFade(active: false))
+}
+
 /// The one strong call to action on a surface: inverted, like the Copy button.
 public struct PrimaryButton: View {
     let title: String

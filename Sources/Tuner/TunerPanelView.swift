@@ -146,6 +146,19 @@ public extension TunerPanelView where Preview == EmptyView, Extra == EmptyView {
 
 /// The one inverted element in the panel: text-root background, panel-coloured
 /// glyph. Cross-fades to a checkmark for 1.5 s after copying.
+/// A full-width header row can't scale without looking wrong, so its press
+/// feedback is a fill that appears on mouse-down.
+struct FolderHeaderStyle: ButtonStyle {
+    @Environment(\.tunerTheme) private var theme
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
+                .fill(configuration.isPressed ? theme.surface : .clear)
+                .padding(.horizontal, -6))
+            .tunerAnimation(TunerTheme.press, value: configuration.isPressed)
+    }
+}
+
 struct CopyButton: View {
     let action: () -> Void
     @Environment(\.tunerTheme) private var theme
@@ -154,10 +167,11 @@ struct CopyButton: View {
     var body: some View {
         Button {
             action()
-            withAnimation(.easeOut(duration: 0.08)) { copied = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation(.easeOut(duration: 0.08)) { copied = false } }
+            withAnimation(TunerTheme.easeOut(0.16)) { copied = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation(TunerTheme.easeOut(0.16)) { copied = false } }
         } label: {
             Image(systemName: copied ? "checkmark" : "doc.on.clipboard")
+                .contentTransition(.symbolEffect(.replace))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(theme.panel)
                 .frame(width: TunerTheme.rowHeight, height: TunerTheme.rowHeight)
@@ -185,7 +199,7 @@ struct PanelIconButton: View {
                 .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleStyle(scale: 0.96))
         .onHover { hover = $0 }
     }
 }
@@ -290,24 +304,31 @@ struct FolderView<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Eyebrow(title)
-                Spacer()
-                Text("Reset")
-                    .font(TunerTheme.caption)
-                    .foregroundStyle(resetHover ? theme.textPrimary : theme.textTertiary)
+            // The header is a button so it answers on mouse-down; Reset is its own
+            // button inside it, and wins the click when it is the target.
+            Button { isOpen.toggle() } label: {
+                HStack(spacing: 8) {
+                    Eyebrow(title)
+                    Spacer()
+                    Button(action: onReset) {
+                        Text("Reset")
+                            .font(TunerTheme.caption)
+                            .foregroundStyle(resetHover ? theme.textPrimary : theme.textTertiary)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressScaleStyle(scale: 0.96))
                     .onHover { resetHover = $0 }
-                    .onTapGesture(perform: onReset)
                     .help("Put this group back to its defaults")
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(theme.textLabel)
-                    .opacity(0.6)
-                    .rotationEffect(.degrees(isOpen ? 180 : 0))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(theme.textLabel)
+                        .opacity(0.6)
+                        .rotationEffect(.degrees(isOpen ? 180 : 0))
+                }
+                .frame(height: TunerTheme.rowHeight)
+                .contentShape(Rectangle())
             }
-            .frame(height: TunerTheme.rowHeight)
-            .contentShape(Rectangle())
-            .onTapGesture { isOpen.toggle() }
+            .buttonStyle(FolderHeaderStyle())
             .focusable()
             .focusEffectDisabled()
             .onKeyPress(.return) { isOpen.toggle(); return .handled }
@@ -320,6 +341,6 @@ struct FolderView<Content: View>: View {
             }
             Rectangle().fill(theme.surfaceSubtle).frame(height: 1)
         }
-        .tunerAnimation(.easeOut(duration: 0.26), value: isOpen)
+        .tunerMotion(TunerTheme.easeOut(0.22), value: isOpen)
     }
 }
