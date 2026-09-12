@@ -54,6 +54,7 @@ public final class AppController: ObservableObject {
     private let blackScreenLimit: TimeInterval = 1.5
     private var lastChangeAt = Date()
     private var lastRenderedProgress: Double?
+    private var napActivity: NSObjectProtocol?
 
     /// Progress at which the overlay appears; Bendable engages at 0.3 % closure.
     private let showAt = 0.012
@@ -93,6 +94,13 @@ public final class AppController: ObservableObject {
         workspace.addObserver(self, selector: #selector(screensSlept), name: NSWorkspace.screensDidSleepNotification, object: nil)
         workspace.addObserver(self, selector: #selector(didWake), name: NSWorkspace.didWakeNotification, object: nil)
         workspace.addObserver(self, selector: #selector(screensWoke), name: NSWorkspace.screensDidWakeNotification, object: nil)
+
+        // A Dock app with no visible window is a prime App Nap candidate, and a
+        // napped process can't watch a hinge. The sensor parks itself when the
+        // lid is still, which is where the power saving actually comes from.
+        napActivity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep, .automaticTerminationDisabled],
+            reason: "Watching the lid hinge")
 
         unlock.onUnlock = { [weak self] in self?.sessionUnlocked() }
         unlock.onLock = { [weak self] in self?.blackSince = nil }
@@ -193,6 +201,7 @@ public final class AppController: ObservableObject {
     private func arm() {
         state = .armed
         armedAt = Date()
+        sensor.keepAwake = true
         if registry.effectiveForLid.needsSnapshot { capture() }
     }
 
@@ -276,6 +285,7 @@ public final class AppController: ObservableObject {
     func teardown(reason: String) {
         displayLink?.stop()
         stopSafetyTimer()
+        sensor.keepAwake = false
         overlay?.hide()
         overlay?.metalView.isBlackedOut = false
         blackSince = nil

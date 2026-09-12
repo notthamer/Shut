@@ -91,6 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.openTuner = { [weak self] in self?.tunerHost?.toggle() }
         menuBar.presetMenuProvider = { [weak self] in self?.tunerHost?.presetMenuItems() ?? [] }
 
+        sensor.onRateChange = { rate in Log.lid.info("poll rate \(Int(rate)) Hz") }
         let capability = sensor.start()
         Log.lid.info("hinge capability: \(capability.rawValue, privacy: .public)")
 

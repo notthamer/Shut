@@ -50,6 +50,14 @@ public final class LidSensorMonitor: ObservableObject {
     /// `.lidStateOnly` edges, on the main thread: true = opened, false = closed.
     public var onLidEvent: ((Bool) -> Void)?
 
+    /// While true the sensor never drops below the idle rate, so a lid held
+    /// mid-close keeps producing readings for the watchdog and the overlay.
+    public var keepAwake: Bool {
+        get { queue.sync { _keepAwake } }
+        set { queue.sync { _keepAwake = newValue }; queue.async { [weak self] in self?.tick() } }
+    }
+    private var _keepAwake = false
+
     /// 0 = follow hard, 1 = steadiest. Default 0.25.
     public var smoothing: Double {
         get { queue.sync { normalizer.smoothing } }
@@ -186,8 +194,12 @@ public final class LidSensorMonitor: ObservableObject {
 
     // MARK: - Sampling
 
+    /// Called on every rate change (sampling queue), for diagnostics.
+    public var onRateChange: ((Double) -> Void)?
+
     private func scheduleTimer(rateHz: Double) {
         timer?.cancel()
+        if rateHz != currentRate { onRateChange?(rateHz) }
         currentRate = rateHz
         let source = DispatchSource.makeTimerSource(queue: queue)
         source.schedule(deadline: .now(), repeating: 1.0 / rateHz, leeway: .milliseconds(1))
@@ -222,10 +234,11 @@ public final class LidSensorMonitor: ObservableObject {
         // Active while moving; idle for a while after movement or a change the
         // doorbell reported; parked otherwise (1 Hz fallback plus the doorbell).
         let sinceMove = now - lastMovement, sinceBell = now - lastDoorbell
-        let wantedRate: Double
+        var wantedRate: Double
         if sinceMove < settleTime { wantedRate = Self.activeRateHz }
         else if sinceMove < settleTime + Self.parkAfter || sinceBell < Self.parkAfter { wantedRate = Self.idleRateHz }
         else { wantedRate = Self.parkedRateHz }
+        if _keepAwake { wantedRate = max(wantedRate, Self.idleRateHz) }
         if wantedRate != currentRate { scheduleTimer(rateHz: wantedRate) }
 
         onSample?(LidSample(timestamp: now, rawAngle: raw, angle: state.angle ?? raw,
