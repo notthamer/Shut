@@ -239,8 +239,10 @@ struct VersionsMenu<P: TunableParameters>: View {
             .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(hover ? theme.surfaceHover : theme.surface))
             .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button)
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
+        .frame(maxWidth: .infinity)
         .onHover { hover = $0 }
         .accessibilityLabel("Versions")
     }

@@ -225,7 +225,10 @@ public final class LidSensorMonitor: ObservableObject {
         lastRawAngle = raw
         if doorbellPending {
             doorbellPending = false
-            if rawStep != 0 { lastDoorbell = now }   // a real change: watch at idle rate for a while
+            // A resting lid flickers by one degree; only more than that is worth
+            // leaving parked for. A real close changes by several degrees between
+            // two 1 Hz reads, and the fitted rate ramps to active from there.
+            if abs(rawStep) >= 2 { lastDoorbell = now }
         }
         guard let state = normalizer.normalize(HingeSample(angle: raw, lidIsOpen: raw > 1, timestamp: now)) else { return }
         let dps = -state.velocity * max(normalizer.animationRange.upperBound - normalizer.animationRange.lowerBound, 1)

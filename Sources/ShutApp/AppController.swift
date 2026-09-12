@@ -279,6 +279,18 @@ public final class AppController: ObservableObject {
         if displayLink == nil { displayLink = DisplayLinkDriver(screen: screen) }
         displayLink?.onFrame = { [weak self] dt in self?.frame(dt: dt) }
         displayLink?.start()
+        logOverlayPlacement()
+    }
+
+    /// Where the overlay actually ended up, for diagnosing "nothing showed".
+    private func logOverlayPlacement() {
+        guard let overlay else { return }
+        let visible = overlay.occlusionState.contains(.visible)
+        Log.overlay.info("overlay placement: onActiveSpace=\(overlay.isOnActiveSpace) visible=\(visible) level=\(overlay.level.rawValue) frame=\(NSStringFromRect(overlay.frame), privacy: .public) screens=\(NSScreen.screens.count)")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self, let overlay = self.overlay, overlay.isVisible else { return }
+            Log.overlay.info("overlay after 0.5 s: onActiveSpace=\(overlay.isOnActiveSpace) visible=\(overlay.occlusionState.contains(.visible))")
+        }
     }
 
     /// Hide everything and drop the snapshot. Safe to call from any state.
