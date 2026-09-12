@@ -14,6 +14,9 @@ public final class AppSettings: ObservableObject {
     @Published public var smoothing: Double { didSet { defaults.set(smoothing, forKey: "smoothing") } }
     @Published public var animateOpening: Bool { didSet { defaults.set(animateOpening, forKey: "animateOpening") } }
     @Published public var showAngleInMenu: Bool { didSet { defaults.set(showAngleInMenu, forKey: "showAngleInMenu") } }
+    /// True: a Dock icon at all times. False: menu bar only, with the Dock icon
+    /// appearing just while a window is open.
+    @Published public var showInDock: Bool { didSet { defaults.set(showInDock, forKey: "showInDock") } }
     @Published public var hasCompletedFirstRun: Bool { didSet { defaults.set(hasCompletedFirstRun, forKey: "hasCompletedFirstRun") } }
 
     public static let defaultBandDegrees = 45.0
@@ -33,6 +36,7 @@ public final class AppSettings: ObservableObject {
         smoothing = defaults.object(forKey: "smoothing") as? Double ?? 0.25
         animateOpening = defaults.object(forKey: "animateOpening") as? Bool ?? true
         showAngleInMenu = defaults.object(forKey: "showAngleInMenu") as? Bool ?? true
+        showInDock = defaults.object(forKey: "showInDock") as? Bool ?? true
         hasCompletedFirstRun = defaults.object(forKey: "hasCompletedFirstRun") as? Bool ?? false
     }
 }

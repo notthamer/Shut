@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import LidSensor
 import SwiftUI
 import TransitionKit
@@ -53,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: PopoverController!
     private let welcome = WelcomeWindow()
     private let dock = DockPresence()
+    private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Two copies (one from Xcode, one relaunched) would each draw an overlay
@@ -107,6 +109,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popoverModel.resetStyle = { [weak self] id in self?.tunerHost?.resetStyle(id: id) }
         tunerHost?.onParamsChanged = { [weak self] id in self?.popoverModel.invalidateThumbnail(id: id) }
         popover = PopoverController(model: popoverModel, dock: dock)
+        dock.alwaysVisible = settings.showInDock
+        settings.$showInDock.sink { [weak self] on in self?.dock.alwaysVisible = on }.store(in: &cancellables)
         tunerHost?.onPanelVisibility = { [weak self] visible in visible ? self?.dock.retain("tuner") : self?.dock.release("tuner") }
         welcome.onVisibilityChanged = { [weak self] visible in visible ? self?.dock.retain("welcome") : self?.dock.release("welcome") }
         menuBar.togglePopover = { [weak self] button in self?.popover.toggle(relativeTo: button) }
@@ -125,7 +129,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Clicking the Dock icon (visible while a window is open) brings the popover back.
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        let tune = NSMenuItem(title: "Tune everything…", action: #selector(dockTune), keyEquivalent: "")
+        tune.target = self
+        menu.addItem(tune)
+        let toggle = NSMenuItem(title: settings.isEnabled ? "Pause" : "Resume", action: #selector(dockToggle), keyEquivalent: "")
+        toggle.target = self
+        menu.addItem(toggle)
+        return menu
+    }
+
+    @objc private func dockTune() { tunerHost?.toggle() }
+    @objc private func dockToggle() { settings.isEnabled.toggle() }
+
+    /// Clicking the Dock icon brings the popover back.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if let button = menuBar.statusButton, popover?.isShown == false { popover.show(relativeTo: button) }
         return true

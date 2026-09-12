@@ -65,6 +65,11 @@ struct PopoverFooter: View {
             Text("Open at login")
                 .font(TunerTheme.caption).foregroundStyle(theme.textLabel)
             SmallPill(isOn: launchAtLogin) { launchAtLogin.toggle(); model.setLaunchAtLogin(launchAtLogin) }
+            Text("In Dock")
+                .font(TunerTheme.caption).foregroundStyle(theme.textLabel)
+                .padding(.leading, 6)
+            SmallPill(isOn: model.settings.showInDock) { model.settings.showInDock.toggle() }
+                .help("Keep Shut in the Dock. Off keeps it in the menu bar only.")
             Spacer()
             QuietButton("Tune everything…", action: model.openTuner)
             QuietButton("Quit", action: model.quit)

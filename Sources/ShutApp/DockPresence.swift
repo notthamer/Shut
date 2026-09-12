@@ -6,15 +6,21 @@ import AppKit
 @MainActor
 final class DockPresence {
     private var visible = Set<String>()
+    /// The user's choice: a Dock icon at all times, or menu bar only.
+    var alwaysVisible = true { didSet { apply() } }
 
     func retain(_ key: String) {
-        let wasEmpty = visible.isEmpty
         visible.insert(key)
-        if wasEmpty { NSApp.setActivationPolicy(.regular) }
+        apply()
     }
 
     func release(_ key: String) {
         visible.remove(key)
-        if visible.isEmpty { NSApp.setActivationPolicy(.accessory) }
+        apply()
+    }
+
+    private func apply() {
+        let wanted: NSApplication.ActivationPolicy = (alwaysVisible || !visible.isEmpty) ? .regular : .accessory
+        if NSApp.activationPolicy() != wanted { NSApp.setActivationPolicy(wanted) }
     }
 }
