@@ -1,127 +1,99 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The panel body: preview slot, presets bar, one collapsible folder per schema
-/// folder, and JSON actions. Generic over the parameter struct and whatever
-/// preview the host app supplies.
+/// The panel body: title, toolbar (versions + Copy), preview slot, folders, an
+/// extra slot for a second store's folders, and a footer. Generic over the
+/// parameter struct and whatever preview the host supplies.
 public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: View {
     @ObservedObject var store: TunerStore<P>
+    let title: String
     let preview: Preview
     let extra: Extra
-    @State private var newPresetName = ""
-    @State private var showingSave = false
+    let onCollapse: (() -> Void)?
+
+    @Environment(\.tunerTheme) private var theme
     @State private var flash: String?
 
-    /// - Parameters:
-    ///   - preview: shown above the controls (the host app's live preview).
-    ///   - extra: shown below the folders, e.g. `TunerFoldersView` for a second store.
-    public init(store: TunerStore<P>, @ViewBuilder preview: () -> Preview, @ViewBuilder extra: () -> Extra) {
+    public init(store: TunerStore<P>, title: String = P.tunerDisplayName, onCollapse: (() -> Void)? = nil,
+                @ViewBuilder preview: () -> Preview, @ViewBuilder extra: () -> Extra) {
         self.store = store
+        self.title = title
+        self.onCollapse = onCollapse
         self.preview = preview()
         self.extra = extra()
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                preview
-
-                presetsBar
-
-                TunerFoldersView(store: store)
-
-                extra
-
-                footer
-            }
-            .padding(14)
-        }
-        .onDrop(of: [UTType.json, UTType.fileURL, UTType.plainText], isTargeted: nil) { providers in
-            handleDrop(providers)
-        }
-    }
-
-    // MARK: Presets
-
-    private var presetsBar: some View {
-        HStack(spacing: 6) {
-            Picker("Preset", selection: Binding(
-                get: { store.activePresetName ?? "" },
-                set: { name in
-                    if let preset = store.allPresets.first(where: { $0.name == name }) { store.apply(preset: preset) }
-                })) {
-                Text(store.activePresetName == nil ? "Custom" : "").tag("")
-                ForEach(store.allPresets) { preset in
-                    Text(preset.builtIn ? "\(preset.name)" : "\(preset.name) ·").tag(preset.name)
+        VStack(spacing: 0) {
+            header
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    if !(preview is EmptyView) {
+                        preview
+                    }
+                    TunerFoldersView(store: store)
+                    extra
+                    footer
                 }
+                .padding(.horizontal, TunerTheme.paddingH)
+                .padding(.vertical, TunerTheme.paddingV)
             }
-            .controlSize(.small)
-
-            Button { showingSave = true } label: { Image(systemName: "square.and.arrow.down") }
-                .help("Save preset")
-                .popover(isPresented: $showingSave) { savePopover }
-
-            Menu {
-                if let current = store.allPresets.first(where: { $0.name == store.activePresetName }) {
-                    Button("Duplicate “\(current.name)”") { store.duplicatePreset(current) }
-                    Button("Delete “\(current.name)”", role: .destructive) { store.deletePreset(current) }
-                        .disabled(current.builtIn)
-                    Divider()
-                }
-                Button("Copy JSON") { copyJSON() }
-                Button("Paste JSON") { pasteJSON() }
-                Divider()
-                Button("Reset all to defaults") { store.resetAll() }
-            } label: { Image(systemName: "ellipsis.circle") }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
         }
-        .controlSize(.small)
-        .overlay(alignment: .trailing) {
+        .background(theme.panel)
+        .onDrop(of: [UTType.json, UTType.fileURL, UTType.plainText], isTargeted: nil) { handleDrop($0) }
+        .overlay(alignment: .top) {
             if let flash {
-                Text(flash).font(.caption).padding(4).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 4))
-                    .transition(.opacity)
+                Text(flash)
+                    .font(TunerTheme.caption)
+                    .foregroundStyle(theme.panel)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(Capsule().fill(theme.textRoot))
+                    .padding(.top, 52)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
+        .tunerThemed()
     }
 
-    private var savePopover: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Save preset").font(.headline)
-            TextField("Name", text: $newPresetName).frame(width: 200)
+    // MARK: Header: title row + toolbar
+
+    private var header: some View {
+        VStack(spacing: TunerTheme.rowGap) {
             HStack {
+                Text(title).font(TunerTheme.rootTitle).foregroundStyle(theme.textRoot)
                 Spacer()
-                Button("Cancel") { showingSave = false }
-                Button("Save") {
-                    let name = newPresetName.trimmingCharacters(in: .whitespaces)
-                    guard !name.isEmpty else { return }
-                    store.savePreset(named: name)
-                    newPresetName = ""
-                    showingSave = false
+                if let onCollapse {
+                    PanelIconButton(systemName: "slider.horizontal.3", action: onCollapse)
+                        .help("Collapse the panel")
                 }
-                .keyboardShortcut(.defaultAction)
+            }
+            .padding(.top, 2)
+            HStack(spacing: TunerTheme.rowGap) {
+                VersionsMenu(store: store) { showFlash($0) }
+                CopyButton { copyJSON() }
             }
         }
-        .padding(12)
+        .padding(.horizontal, TunerTheme.paddingH)
+        .padding(.top, TunerTheme.paddingV)
+        .padding(.bottom, TunerTheme.paddingV)
+        .background(theme.panel)
+        .overlay(alignment: .bottom) { Rectangle().fill(theme.surfaceSubtle).frame(height: 1) }
     }
-
-    // MARK: Footer
 
     private var footer: some View {
-        HStack {
-            Button("Copy JSON") { copyJSON() }
-            Button("Paste JSON") { pasteJSON() }
-            Spacer()
-            Text("Drop a preset .json here to import").font(.caption).foregroundStyle(.tertiary)
+        HStack(spacing: TunerTheme.rowGap) {
+            ActionRow("Paste JSON") { pasteJSON() }
+            ActionRow("Reset all") { store.resetAll() }
         }
-        .controlSize(.small)
+        .padding(.top, 4)
     }
+
+    // MARK: Clipboard
 
     private func copyJSON() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(store.json, forType: .string)
-        showFlash("Copied")
     }
 
     private func pasteJSON() {
@@ -152,70 +124,226 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
     }
 
     private func showFlash(_ text: String) {
-        withAnimation { flash = text }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { withAnimation { flash = nil } }
+        withAnimation(TunerTheme.quick) { flash = text }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { withAnimation(TunerTheme.quick) { flash = nil } }
     }
 }
 
 public extension TunerPanelView where Extra == EmptyView {
-    init(store: TunerStore<P>, @ViewBuilder preview: () -> Preview) {
-        self.init(store: store, preview: preview, extra: { EmptyView() })
+    init(store: TunerStore<P>, title: String = P.tunerDisplayName, onCollapse: (() -> Void)? = nil,
+         @ViewBuilder preview: () -> Preview) {
+        self.init(store: store, title: title, onCollapse: onCollapse, preview: preview, extra: { EmptyView() })
     }
 }
 
-/// The schema's folders as collapsible groups, each with a Reset. Usable on its
-/// own for a secondary parameter struct inside another panel.
+public extension TunerPanelView where Preview == EmptyView, Extra == EmptyView {
+    init(store: TunerStore<P>, title: String = P.tunerDisplayName, onCollapse: (() -> Void)? = nil) {
+        self.init(store: store, title: title, onCollapse: onCollapse, preview: { EmptyView() }, extra: { EmptyView() })
+    }
+}
+
+// MARK: - Toolbar pieces
+
+/// The one inverted element in the panel: text-root background, panel-coloured
+/// glyph. Cross-fades to a checkmark for 1.5 s after copying.
+struct CopyButton: View {
+    let action: () -> Void
+    @Environment(\.tunerTheme) private var theme
+    @State private var copied = false
+    @State private var pressed = false
+
+    var body: some View {
+        Image(systemName: copied ? "checkmark" : "doc.on.clipboard")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(theme.panel)
+            .frame(width: TunerTheme.rowHeight, height: TunerTheme.rowHeight)
+            .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.textRoot))
+            .scaleEffect(pressed ? 0.9 : 1)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { _ in pressed = true }
+                .onEnded { _ in
+                    pressed = false
+                    action()
+                    withAnimation(.easeOut(duration: 0.08)) { copied = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation(.easeOut(duration: 0.08)) { copied = false } }
+                })
+            .tunerAnimation(TunerTheme.quick, value: pressed)
+            .help("Copy these values as JSON")
+            .accessibilityLabel("Copy JSON")
+    }
+}
+
+struct PanelIconButton: View {
+    let systemName: String
+    let action: () -> Void
+    @Environment(\.tunerTheme) private var theme
+    @State private var hover = false
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
+            .frame(width: 24, height: 24)
+            .contentShape(Rectangle())
+            .onHover { hover = $0 }
+            .onTapGesture(perform: action)
+    }
+}
+
+/// Full-width versions dropdown. "Default" restores the base values; saved
+/// versions can be selected or deleted; "New version" saves the current values.
+struct VersionsMenu<P: TunableParameters>: View {
+    @ObservedObject var store: TunerStore<P>
+    let flash: (String) -> Void
+    @Environment(\.tunerTheme) private var theme
+    @State private var open = false
+
+    private var currentName: String { store.activePresetName ?? "Default" }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(currentName).font(TunerTheme.label).foregroundStyle(theme.textPrimary).lineLimit(1)
+            Spacer()
+            Image(systemName: "chevron.down")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(theme.textLabel)
+                .rotationEffect(.degrees(open ? 180 : 0))
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity)
+        .frame(height: TunerTheme.rowHeight)
+        .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.surface))
+        .contentShape(Rectangle())
+        .onTapGesture { open.toggle() }
+        .tunerAnimation(TunerTheme.quick, value: open)
+        .popover(isPresented: $open, arrowEdge: .bottom) { menu }
+        .accessibilityLabel("Versions")
+    }
+
+    private var menu: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            row(name: "Default", active: store.activePresetName == nil) {
+                store.resetAll(); open = false
+            }
+            ForEach(store.allPresets) { preset in
+                HStack(spacing: 0) {
+                    row(name: preset.name, active: store.activePresetName == preset.name) {
+                        store.apply(preset: preset); open = false
+                    }
+                    if !preset.builtIn {
+                        Image(systemName: "trash")
+                            .font(.system(size: 11))
+                            .foregroundStyle(theme.textLabel)
+                            .frame(width: 26, height: 32)
+                            .contentShape(Rectangle())
+                            .onTapGesture { store.deletePreset(preset) }
+                            .help("Delete this version")
+                    }
+                }
+            }
+            Rectangle().fill(theme.border).frame(height: 1).padding(.vertical, 3)
+            row(name: "New version", active: false, icon: "plus") {
+                let name = store.nextVersionName()
+                if store.savePreset(named: name) != nil { flash("Saved \(name)") }
+                open = false
+            }
+        }
+        .padding(4)
+        .frame(width: 236)
+        .background(theme.dropdown)
+        .tunerThemed()
+    }
+
+    private func row(name: String, active: Bool, icon: String? = nil, action: @escaping () -> Void) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon ?? "checkmark")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(theme.textPrimary)
+                .frame(width: 14)
+                .opacity(icon != nil || active ? 1 : 0)
+            Text(name).font(TunerTheme.label).foregroundStyle(theme.textPrimary).lineLimit(1)
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+        .frame(height: 32)
+        .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(active ? theme.surfaceActive : .clear))
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
+    }
+}
+
+// MARK: - Folders
+
+/// The schema's folders, each a collapsible group with a per-folder Reset.
+/// Usable on its own for a secondary store inside another panel or a host UI.
 public struct TunerFoldersView<P: TunableParameters>: View {
     @ObservedObject var store: TunerStore<P>
-    @State private var expanded: Set<Int>
+    @State private var open: Set<Int>
 
     public init(store: TunerStore<P>) {
         self.store = store
-        _expanded = State(initialValue: Set(P.schema.folders.indices))
+        _open = State(initialValue: Set(P.schema.folders.enumerated().compactMap { $0.element.collapsed ? nil : $0.offset }))
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(P.schema.folders.enumerated()), id: \.offset) { index, folder in
-                folderView(index: index, folder: folder)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func folderView(index: Int, folder: TunerFolder<P>) -> some View {
-        DisclosureGroup(isExpanded: Binding(
-            get: { expanded.contains(index) },
-            set: { if $0 { expanded.insert(index) } else { expanded.remove(index) } }
-        )) {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(folder.controls.enumerated()), id: \.offset) { _, control in
-                    controlView(control)
+                FolderView(title: folder.name,
+                           isOpen: Binding(get: { open.contains(index) },
+                                           set: { if $0 { open.insert(index) } else { open.remove(index) } }),
+                           onReset: { store.reset(folder: index) }) {
+                    VStack(spacing: TunerTheme.rowGap) {
+                        ForEach(Array(folder.controls.enumerated()), id: \.offset) { _, control in
+                            ControlRowView(store: store, control: control)
+                        }
+                    }
                 }
             }
-            .padding(.top, 6)
-        } label: {
-            HStack {
-                Text(folder.name).font(.headline)
-                Spacer()
-                Button("Reset") { store.reset(folder: index) }
-                    .buttonStyle(.borderless)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
     }
+}
 
-    @ViewBuilder
-    private func controlView(_ control: TunerControl<P>) -> some View {
-        switch control {
-        case .slider(let spec): SliderControlView(values: $store.values, spec: spec)
-        case .toggle(let spec): ToggleControlView(values: $store.values, spec: spec)
-        case .color(let spec): ColorControlView(values: $store.values, spec: spec)
-        case .spring(let spec): SpringEditorView(values: $store.values, spec: spec)
-        case .bezier(let spec): BezierEditorView(values: $store.values, spec: spec)
-        case .segmented(let spec): SegmentedControlView(values: $store.values, spec: spec)
-        case .action(let spec): ActionButtonView(values: $store.values, spec: spec)
+/// Title, chevron that turns when open, hairline rules, Reset on the right.
+struct FolderView<Content: View>: View {
+    let title: String
+    @Binding var isOpen: Bool
+    let onReset: () -> Void
+    @ViewBuilder let content: () -> Content
+    @Environment(\.tunerTheme) private var theme
+    @State private var resetHover = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Text(title).font(TunerTheme.folderTitle).foregroundStyle(theme.textLabel)
+                Spacer()
+                Text("Reset")
+                    .font(TunerTheme.caption)
+                    .foregroundStyle(resetHover ? theme.textPrimary : theme.textTertiary)
+                    .onHover { resetHover = $0 }
+                    .onTapGesture(perform: onReset)
+                    .help("Put this group back to its defaults")
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(theme.textLabel)
+                    .opacity(0.6)
+                    .rotationEffect(.degrees(isOpen ? 180 : 0))
+            }
+            .frame(height: TunerTheme.rowHeight)
+            .contentShape(Rectangle())
+            .onTapGesture { isOpen.toggle() }
+            .focusable()
+            .onKeyPress(.return) { isOpen.toggle(); return .handled }
+            .onKeyPress(.space) { isOpen.toggle(); return .handled }
+
+            if isOpen {
+                content()
+                    .padding(.bottom, 10)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            Rectangle().fill(theme.surfaceSubtle).frame(height: 1)
         }
+        .tunerAnimation(.easeOut(duration: 0.26), value: isOpen)
     }
 }

@@ -26,9 +26,12 @@ public struct TunerSchema<P> {
 public struct TunerFolder<P> {
     public var name: String
     public var controls: [TunerControl<P>]
-    public init(_ name: String, _ controls: [TunerControl<P>]) {
+    /// Start closed in the panel (the user can always open it).
+    public var collapsed: Bool
+    public init(_ name: String, collapsed: Bool = false, _ controls: [TunerControl<P>]) {
         self.name = name
         self.controls = controls
+        self.collapsed = collapsed
     }
 }
 
@@ -108,6 +111,12 @@ public enum TunerControl<P> {
     case bezier(BezierSpec<P>)
     case segmented(SegmentedSpec<P>)
     case action(ActionSpec<P>)
+
+    /// True for the dials a host may surface in a compact "Feel" section.
+    public var isFeatured: Bool {
+        if case .slider(let s) = self { return s.featured }
+        return false
+    }
 
     public var label: String {
         switch self {

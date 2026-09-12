@@ -116,6 +116,27 @@ public final class TunerStore<P: TunableParameters>: ObservableObject {
         return true
     }
 
+    /// "Version 2", "Version 3"… never reusing a number after a delete.
+    public func nextVersionName() -> String {
+        let highest = allPresets.compactMap { preset -> Int? in
+            guard preset.name.hasPrefix("Version ") else { return nil }
+            return Int(preset.name.dropFirst("Version ".count))
+        }.max() ?? 1
+        return "Version \(highest + 1)"
+    }
+
+    /// The featured sliders of the schema, in order, for a compact host section.
+    public var featuredControls: [TunerControl<P>] {
+        P.schema.folders.flatMap(\.controls).filter(\.isFeatured)
+    }
+
+    /// Resets one control to its default.
+    public func reset(control: TunerControl<P>) {
+        var next = values
+        control.copyValue(from: P.defaults, into: &next)
+        values = next
+    }
+
     @discardableResult
     public func savePreset(named name: String) -> Preset? {
         guard let preset = Preset(name: name, tunerID: P.tunerID, values: values, builtIn: false) else { return nil }

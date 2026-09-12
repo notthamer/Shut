@@ -14,15 +14,15 @@ final class PanelSnapshotTests: XCTestCase {
         let store = TunerStore<DemoParams>(presets: PresetStore(rootURL: tempDir),
                                            builtIns: [("Default", DemoParams())],
                                            defaults: UserDefaults(suiteName: "PanelSnapshot-\(UUID().uuidString)")!)
-        let view = TunerPanelView(store: store) {
-            RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.3))
+        let view = TunerPanelView(store: store, title: "Demo", onCollapse: {}) {
+            RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.3))
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
                 .overlay(Text("preview slot").foregroundStyle(.secondary))
         }
         let hosting = NSHostingView(rootView: AnyView(view))
-        hosting.frame = NSRect(x: 0, y: 0, width: 420, height: 900)
+        hosting.frame = NSRect(x: 0, y: 0, width: 360, height: 1180)
         let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless], backing: .buffered, defer: false)
-        window.appearance = NSAppearance(named: .aqua)
+        window.appearance = NSAppearance(named: .darkAqua)
         window.backgroundColor = .windowBackgroundColor
         let container = NSView(frame: hosting.frame)
         container.wantsLayer = true

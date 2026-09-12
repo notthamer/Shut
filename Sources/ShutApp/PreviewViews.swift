@@ -1,5 +1,6 @@
 import SwiftUI
 import TransitionKit
+import Tuner
 
 /// Aspect ratio of the built-in display, so the preview matches the real screen.
 enum BuiltInDisplayAspect {
@@ -24,69 +25,73 @@ struct PreviewMetalView: NSViewRepresentable {
     }
 }
 
-/// The preview area: snapshot with transport controls. Used in the standalone
-/// preview window and, from M3, inside Tuner's preview slot.
+/// The preview area: the snapshot with transport controls, drawn with Tuner's
+/// rows so it belongs to the same visual system. Used inside Tuner and, from the
+/// popover, on its own.
 struct PreviewArea: View {
     @ObservedObject var model: PreviewModel
     @ObservedObject var registry: TransitionRegistry
     var aspect: CGFloat
+    @Environment(\.tunerTheme) private var theme
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: TunerTheme.rowGap) {
             ZStack {
                 PreviewMetalView(model: model)
                     .aspectRatio(aspect, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(theme.border))
                 if !model.hasSnapshot {
                     VStack(spacing: 8) {
                         if model.isCapturing {
-                            ProgressView()
+                            ProgressView().controlSize(.small)
                         } else {
-                            Text(model.errorText ?? "No snapshot yet")
-                                .foregroundStyle(.secondary)
-                            Button("Capture desktop") { model.capture() }
+                            Text(model.errorText ?? "No snapshot yet").font(TunerTheme.caption).foregroundStyle(theme.textLabel)
+                            ActionRow("Capture desktop") { model.capture() }.frame(width: 160)
                         }
                     }
                 }
             }
+            .padding(.bottom, 4)
 
-            HStack(spacing: 8) {
-                Picker("", selection: Binding(
-                    get: { registry.current.id },
-                    set: { registry.select(id: $0) }
-                )) {
-                    ForEach(registry.all, id: \.id) { t in Text(t.displayName).tag(t.id) }
-                }
-                .labelsHidden()
-                .frame(width: 130)
+            FillSliderRow("Progress", value: $model.progress, in: -0.15...1, step: 0.005, decimals: 2,
+                          help: "Scrub the effect by hand. Below 0 is the pour-out overshoot.")
+                .disabled(model.followLid)
+                .opacity(model.followLid ? 0.5 : 1)
 
-                Button("Play close") { model.playClose() }
-                Button("Play pour-out") { model.playPourOut() }
-                Button {
-                    model.capture()
-                } label: { Image(systemName: "camera") }
-                .help("Re-capture the desktop")
-                Spacer()
-                Toggle("Follow lid", isOn: $model.followLid)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
+            HStack(spacing: TunerTheme.rowGap) {
+                ActionRow("Play close") { model.playClose() }
+                ActionRow("Play open") { model.playPourOut() }
             }
-
+            ToggleRow("Follow lid", isOn: $model.followLid, help: "Drive the preview from the real hinge.")
             HStack {
-                Text("Progress")
-                Slider(value: $model.progress, in: -0.15...1)
-                Text(String(format: "%.2f", model.progress)).monospacedDigit().frame(width: 40)
-            }
-            .disabled(model.followLid)
-
-            HStack {
-                Text(String(format: "frame %.2f ms", model.frameTimeMs))
-                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                Text(String(format: "%.2f ms per frame", model.frameTimeMs))
+                    .font(TunerTheme.caption).foregroundStyle(theme.textTertiary).monospacedDigit()
                 Spacer()
                 if let error = model.errorText, model.hasSnapshot {
-                    Text(error).font(.caption).foregroundStyle(.red)
+                    Text(error).font(TunerTheme.caption).foregroundStyle(theme.danger)
                 }
+                PanelIconButtonProxy { model.capture() }
             }
+            .padding(.horizontal, 2)
         }
+        .tunerThemed()
+    }
+}
+
+/// Small camera glyph to re-capture the desktop.
+private struct PanelIconButtonProxy: View {
+    let action: () -> Void
+    @Environment(\.tunerTheme) private var theme
+    @State private var hover = false
+    var body: some View {
+        Image(systemName: "camera")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
+            .frame(width: 22, height: 22)
+            .contentShape(Rectangle())
+            .onHover { hover = $0 }
+            .onTapGesture(perform: action)
+            .help("Re-capture the desktop")
     }
 }

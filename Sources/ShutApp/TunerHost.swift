@@ -75,8 +75,10 @@ final class TunerHost {
             }
         }
         registrations[T.id] = Registration(
-            content: { preview, triggerFolders in
-                AnyView(TunerPanelView(store: store, preview: { preview }, extra: { triggerFolders }))
+            content: { [weak self] preview, triggerFolders in
+                AnyView(TunerPanelView(store: store, title: T.displayName,
+                                       onCollapse: { self?.panel?.toggleCollapsed() },
+                                       preview: { preview }, extra: { triggerFolders }))
             },
             presetItems: {
                 store.allPresets.map { preset in
@@ -91,9 +93,12 @@ final class TunerHost {
         )
     }
 
+    /// Wide enough for a 16:10 preview above the dials.
+    static let panelWidth: CGFloat = 360
+
     func toggle() {
         if panel == nil {
-            let p = TunerPanelController(title: "Tuner", content: makeContent())
+            let p = TunerPanelController(title: "Tune", content: makeContent(), width: Self.panelWidth)
             p.registerHotKey()
             panel = p
         }
