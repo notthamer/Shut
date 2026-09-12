@@ -128,7 +128,12 @@ public final class AnyTransition {
         thumbnailProgress = T.thumbnailProgress
         prepareImpl = { transition.prepare(snapshot: $0, device: $1, commandQueue: $2) }
         uniformsImpl = { transition.uniforms(progress: $0, context: $1) }
-        jsonGet = { try? JSONEncoder().encode(transition.params) }
+        jsonGet = {
+            // Sorted keys so the JSON is a stable cache key and diff-friendly on disk.
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            return try? encoder.encode(transition.params)
+        }
         jsonSet = { data in
             guard let p = try? JSONDecoder().decode(T.Params.self, from: data) else { return false }
             transition.params = p

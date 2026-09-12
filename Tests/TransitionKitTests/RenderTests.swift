@@ -179,3 +179,38 @@ extension RenderTests {
         XCTAssertTrue((0.02...0.98).contains(alpha), "aperture without a snapshot rendered alpha \(alpha)")
     }
 }
+
+@MainActor
+final class ThumbnailTests: XCTestCase {
+    func testPlaceholderDesktopDraws() throws {
+        let image = try XCTUnwrap(PlaceholderDesktop.image())
+        XCTAssertEqual(image.width, 1024); XCTAssertEqual(image.height, 640)
+        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"] {
+            let rep = NSBitmapImageRep(cgImage: image)
+            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: dir).appendingPathComponent("placeholder-desktop.png"))
+        }
+    }
+
+    func testThumbnailsCacheAndComposite() throws {
+        let thumbnails = try TransitionThumbnailRenderer()
+        let fold = AnyTransition(FoldTransition())
+        let first = try XCTUnwrap(thumbnails.image(for: fold))
+        let second = try XCTUnwrap(thumbnails.image(for: fold))
+        XCTAssertTrue(first === second, "second call is served from the cache")
+        XCTAssertEqual(first.width, TransitionThumbnailRenderer.size.width)
+
+        let aperture = try XCTUnwrap(thumbnails.image(for: AnyTransition(ApertureTransition())))
+        XCTAssertEqual(aperture.alphaInfo, .premultipliedFirst)
+        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"] {
+            for t in [fold, AnyTransition(ApertureTransition()), AnyTransition(SinkholeTransition()), AnyTransition(BlindsTransition())] {
+                if let img = thumbnails.image(for: t) {
+                    try? NSBitmapImageRep(cgImage: img).representation(using: .png, properties: [:])?
+                        .write(to: URL(fileURLWithPath: dir).appendingPathComponent("thumb-\(t.id).png"))
+                }
+            }
+        }
+        thumbnails.invalidate(id: fold.id)
+        let third = try XCTUnwrap(thumbnails.image(for: fold))
+        XCTAssertFalse(first === third, "invalidation drops the cached image")
+    }
+}

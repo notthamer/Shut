@@ -37,7 +37,7 @@ public final class CreaseTransition: PanelTransition {
     public static let id = "crease"
     public static let displayName = "Crease"
     public static let summary = "The desktop creases across the middle and folds away in perspective."
-    public static let thumbnailProgress = 0.32
+    public static let thumbnailProgress = 0.45
 
     public var params = CreaseParams()
     public init() {}

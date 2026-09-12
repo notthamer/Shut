@@ -21,7 +21,11 @@ final class TunerHost {
         let content: (PreviewArea, TunerFoldersView<TriggerParams>) -> AnyView
         let presetItems: () -> [NSMenuItem]
         let featured: () -> AnyView
+        let reset: () -> Void
     }
+    /// Set by the app so thumbnails refresh as dials move.
+    var onParamsChanged: ((String) -> Void)?
+    private var invalidateWork: DispatchWorkItem?
     private var registrations: [String: Registration] = [:]
     let trigger: TunerStore<TriggerParams>
 
@@ -72,6 +76,7 @@ final class TunerHost {
             store.onChange = { [weak self, weak transition] values in
                 transition?.params = values
                 self?.previewModel.paramsChanged()
+                self?.scheduleThumbnailRefresh(id: T.id)
             }
         }
         registrations[T.id] = Registration(
@@ -89,8 +94,31 @@ final class TunerHost {
                     return item
                 }
             },
-            featured: { AnyView(TunerFoldersView(store: store)) }
+            featured: {
+                AnyView(VStack(spacing: TunerTheme.rowGap) {
+                    ForEach(Array(store.featuredControls.enumerated()), id: \.offset) { _, control in
+                        ControlRowView(store: store, control: control)
+                    }
+                })
+            },
+            reset: { store.resetAll() }
         )
+    }
+
+    /// Thumbnails re-render at most every 100 ms while a dial is dragged.
+    private func scheduleThumbnailRefresh(id: String) {
+        invalidateWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.onParamsChanged?(id) }
+        invalidateWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: work)
+    }
+
+    func featuredDials(for id: String) -> AnyView {
+        registrations[id]?.featured() ?? AnyView(EmptyView())
+    }
+
+    func resetStyle(id: String) {
+        registrations[id]?.reset()
     }
 
     /// Wide enough for a 16:10 preview above the dials.

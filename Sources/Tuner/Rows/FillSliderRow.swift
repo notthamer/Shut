@@ -20,6 +20,8 @@ public struct FillSliderRow: View {
     let unit: String
     let help: String
     let reset: (() -> Void)?
+    /// False for sliders whose number means nothing to the user (Speed).
+    let showsValue: Bool
 
     @Environment(\.tunerTheme) private var theme
     @State private var hovering = false
@@ -34,7 +36,7 @@ public struct FillSliderRow: View {
 
     public init(_ label: String, value: Binding<Double>, in range: ClosedRange<Double>,
                 step: Double? = nil, decimals: Int? = nil, unit: String = "", help: String = "",
-                reset: (() -> Void)? = nil) {
+                reset: (() -> Void)? = nil, showsValue: Bool = true) {
         self.label = label
         _value = value
         self.range = range
@@ -45,6 +47,7 @@ public struct FillSliderRow: View {
         self.unit = unit
         self.help = help
         self.reset = reset
+        self.showsValue = showsValue
     }
 
     private var fraction: CGFloat {
@@ -94,7 +97,7 @@ public struct FillSliderRow: View {
                         .lineLimit(1)
                         .onTapGesture(count: 2) { reset?() }
                     Spacer(minLength: 4)
-                    valueView
+                    if showsValue { valueView }
                 }
                 .padding(.horizontal, 10)
             }

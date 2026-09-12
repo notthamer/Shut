@@ -32,7 +32,7 @@ public final class SlideTransition: PanelTransition {
     public static let id = "slide"
     public static let displayName = "Slide"
     public static let summary = "The desktop slides down out of sight, behind the hinge."
-    public static let thumbnailProgress = 0.7
+    public static let thumbnailProgress = 0.55
 
     public var params = SlideParams()
     public init() {}

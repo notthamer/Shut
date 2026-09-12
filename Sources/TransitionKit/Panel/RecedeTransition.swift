@@ -37,7 +37,7 @@ public final class RecedeTransition: PanelTransition {
     public static let id = "recede"
     public static let displayName = "Recede"
     public static let summary = "The desktop drops straight back into the dark, square to you the whole way."
-    public static let thumbnailProgress = 0.66
+    public static let thumbnailProgress = 0.42
 
     public var params = RecedeParams()
     public init() {}

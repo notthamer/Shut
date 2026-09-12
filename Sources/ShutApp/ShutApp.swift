@@ -1,5 +1,6 @@
 import AppKit
 import LidSensor
+import SwiftUI
 import TransitionKit
 import Tuner
 
@@ -47,7 +48,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBar: MenuBarController!
     private var previewModel: PreviewModel!
     private var tunerHost: TunerHost?
-    private let permissionWindow = PermissionWindowController()
+    private var thumbnails: TransitionThumbnailRenderer?
+    private var popoverModel: PopoverModel!
+    private var popover: PopoverController!
+    private let welcome = WelcomeWindow()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Two copies (one from Xcode, one relaunched) would each draw an overlay
@@ -87,12 +91,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let capability = sensor.start()
         Log.lid.info("hinge capability: \(capability.rawValue, privacy: .public)")
 
-        menuBar.showPermissionWindow = { [weak self] in self?.permissionWindow.show() }
-        if !ScreenRecordingPermission.isGranted {
-            // Ask the system (it prompts once per app identity) and show our own
-            // window, which polls and offers a relaunch once the switch is on.
+        thumbnails = try? TransitionThumbnailRenderer()
+        popoverModel = PopoverModel(settings: settings, registry: registry, preview: previewModel, sensor: sensor, thumbnails: thumbnails)
+        popoverModel.play = { [weak self] in self?.popover.close(); self?.controller.playDemo() }
+        popoverModel.openTuner = { [weak self] in self?.popover.close(); self?.tunerHost?.toggle() }
+        popoverModel.allowScreenRecording = {
             ScreenRecordingPermission.request()
-            permissionWindow.show()
+            ScreenRecordingPermission.openSystemSettings()
+        }
+        popoverModel.relaunch = { Relaunch.now() }
+        popoverModel.setLaunchAtLogin = { on in if LaunchAtLogin.isEnabled != on { LaunchAtLogin.toggle() } }
+        popoverModel.launchAtLogin = { LaunchAtLogin.isEnabled }
+        popoverModel.featuredDials = { [weak self] id in self?.tunerHost?.featuredDials(for: id) ?? AnyView(EmptyView()) }
+        popoverModel.resetStyle = { [weak self] id in self?.tunerHost?.resetStyle(id: id) }
+        tunerHost?.onParamsChanged = { [weak self] id in self?.popoverModel.invalidateThumbnail(id: id) }
+        popover = PopoverController(model: popoverModel)
+        menuBar.togglePopover = { [weak self] button in self?.popover.toggle(relativeTo: button) }
+        menuBar.showPermissionWindow = { [weak self] in
+            if let button = self?.menuBar.statusButton { self?.popover.show(relativeTo: button) }
+        }
+
+        // Zero prompts at launch. Permissions are explained in the popover, only
+        // when a chosen style needs them.
+        if !settings.hasCompletedFirstRun {
+            welcome.show(capability: capability) { [weak self] in
+                self?.settings.isEnabled = true
+                self?.settings.hasCompletedFirstRun = true
+                if let button = self?.menuBar.statusButton { self?.popover.show(relativeTo: button) }
+            }
         }
     }
 

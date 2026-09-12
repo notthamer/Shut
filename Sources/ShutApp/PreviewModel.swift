@@ -67,11 +67,20 @@ public final class PreviewModel: ObservableObject {
                              hingeTravelDegrees: Float(max(range.upperBound - range.lowerBound, 10)))
     }
 
-    /// Grabs a fresh desktop snapshot (excluding our own windows).
+    /// True while the preview shows the drawn stand-in rather than the real desktop.
+    @Published public private(set) var usesPlaceholder = false
+
+    /// Grabs a fresh desktop snapshot (excluding our own windows), or falls back to
+    /// the drawn placeholder so the preview always shows something.
     public func capture() {
         guard !isCapturing else { return }
         guard ScreenRecordingPermission.isGranted else {
-            errorText = "Screen Recording permission is required for the preview."
+            if let placeholder = PlaceholderDesktop.image(), (try? renderer.setSnapshot(placeholder)) != nil {
+                hasSnapshot = true
+                usesPlaceholder = true
+                errorText = nil
+                render()
+            }
             return
         }
         isCapturing = true
@@ -82,6 +91,7 @@ public final class PreviewModel: ObservableObject {
                 guard let self else { return }
                 try self.renderer.setSnapshot(image)
                 self.hasSnapshot = true
+                self.usesPlaceholder = false
                 self.isCapturing = false
                 self.render()
             } catch {
@@ -108,10 +118,21 @@ public final class PreviewModel: ObservableObject {
         recordFrameTime((CACurrentMediaTime() - start) * 1000)
     }
 
+    private var frameTimePublishScheduled = false
+
+    /// Never publishes synchronously: `render()` runs inside SwiftUI's view update
+    /// (from `updateNSView`), and publishing there re-triggers the update forever.
     private func recordFrameTime(_ ms: Double) {
         frameTimes.append(ms)
         if frameTimes.count > 30 { frameTimes.removeFirst() }
-        frameTimeMs = frameTimes.reduce(0, +) / Double(frameTimes.count)
+        guard !frameTimePublishScheduled else { return }
+        frameTimePublishScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            guard let self else { return }
+            self.frameTimePublishScheduled = false
+            let mean = self.frameTimes.reduce(0, +) / Double(max(self.frameTimes.count, 1))
+            if abs(mean - self.frameTimeMs) > 0.02 { self.frameTimeMs = mean }
+        }
     }
 
     // MARK: Playback

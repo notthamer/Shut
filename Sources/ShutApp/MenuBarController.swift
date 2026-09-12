@@ -7,6 +7,7 @@ import TransitionKit
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
     private let statusItem: NSStatusItem
+    var statusButton: NSStatusBarButton? { statusItem.button }
     private let menu = NSMenu()
     private let controller: AppController
     private let settings: AppSettings
@@ -26,6 +27,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     var showPermissionWindow: (() -> Void)?
     var presetMenuProvider: (() -> [NSMenuItem])?
     var launchAtLoginItem: NSMenuItem?
+    /// Left click on the icon. The menu stays on right click for keyboard users.
+    var togglePopover: ((NSStatusBarButton) -> Void)?
 
     init(controller: AppController, settings: AppSettings, registry: TransitionRegistry) {
         self.controller = controller
@@ -35,12 +38,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         super.init()
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "water.waves", accessibilityDescription: "Shut")
+            button.image = NSImage(systemSymbolName: "laptopcomputer", accessibilityDescription: "Shut")
             button.image?.isTemplate = true
+            button.target = self
+            button.action = #selector(statusItemClicked(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
         menu.delegate = self
         buildMenu()
-        statusItem.menu = menu
 
         settings.$isEnabled.sink { [weak self] on in self?.enableItem.state = on ? .on : .off }.store(in: &cancellables)
         registry.$current.sink { [weak self] _ in self?.rebuildTransitionMenu() }.store(in: &cancellables)
@@ -88,6 +93,19 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             item.target = self
             item.state = t.id == registry.current.id ? .on : .off
             transitionMenu.addItem(item)
+        }
+    }
+
+    @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
+        let isRightClick = NSApp.currentEvent?.type == .rightMouseUp
+            || NSApp.currentEvent?.modifierFlags.contains(.control) == true
+        if isRightClick || togglePopover == nil {
+            // Attach the menu just long enough to pop it, so left clicks stay ours.
+            statusItem.menu = menu
+            sender.performClick(nil)
+            statusItem.menu = nil
+        } else {
+            togglePopover?(sender)
         }
     }
 
