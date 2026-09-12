@@ -4,18 +4,25 @@ import SwiftUI
 /// Presents the popover from the status item. AppKit `NSPopover` rather than a
 /// SwiftUI scene, so size and position are ours to control.
 @MainActor
-final class PopoverController {
+final class PopoverController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let model: PopoverModel
+    private let dock: DockPresence
 
-    init(model: PopoverModel) {
+    init(model: PopoverModel, dock: DockPresence) {
         self.model = model
+        self.dock = dock
+        super.init()
         let hosting = NSHostingController(rootView: PopoverView(model: model))
         hosting.sizingOptions = [.preferredContentSize]
         popover.contentViewController = hosting
         popover.behavior = .transient
         popover.animates = false
+        popover.delegate = self
     }
+
+    func popoverDidShow(_ notification: Notification) { dock.retain("popover") }
+    func popoverDidClose(_ notification: Notification) { dock.release("popover") }
 
     var isShown: Bool { popover.isShown }
 

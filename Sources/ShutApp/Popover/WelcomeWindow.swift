@@ -8,6 +8,7 @@ import Tuner
 @MainActor
 final class WelcomeWindow {
     private var window: NSWindow?
+    var onVisibilityChanged: ((Bool) -> Void)?
 
     func show(capability: HingeCapability, onEnable: @escaping () -> Void) {
         let content = WelcomeView(capability: capability) { [weak self] in
@@ -24,6 +25,10 @@ final class WelcomeWindow {
         w.center()
         w.isReleasedWhenClosed = false
         window = w
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.onVisibilityChanged?(false) }
+        }
+        onVisibilityChanged?(true)
         w.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

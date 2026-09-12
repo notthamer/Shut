@@ -52,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popoverModel: PopoverModel!
     private var popover: PopoverController!
     private let welcome = WelcomeWindow()
+    private let dock = DockPresence()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Two copies (one from Xcode, one relaunched) would each draw an overlay
@@ -105,7 +106,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popoverModel.featuredDials = { [weak self] id in self?.tunerHost?.featuredDials(for: id) ?? AnyView(EmptyView()) }
         popoverModel.resetStyle = { [weak self] id in self?.tunerHost?.resetStyle(id: id) }
         tunerHost?.onParamsChanged = { [weak self] id in self?.popoverModel.invalidateThumbnail(id: id) }
-        popover = PopoverController(model: popoverModel)
+        popover = PopoverController(model: popoverModel, dock: dock)
+        tunerHost?.onPanelVisibility = { [weak self] visible in visible ? self?.dock.retain("tuner") : self?.dock.release("tuner") }
+        welcome.onVisibilityChanged = { [weak self] visible in visible ? self?.dock.retain("welcome") : self?.dock.release("welcome") }
         menuBar.togglePopover = { [weak self] button in self?.popover.toggle(relativeTo: button) }
         menuBar.showPermissionWindow = { [weak self] in
             if let button = self?.menuBar.statusButton { self?.popover.show(relativeTo: button) }
@@ -120,6 +123,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if let button = self?.menuBar.statusButton { self?.popover.show(relativeTo: button) }
             }
         }
+    }
+
+    /// Clicking the Dock icon (visible while a window is open) brings the popover back.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if let button = menuBar.statusButton, popover?.isShown == false { popover.show(relativeTo: button) }
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {

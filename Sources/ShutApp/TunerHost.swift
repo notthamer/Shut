@@ -25,6 +25,8 @@ final class TunerHost {
     }
     /// Set by the app so thumbnails refresh as dials move.
     var onParamsChanged: ((String) -> Void)?
+    /// Set by the app to keep a Dock icon while the panel is visible.
+    var onPanelVisibility: ((Bool) -> Void)?
     private var invalidateWork: DispatchWorkItem?
     private var registrations: [String: Registration] = [:]
     let trigger: TunerStore<TriggerParams>
@@ -128,6 +130,7 @@ final class TunerHost {
         if panel == nil {
             let p = TunerPanelController(title: "Tune", content: makeContent(), width: Self.panelWidth)
             p.registerHotKey()
+            p.onVisibilityChanged = { [weak self] visible in self?.onPanelVisibility?(visible) }
             panel = p
         }
         panel?.toggle()

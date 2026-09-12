@@ -67,9 +67,13 @@ public final class TunerPanelController {
         if !isCollapsed { hosting.rootView = content }
     }
 
+    /// Called with true/false as the panel appears and disappears; hosts use it
+    /// to show a Dock icon only while the panel is up.
+    public var onVisibilityChanged: ((Bool) -> Void)?
+
     public var isVisible: Bool { panel.isVisible }
-    public func show() { panel.orderFront(nil) }
-    public func hide() { panel.orderOut(nil) }
+    public func show() { panel.orderFront(nil); onVisibilityChanged?(true) }
+    public func hide() { panel.orderOut(nil); onVisibilityChanged?(false) }
     public func toggle() { panel.isVisible ? hide() : show() }
 
     /// The host calls this when a real lid transition starts and ends.
