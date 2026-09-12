@@ -1,6 +1,6 @@
 ---
 name: Lid sensor compatibility report
-about: Shut says "Lid sensor not found", or the angle looks wrong
+about: Shut says your Mac only reports open/closed, or the angle looks wrong
 title: "Sensor: <your Mac model>"
 labels: sensor
 ---
@@ -9,14 +9,7 @@ Run this in Terminal from a clone of the repo and paste the output below:
 
 ```bash
 swift run lidangle-cli --report
-```
-
-If the sensor is found, also close the lid slowly with the log running and paste
-the last few lines, so we can learn your display-off angle:
-
-```bash
-swift run lidangle-cli --log angles.csv   # close the lid, reopen, Ctrl-C
-tail -5 angles.csv
+swift run lidangle-cli --calibration
 ```
 
 ### Report output
@@ -25,4 +18,4 @@ tail -5 angles.csv
 
 ### Anything else
 
-<!-- Did the angle track the lid? Any errors in Console.app under subsystem app.shut? -->
+<!-- Did the effect track the lid? Anything in Console.app under subsystem app.shut? -->

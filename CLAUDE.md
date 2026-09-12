@@ -1,7 +1,8 @@
 # Shut — conventions for contributors (human or AI)
 
-Shut is an open-source, MIT-licensed macOS menu bar app built in public.
-The full spec is in `docs/PRD.md`; the milestone prompts are in `docs/prompts.md`.
+Shut is an open-source, MIT-licensed macOS menu bar app built in public: ways to
+close your Mac. The original v1 spec (when the app was called Sinkhole) is in
+`docs/PRD.md`; the v2 direction is in this file and the README.
 
 ## Rules
 
@@ -19,7 +20,13 @@ The full spec is in `docs/PRD.md`; the milestone prompts are in `docs/prompts.md
    imports SwiftUI, AppKit, Foundation, Combine, UniformTypeIdentifiers, and Carbon
    (for the permission-free global hot key). Do not use the DialKit name in code.
 6. **Don't copy code from other lid-angle projects.** samhenrigold/LidAngleSensor is
-   Apache-2.0; we credit its research and write our own implementation.
+   Apache-2.0; we credit its research and write our own implementation. Bendable is
+   MIT: ported files say so in their header and `THIRD_PARTY_LICENSES.md` carries
+   the license. Never use the DialKit name in code or UI.
+7. **Match the visual system.** Every surface uses `TunerTheme`: 36-pt rows, 6-pt
+   gaps, 8/14-pt radii, neutral alphas, no accent colour, springs on state changes,
+   plain-English `help` on every control.
+8. **Progress is 0 = open, 1 = shut** everywhere above the sensor.
 
 ## Layout
 
@@ -43,5 +50,8 @@ The full spec is in `docs/PRD.md`; the milestone prompts are in `docs/prompts.md
 - Render tests draw each transition offscreen on a synthetic image. Set
   `SHUT_FRAME_DUMP=/some/dir` to get PNGs of the frames (and of the Tuner panel).
 - After changing `BuiltInPresets.swift`, run `swift run shut --export-presets presets`.
+- Popover and Tuner snapshots are tests; look at the PNGs before changing a layout.
+- Never publish an `@Published` property from inside a SwiftUI view update (for
+  example from `updateNSView`); it loops forever.
 - `xcodebuild -project Shut.xcodeproj -scheme Shut build` must pass too.
 - Manual lid tests are listed in `README.md` under "Testing".

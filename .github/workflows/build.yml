@@ -1,0 +1,25 @@
+name: Build
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app || true
+      - name: Test
+        run: swift test
+      - name: Build app
+        run: scripts/build.sh
+      - name: Package DMG
+        run: scripts/package-dmg.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Shut-dmg
+          path: build/releases/*
+          retention-days: 30

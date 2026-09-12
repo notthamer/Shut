@@ -1,28 +1,39 @@
-# Shut
+# Shut.
 
-> **Demo video coming.** Placeholder: _lid closes, desktop swirls into the notch._
+> **Demo video coming.** Placeholder: _lid closes, the desktop swirls into the notch; lid opens, it pours back out._
 
-Lid transitions for MacBook. Close the lid and the screen drains into the notch;
-unlock and it pours back out. Open source, MIT, built in public.
+Ways to close your Mac. Shut lives in the menu bar and plays a transition on the
+built-in display as you close the lid, driven live by the hinge. Pick a style, set
+the speed, and tune every dial until it feels exactly right. Open source, MIT,
+built in public.
 
-## Two transitions
+## Styles
 
-- **Sinkhole** — as the lid closes, the desktop spirals inward and funnels up
-  into the notch, darkening as it goes, with a faint glow around the rim. On unlock
-  it pours back out with a springy overshoot. Original to this project.
-- **Frost** — the classic iPhone Duo look. The image stays put, frosts over from the
-  top edge toward the hinge, and fades to black.
+| Style | Needs Screen Recording | What it does |
+| --- | --- | --- |
+| **Sinkhole** | Yes | The desktop swirls and drains into the notch, then pours back out when you unlock. Original to Shut. |
+| **Frost** | Yes | The iPhone Duo look: the screen frosts over from the top edge and fades to black. |
+| **Fold** | Yes | The desktop turns against the lid, degree for degree, so it stands still while the machine folds away under it. |
+| **Curl** | Yes | The top edge rolls over and away, the way a sheet of paper lifts. |
+| **Crease** | Yes | A book fold: creases across the middle and the upper half tips away. |
+| **Recede** | Yes | Drops straight back into the dark, square to you the whole way. |
+| **Slide** | Yes | Slides down out of sight behind the hinge. |
+| **Aperture** | No | Iris blades close over the screen. |
+| **Shutter** | No | Bars close in from the top and bottom. |
+| **Blinds** | No | Slats close down the screen, each shutting from its edges in. |
+| **Fade** | No | A plain dim to black. |
 
-Both follow the physical lid angle live, and every parameter is tunable in **Tuner**,
-a floating control panel with a preview that plays on a snapshot of your desktop.
+Fold, Curl, Crease, Recede, Slide, Aperture, Shutter, Blinds and Fade are ported
+from [Bendable](https://github.com/opensourcevillain/Bendable) (MIT, Anti Ltd) and
+credited in every file. Every style plays backwards when you open the lid.
 
 ## Supported hardware
 
-- Apple silicon MacBooks whose lid angle sensor is readable (most 2021+ MacBook Pro
-  and MacBook Air models). Verified on a 14" MacBook Pro (M2 Pro).
-- macOS 14 Sonoma or later.
-- On Macs without a notch, a small pill-shaped "virtual notch" fades in so the drain
-  has somewhere to go. Without a readable sensor, Tuner and the preview still work.
+- Any Apple-silicon MacBook, M1 to current, all sizes, on macOS 14 or later.
+- Macs with a lid angle sensor (M2 and later, most M1s) track the hinge live. Macs
+  that only report open/closed play the style on a short timeline instead. Shut
+  checks what your Mac can do and says so at the top of the popover.
+- 13" models without a notch use a small virtual notch for Sinkhole.
 
 Check your sensor: `swift run lidangle-cli` prints the live angle.
 
@@ -36,69 +47,80 @@ open build/Shut.app
 ```
 
 Or open **`Shut.xcodeproj`** (not the folder or `Package.swift`) in Xcode, make sure
-the scheme next to the Run button says **Shut**, and press Run. The `lidangle-cli`
-and `shut` schemes are the command-line tools, not the app.
+the scheme next to the Run button says **Shut**, and press Run. Releases come as a
+DMG from `scripts/package-dmg.sh`.
 
-Shut needs **Screen Recording** permission (System Settings → Privacy & Security)
-to snapshot the desktop. Snapshots live in GPU memory only and are released the
-moment a transition ends; nothing is ever written to disk.
+**Permissions.** Shut asks for nothing at launch. Styles that redraw your desktop
+need **Screen Recording** for one still captured as the lid starts to move, never a
+stream; the popover explains this only when you pick one of those styles, with an
+Allow and a Restart button (macOS checks the permission at launch). Snapshots live
+in GPU memory and are released as the transition ends. Nothing is written to disk.
 
-**Keeping the permission across rebuilds.** macOS ties the grant to the app's code
-signature. With plain "Sign to Run Locally" every build is a new identity and the
-switch resets. Either add your Apple ID in Xcode (Settings → Accounts) and pick
-your Personal Team under Signing & Capabilities, or create `App/Local.xcconfig`
-with `CODE_SIGN_IDENTITY = Shut Dev` after adding a self-signed code-signing
-certificate of that name in Keychain Access. See `App/Signing.xcconfig`.
+**Keeping the permission across rebuilds.** macOS ties the grant to the app's
+signature. With plain "Sign to Run Locally" every build is a new identity. Add your
+Apple ID in Xcode (Settings → Accounts) and pick your Personal Team under Signing &
+Capabilities, or create `App/Local.xcconfig` with a stable identity. See
+`App/Signing.xcconfig`.
+
+## Interface
+
+Everything is in one menu bar popover. Left click the icon.
+
+- **Preview** on the left plays the chosen style on a snapshot of your desktop (a
+  drawn stand-in until Screen Recording is granted). Drag under it to move the lid by
+  hand, or **Play on screen** to run it full screen.
+- **Gallery** of live thumbnails, rendered by the real shaders.
+- **Speed**: how much of the lid's travel the effect uses. Fast plays in the last
+  twenty degrees; slow spreads it over the whole close.
+- **Adjust**: the style's most important dials, and **Animate opening**.
+- **Tune everything…** opens the full panel: every dial, versions, Copy and Paste
+  JSON, and the Trigger folder (starts-at angle, smoothing, glide).
+
+Right click the icon for a plain menu.
+
+## How the hinge is read
+
+The lid angle sensor reports whole degrees and only changes about ten times a
+second, so reading it directly makes any effect pulse. Shut fits a line through
+recent readings (position and rate, no lag), passes the result through a 1€ filter
+whose cutoff follows the measured rate, and learns your hinge: the closed angle is
+the lowest reading ever seen, the open angle follows wherever the lid rests. The
+effect then runs in a band above shut, with a small share tracking the whole travel
+so something always answers. Nobody types angles. This design comes from Bendable
+and is credited in `Sources/LidSensor/`.
 
 ## How Sinkhole works
 
-The shader answers one question for every pixel: *which pixel of the frozen
-snapshot should be here right now?* Everything else is that mapping, tuned.
-
-With `s` the sink (bottom centre of the notch), `x` a screen pixel, `v = x − s`,
-`d` the distance to the sink as a fraction of the farthest corner, and `p` the
-overall progress:
+For every pixel the shader asks: *which pixel of the frozen snapshot should be here
+right now?* With `s` the sink (bottom centre of the notch), `x` a screen pixel,
+`v = x − s`, `d` the distance to the sink as a fraction of the farthest corner, and
+`p` the overall progress:
 
 ```
 q   = clamp(p·(1 + falloff) − falloff·d, 0, 1)   // near the notch leads, corners lag
 k   = 1 / (1 − q)^pull                           // contraction: blows up as q → 1
-θ   = twist · 2π · q²                            // swirl winds up as content drains
+θ   = twist · 2π · q²                            // gentle global swirl
 vf  = (v.x · (1 + stretch·q), v.y)               // funnel: squeeze toward the notch
 src = s + rotate(vf · k, θ)                      // inverse map; outside = black
 ```
 
-Motion blur averages a few samples at slightly smaller `q` (where this pixel's
-content just was), sweeping them along an arc that tightens toward the notch: that
-arc is the whirlpool (`vortex`). It is done as a smear rather than a rotation on
-purpose, because the notch sits on the top edge of the screen and any real spin
-there would pull in the void above the display. Content that leaves the screen
-dissolves over `edge softness` points instead of being cut off, red and blue read
-from slightly different radii for a little chromatic fringe, and a glow ring
-around the notch peaks mid-transition. During pour-out, `p` runs from 1 back to 0
-and briefly below, which makes `k < 1` and pushes the desktop past its normal
-size: the splash.
-
-The lid sensor itself only updates ten times a second in whole degrees, so
-`LidSensor` reconstructs a smooth angle by dead-reckoning from the lid's velocity
-between readings. Without that, the drain pulses.
-
-The full walk-through is in `Sources/TransitionKit/Shaders/Sinkhole.metal`.
+Motion blur averages samples at slightly smaller `q`, sweeping them along an arc that
+tightens toward the notch (`vortex`), done as a smear rather than a rotation because
+the notch sits on the top edge and real spin there would pull in the void above the
+screen. Content that leaves the screen dissolves over `edge softness`; a hole shaped
+to the notch outline opens and widens; a rim glow traces it. On unlock `p` runs from 1
+back to 0 and briefly below, which makes `k < 1`: the splash. The full walk-through is
+in `Sources/TransitionKit/Shaders/Sinkhole.metal`.
 
 ## Tuner
 
-Menu bar → **Open Tuner**, or **⌃⌥T** from anywhere.
-
-- The preview at the top plays on a snapshot of your desktop. Scrub, **Play close**,
-  **Play pour-out**, or flip **Follow lid** to drive it from the real sensor.
-- Parameters are grouped into folders with a **Reset** per folder. Controls include
-  sliders, toggles, a colour picker, a spring editor with a live curve, and a Bézier
-  easing editor with draggable handles.
-- **Presets**: save, duplicate, delete, **Copy JSON**, **Paste JSON**, or drop a
-  `.json` file on the panel. Presets live in
-  `~/Library/Application Support/Shut/Presets/`.
-- The panel hides itself while a real lid transition plays.
-
-### Using Tuner in your own app
+The panel behind **Tune everything…** is a native SwiftUI rebuild of the kind of
+live-tuning panel Josh Puckett's [DialKit](https://github.com/joshpuckett/dialkit)
+brought to the web. Rows are fill sliders: drag anywhere, click to snap to tenths,
+hover a number to type it, arrow keys nudge (⇧ ×10), scroll wheel nudges, double
+click a label to reset. Springs have a Time or Physics description with a live
+curve; easing curves have draggable handles. Versions save, switch and delete;
+Copy puts the JSON on the clipboard; Paste and file drop import.
 
 `Tuner` is a standalone Swift package target with no dependency on the rest of
 Shut. Describe your parameters with key paths and the panel builds itself:
@@ -117,7 +139,7 @@ struct GlowParams: TunableParameters {
     static let defaults = GlowParams()
     static let schema = TunerSchema<GlowParams>([
         TunerFolder("Look", [
-            .slider(\.radius, "Radius", 0...40, unit: "pt"),
+            .slider(\.radius, "Radius", 0...40, unit: "pt", featured: true, help: "How far the glow spreads."),
             .color(\.color, "Color"),
         ]),
         TunerFolder("Motion", [
@@ -129,50 +151,43 @@ struct GlowParams: TunableParameters {
 
 let store = TunerStore<GlowParams>(presets: PresetStore(appName: "MyApp"))
 store.onChange = { params in myView.apply(params) }
-
-let panel = TunerPanelController(title: "Tuner",
-                                 content: AnyView(TunerPanelView(store: store) { MyPreview() }))
+let panel = TunerPanelController(title: "Glow", content: AnyView(TunerPanelView(store: store)))
 panel.registerHotKey()   // ⌃⌥T
 panel.show()
 ```
 
-Values persist in `UserDefaults` under `tuner.<tunerID>`. Presets are plain JSON.
-
 ## Presets
 
 Built-in presets ship in the app and as JSON in [`presets/`](presets/). To share
-yours, see [CONTRIBUTING.md](CONTRIBUTING.md).
+yours, or to add a style, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Command line
 
 ```bash
-swift run lidangle-cli                  # live angle
+swift run lidangle-cli                  # live angle, rate and progress
 swift run lidangle-cli --report         # compatibility report for an issue
+swift run lidangle-cli --calibration    # learned closed/open angles after 5 s
 swift run lidangle-cli --log angles.csv # timestamp,angle per sample
-swift run lidangle-cli --debug          # raw HID report bytes
 ```
 
 ## Testing
 
-Automated: `swift test` (sensor decoding, easing, springs, presets, and offscreen
-renders of every transition; set `SHUT_FRAME_DUMP=dir` to get PNGs).
-
-Manual, before a release:
-
-- 50 lid close/open cycles with each transition: no stuck overlay.
-- Reopen the lid before sleep: the transition reverses and clears.
-- Sleep from the lid and from the Apple menu, with and without a password on wake:
-  the desktop pours out after unlock, and there is never a black screen for more
-  than 1.5 s while unlocked.
-- Console.app, subsystem `app.shut`, shows every lock/unlock event.
+`swift test` runs 60+ tests: sensor decoding, the hinge fit, filter, calibration and
+band; offscreen renders of every style (identity, darkening, see-through masks); a
+GPU probe of the uniform layout; the Tuner panel and the popover rasterised as
+images. Set `SHUT_FRAME_DUMP=dir` to get the PNGs. `swift test -c release --filter
+BenchmarkTests` prints per-style frame times at full resolution.
 
 ## Credits
 
-- [samhenrigold/LidAngleSensor](https://github.com/samhenrigold/LidAngleSensor) for
-  the research into the lid angle HID sensor. Shut's sensor code is written from
-  scratch.
-- Josh Puckett's DialKit, the inspiration for Tuner.
-- The many open-source recreations of the iPhone Duo frost transition, which set
-  the baseline Frost aims to match.
+- [Bendable](https://github.com/opensourcevillain/Bendable), MIT © 2026 Anti Ltd: nine
+  of the styles, the hinge fit/filter/calibration design, and much of the popover's
+  shape. License in `THIRD_PARTY_LICENSES.md`.
+- [DialKit](https://github.com/joshpuckett/dialkit), MIT © 2026 Josh Puckett: the
+  design of the tuning panel. No code was copied; the name is not used in code.
+- [samhenrigold/LidAngleSensor](https://github.com/samhenrigold/LidAngleSensor) and
+  [DuoBook](https://github.com/askmaddyy/DuoBook) for the sensor research. Shut's
+  sensor code is written from scratch.
+- The many open-source recreations of the iPhone Duo frost, which Frost aims to match.
 
 MIT License.
