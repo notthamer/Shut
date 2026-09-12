@@ -33,14 +33,14 @@ struct PreviewColumn: View {
             .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
             .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
 
-            VStack(spacing: 3) {
-                FillSliderRow("", value: $preview.progress, in: 0...1, step: 0.005, decimals: 2,
-                              help: "Drag to move the lid by hand.")
-                    .frame(height: 24)
+            VStack(spacing: 4) {
+                FillSliderRow("Lid", value: $preview.progress, in: 0...1, step: 0.005, decimals: 2,
+                              help: "Drag to move the lid by hand.", showsValue: false, height: 28)
                 HStack {
                     Text("Open"); Spacer(); Text("Shut")
                 }
                 .font(.system(size: 9.5)).foregroundStyle(theme.textTertiary)
+                .padding(.horizontal, 2)
             }
             .padding(.top, 12)
 

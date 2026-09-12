@@ -61,25 +61,20 @@ public struct PrimaryButton: View {
     let action: () -> Void
     @Environment(\.tunerTheme) private var theme
     @State private var hover = false
-    @State private var pressed = false
     public init(_ title: String, action: @escaping () -> Void) { self.title = title; self.action = action }
     public var body: some View {
-        Text(title)
-            .font(TunerTheme.label)
-            .foregroundStyle(theme.panel)
-            .frame(maxWidth: .infinity)
-            .frame(height: TunerTheme.rowHeight)
-            .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                .fill(theme.textRoot.opacity(hover ? 0.92 : 1)))
-            .scaleEffect(pressed ? 0.98 : 1)
-            .contentShape(Rectangle())
-            .onHover { hover = $0 }
-            .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressed = true }
-                .onEnded { _ in pressed = false; action() })
-            .tunerAnimation(TunerTheme.quick, value: pressed)
-            .focusable()
-            .focusEffectDisabled()
-            .onKeyPress(.return) { action(); return .handled }
+        Button(action: action) {
+            Text(title)
+                .font(TunerTheme.label)
+                .foregroundStyle(theme.panel)
+                .frame(maxWidth: .infinity)
+                .frame(height: TunerTheme.rowHeight)
+                .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
+                    .fill(theme.textRoot.opacity(hover ? 0.92 : 1)))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressScaleStyle())
+        .onHover { hover = $0 }
+        .focusEffectDisabled()
     }
 }

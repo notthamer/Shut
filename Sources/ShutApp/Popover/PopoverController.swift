@@ -30,7 +30,8 @@ final class PopoverController {
         self.panel = panel
         anchorButton = button
         model.preview.followLid = false
-        if !model.preview.hasSnapshot { model.preview.capture() }
+        // Always fresh: the desktop behind the panel is what the effect will play on.
+        model.preview.capture()
 
         // Sit 8 pt under the status item, centred on it, clamped to the screen.
         let size = panel.frame.size
@@ -52,8 +53,7 @@ final class PopoverController {
         chrome?.layer?.position = CGPoint(x: size.width / 2, y: size.height)
         panel.alphaValue = 0
         chrome?.layer?.transform = CATransform3DMakeScale(0.97, 0.97, 1)
-        panel.orderFront(nil)
-        panel.makeKey()
+        panel.makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.18
             ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.3, 1.0)
@@ -87,13 +87,13 @@ final class PopoverController {
 
     private func makePanel() -> NSPanel {
         let size = NSSize(width: PopoverView.width, height: 0)
-        let hosting = NSHostingView(rootView: AnyView(PopoverView(model: model)))
+        let hosting = FirstMouseHostingView(rootView: AnyView(PopoverView(model: model)))
         hosting.sizingOptions = [.intrinsicContentSize]
         let fitted = hosting.fittingSize
         let frame = NSRect(origin: .zero, size: NSSize(width: size.width, height: fitted.height))
 
-        let panel = NSPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
-                            backing: .buffered, defer: false)
+        let panel = KeyablePanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
+                                 backing: .buffered, defer: false)
         panel.level = .popUpMenu
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false

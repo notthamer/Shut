@@ -24,12 +24,12 @@ public final class TunerPanelController {
     public init(title: String, content: AnyView, width: CGFloat = TunerTheme.panelWidth, frameKey: String = "tuner.panel.frame") {
         self.content = content
         self.frameKey = frameKey
-        hosting = NSHostingView(rootView: content)
+        hosting = FirstMouseHostingView(rootView: content)
         hosting.sizingOptions = []
         let size = NSSize(width: width, height: Self.defaultSize.height)
-        panel = NSPanel(contentRect: NSRect(origin: .zero, size: size),
-                        styleMask: [.borderless, .nonactivatingPanel, .resizable, .utilityWindow],
-                        backing: .buffered, defer: false)
+        panel = KeyablePanel(contentRect: NSRect(origin: .zero, size: size),
+                             styleMask: [.borderless, .nonactivatingPanel, .resizable, .utilityWindow],
+                             backing: .buffered, defer: false)
         panel.title = title
         panel.level = .floating
         panel.isFloatingPanel = true
@@ -70,7 +70,7 @@ public final class TunerPanelController {
     public var onVisibilityChanged: ((Bool) -> Void)?
 
     public var isVisible: Bool { panel.isVisible }
-    public func show() { panel.orderFront(nil); onVisibilityChanged?(true) }
+    public func show() { panel.makeKeyAndOrderFront(nil); onVisibilityChanged?(true) }
     public func hide() { panel.orderOut(nil); onVisibilityChanged?(false) }
     public func toggle() { panel.isVisible ? hide() : show() }
 
@@ -123,6 +123,20 @@ public final class TunerPanelController {
         let visible = screen.visibleFrame
         panel.setFrameOrigin(NSPoint(x: visible.maxX - panel.frame.width - 16, y: visible.maxY - panel.frame.height - 16))
     }
+}
+
+/// A borderless panel that can take keyboard focus. Plain borderless windows
+/// refuse to become key, and AppKit then swallows every click trying to make
+/// them key, so nothing inside them works.
+public final class KeyablePanel: NSPanel {
+    public override var canBecomeKey: Bool { true }
+    public override var canBecomeMain: Bool { false }
+}
+
+/// A hosting view whose content responds to the very first click even when its
+/// window isn't key yet, the way menu bar panels are expected to.
+public final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
 /// Rounded panel background with a hairline border; a circle when collapsed.

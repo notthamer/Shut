@@ -49,9 +49,9 @@ struct PopoverHeader: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .center, spacing: 10) {
             LogoMark(size: 28)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("Shut.").font(TunerTheme.rootTitle).tracking(-0.2).foregroundStyle(theme.textRoot)
                 HStack(spacing: 5) {
                     Circle().fill(statusColor).frame(width: 5, height: 5)
@@ -64,7 +64,7 @@ struct PopoverHeader: View {
                 .help(model.settings.isEnabled ? "Stop animating the lid." : "Start animating the lid.")
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .frame(height: 52)
     }
 }
 
@@ -74,21 +74,24 @@ struct PopoverFooter: View {
     @State private var launchAtLogin = false
 
     var body: some View {
-        HStack(spacing: 10) {
-            Text("Open at login")
-                .font(TunerTheme.caption).foregroundStyle(theme.textLabel)
-            SmallPill(isOn: launchAtLogin) { launchAtLogin.toggle(); model.setLaunchAtLogin(launchAtLogin) }
-            Text("In Dock")
-                .font(TunerTheme.caption).foregroundStyle(theme.textLabel)
-                .padding(.leading, 6)
-            SmallPill(isOn: model.settings.showInDock) { model.settings.showInDock.toggle() }
-                .help("Keep Shut in the Dock. Off keeps it in the menu bar only.")
+        HStack(alignment: .center, spacing: 14) {
+            HStack(spacing: 8) {
+                Text("Open at login").font(TunerTheme.caption).foregroundStyle(theme.textLabel)
+                SmallPill(isOn: launchAtLogin) { launchAtLogin.toggle(); model.setLaunchAtLogin(launchAtLogin) }
+            }
+            HStack(spacing: 8) {
+                Text("In Dock").font(TunerTheme.caption).foregroundStyle(theme.textLabel)
+                SmallPill(isOn: model.settings.showInDock) { model.settings.showInDock.toggle() }
+                    .help("Keep Shut in the Dock. Off keeps it in the menu bar only.")
+            }
             Spacer()
             QuietButton("Tune everything…", action: model.openTuner)
+                .keyboardShortcut("t", modifiers: [.control, .option])
             QuietButton("Quit", action: model.quit)
+                .keyboardShortcut("q", modifiers: .command)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 9)
+        .frame(height: 44)
         .onAppear { launchAtLogin = model.launchAtLogin() }
     }
 }
@@ -102,14 +105,17 @@ struct SmallPill: View {
     @Environment(\.tunerTheme) private var theme
     var body: some View {
         let w: CGFloat = size == .small ? 26 : 36, h: CGFloat = size == .small ? 14 : 20
-        Capsule().fill(isOn ? theme.textRoot : theme.surfaceActive)
-            .frame(width: w, height: h)
-            .overlay(alignment: isOn ? .trailing : .leading) {
-                Circle().fill(isOn ? theme.panel : theme.textLabel).frame(width: h - 4, height: h - 4).padding(2)
-            }
-            .contentShape(Capsule())
-            .onTapGesture(perform: action)
-            .tunerAnimation(TunerTheme.quick, value: isOn)
+        Button(action: action) {
+            Capsule().fill(isOn ? theme.textRoot : theme.surfaceActive)
+                .frame(width: w, height: h)
+                .overlay(alignment: isOn ? .trailing : .leading) {
+                    Circle().fill(isOn ? theme.panel : theme.textLabel).frame(width: h - 4, height: h - 4).padding(2)
+                }
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .tunerAnimation(TunerTheme.quick, value: isOn)
+        .accessibilityValue(isOn ? "On" : "Off")
     }
 }
 
@@ -120,14 +126,16 @@ struct QuietButton: View {
     @State private var hover = false
     init(_ title: String, action: @escaping () -> Void) { self.title = title; self.action = action }
     var body: some View {
-        Text(title)
-            .font(TunerTheme.caption)
-            .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
-            .padding(.horizontal, 8).padding(.vertical, 5)
-            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover ? theme.surfaceHover : .clear))
-            .contentShape(Rectangle())
-            .onHover { hover = $0 }
-            .onTapGesture(perform: action)
+        Button(action: action) {
+            Text(title)
+                .font(TunerTheme.caption)
+                .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
+                .padding(.horizontal, 8).padding(.vertical, 5)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover ? theme.surfaceHover : .clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
     }
 }
 

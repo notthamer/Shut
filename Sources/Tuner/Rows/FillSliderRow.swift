@@ -22,6 +22,7 @@ public struct FillSliderRow: View {
     let reset: (() -> Void)?
     /// False for sliders whose number means nothing to the user (Speed).
     let showsValue: Bool
+    let height: CGFloat
 
     @Environment(\.tunerTheme) private var theme
     @State private var hovering = false
@@ -40,7 +41,7 @@ public struct FillSliderRow: View {
 
     public init(_ label: String, value: Binding<Double>, in range: ClosedRange<Double>,
                 step: Double? = nil, decimals: Int? = nil, unit: String = "", help: String = "",
-                reset: (() -> Void)? = nil, showsValue: Bool = true) {
+                reset: (() -> Void)? = nil, showsValue: Bool = true, height: CGFloat = TunerTheme.rowHeight) {
         self.label = label
         _value = value
         self.range = range
@@ -52,6 +53,7 @@ public struct FillSliderRow: View {
         self.help = help
         self.reset = reset
         self.showsValue = showsValue
+        self.height = height
     }
 
     private var fraction: CGFloat {
@@ -95,7 +97,7 @@ public struct FillSliderRow: View {
                 // Handle
                 Capsule()
                     .fill(theme.textPrimary)
-                    .frame(width: 3, height: 20)
+                    .frame(width: 3, height: min(20, height - 12))
                     .scaleEffect(x: hovering || dragging ? 1 : 0.25, y: collides ? 0.75 : 1)
                     .offset(x: handleX)
                     .opacity(collides ? handleOpacity * 0.2 : handleOpacity)
@@ -124,7 +126,7 @@ public struct FillSliderRow: View {
                 nudge(by: delta > 0 ? -1 : 1)
             })
         }
-        .frame(height: TunerTheme.rowHeight)
+        .frame(height: height)
         .focusable(!editing)
         .focused($rowFocused)
         .onKeyPress(phases: .down) { press in handleKey(press) }

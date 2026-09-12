@@ -150,27 +150,24 @@ struct CopyButton: View {
     let action: () -> Void
     @Environment(\.tunerTheme) private var theme
     @State private var copied = false
-    @State private var pressed = false
 
     var body: some View {
-        Image(systemName: copied ? "checkmark" : "doc.on.clipboard")
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(theme.panel)
-            .frame(width: TunerTheme.rowHeight, height: TunerTheme.rowHeight)
-            .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.textRoot))
-            .scaleEffect(pressed ? 0.9 : 1)
-            .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressed = true }
-                .onEnded { _ in
-                    pressed = false
-                    action()
-                    withAnimation(.easeOut(duration: 0.08)) { copied = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation(.easeOut(duration: 0.08)) { copied = false } }
-                })
-            .tunerAnimation(TunerTheme.quick, value: pressed)
-            .help("Copy these values as JSON")
-            .accessibilityLabel("Copy JSON")
+        Button {
+            action()
+            withAnimation(.easeOut(duration: 0.08)) { copied = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation(.easeOut(duration: 0.08)) { copied = false } }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "doc.on.clipboard")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(theme.panel)
+                .frame(width: TunerTheme.rowHeight, height: TunerTheme.rowHeight)
+                .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.textRoot))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressScaleStyle())
+        .keyboardShortcut("c", modifiers: [.command, .shift])
+        .help("Copy these values as JSON (⇧⌘C)")
+        .accessibilityLabel("Copy JSON")
     }
 }
 
@@ -181,95 +178,71 @@ struct PanelIconButton: View {
     @State private var hover = false
 
     var body: some View {
-        Image(systemName: systemName)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
-            .frame(width: 24, height: 24)
-            .contentShape(Rectangle())
-            .onHover { hover = $0 }
-            .onTapGesture(perform: action)
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
     }
 }
 
 /// Full-width versions dropdown. "Default" restores the base values; saved
-/// versions can be selected or deleted; "New version" saves the current values.
+/// versions can be selected; "New version" saves the current values. Backed by
+/// a system menu so it presents reliably from a borderless panel; deleting a
+/// version is in a "Delete" submenu.
 struct VersionsMenu<P: TunableParameters>: View {
     @ObservedObject var store: TunerStore<P>
     let flash: (String) -> Void
     @Environment(\.tunerTheme) private var theme
-    @State private var open = false
+    @State private var hover = false
 
     private var currentName: String { store.activePresetName ?? "Default" }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(currentName).font(TunerTheme.label).foregroundStyle(theme.textPrimary).lineLimit(1)
-            Spacer()
-            Image(systemName: "chevron.down")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(theme.textLabel)
-                .rotationEffect(.degrees(open ? 180 : 0))
-        }
-        .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity)
-        .frame(height: TunerTheme.rowHeight)
-        .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.surface))
-        .contentShape(Rectangle())
-        .onTapGesture { open.toggle() }
-        .tunerAnimation(TunerTheme.quick, value: open)
-        .popover(isPresented: $open, arrowEdge: .bottom) { menu }
-        .accessibilityLabel("Versions")
-    }
-
-    private var menu: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            row(name: "Default", active: store.activePresetName == nil) {
-                store.resetAll(); open = false
+        Menu {
+            Button { store.resetAll() } label: {
+                Label("Default", systemImage: store.activePresetName == nil ? "checkmark" : "")
             }
             ForEach(store.allPresets) { preset in
-                HStack(spacing: 0) {
-                    row(name: preset.name, active: store.activePresetName == preset.name) {
-                        store.apply(preset: preset); open = false
-                    }
-                    if !preset.builtIn {
-                        Image(systemName: "trash")
-                            .font(.system(size: 11))
-                            .foregroundStyle(theme.textLabel)
-                            .frame(width: 26, height: 32)
-                            .contentShape(Rectangle())
-                            .onTapGesture { store.deletePreset(preset) }
-                            .help("Delete this version")
+                Button { store.apply(preset: preset) } label: {
+                    Label(preset.name, systemImage: store.activePresetName == preset.name ? "checkmark" : "")
+                }
+            }
+            Divider()
+            Button("New version") {
+                let name = store.nextVersionName()
+                if store.savePreset(named: name) != nil { flash("Saved \(name)") }
+            }
+            let deletable = store.allPresets.filter { !$0.builtIn }
+            if !deletable.isEmpty {
+                Menu("Delete") {
+                    ForEach(deletable) { preset in
+                        Button(preset.name, role: .destructive) { store.deletePreset(preset) }
                     }
                 }
             }
-            Rectangle().fill(theme.border).frame(height: 1).padding(.vertical, 3)
-            row(name: "New version", active: false, icon: "plus") {
-                let name = store.nextVersionName()
-                if store.savePreset(named: name) != nil { flash("Saved \(name)") }
-                open = false
+        } label: {
+            HStack(spacing: 8) {
+                Text(currentName).font(TunerTheme.label).foregroundStyle(theme.textPrimary).lineLimit(1)
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(theme.textLabel)
             }
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity)
+            .frame(height: TunerTheme.rowHeight)
+            .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(hover ? theme.surfaceHover : theme.surface))
+            .contentShape(Rectangle())
         }
-        .padding(4)
-        .frame(width: 236)
-        .background(theme.dropdown)
-        .tunerThemed()
-    }
-
-    private func row(name: String, active: Bool, icon: String? = nil, action: @escaping () -> Void) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon ?? "checkmark")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(theme.textPrimary)
-                .frame(width: 14)
-                .opacity(icon != nil || active ? 1 : 0)
-            Text(name).font(TunerTheme.label).foregroundStyle(theme.textPrimary).lineLimit(1)
-            Spacer()
-        }
-        .padding(.horizontal, 8)
-        .frame(height: 32)
-        .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(active ? theme.surfaceActive : .clear))
-        .contentShape(Rectangle())
-        .onTapGesture(perform: action)
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .onHover { hover = $0 }
+        .accessibilityLabel("Versions")
     }
 }
 

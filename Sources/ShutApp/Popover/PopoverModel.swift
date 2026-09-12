@@ -18,7 +18,7 @@ final class PopoverModel: ObservableObject {
     /// Actions supplied by the app; tests pass no-ops.
     var play: () -> Void = {}
     var openTuner: () -> Void = {}
-    var quit: () -> Void = { NSApp.terminate(nil) }
+    var quit: () -> Void = { DispatchQueue.main.async { NSApp.terminate(nil) } }
     var allowScreenRecording: () -> Void = {}
     var relaunch: () -> Void = {}
     var setLaunchAtLogin: (Bool) -> Void = { _ in }
@@ -39,6 +39,14 @@ final class PopoverModel: ObservableObject {
         self.sensor = sensor
         self.thumbnails = thumbnails
         registry.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        // Thumbnails draw over the real desktop once we have one.
+        preview.onRealSnapshot = { [weak self] image in
+            guard let self, let thumbnails = self.thumbnails else { return }
+            if let small = Self.downscale(image, to: PlaceholderDesktop.defaultSize),
+               (try? thumbnails.setBackdrop(small, isPlaceholder: false)) != nil {
+                self.thumbnailGeneration += 1
+            }
+        }
         settings.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         sensor.$capability.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
     }
@@ -71,6 +79,16 @@ final class PopoverModel: ObservableObject {
 
     func thumbnail(for transition: TransitionKit.AnyTransition) -> CGImage? {
         thumbnails?.image(for: transition)
+    }
+
+    private static func downscale(_ image: CGImage, to size: CGSize) -> CGImage? {
+        let w = Int(size.width), h = Int(size.height)
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) else { return nil }
+        ctx.interpolationQuality = .high
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return ctx.makeImage()
     }
 
     func invalidateThumbnail(id: String) {

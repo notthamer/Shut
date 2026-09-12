@@ -28,6 +28,8 @@ public final class PreviewModel: ObservableObject {
 
     /// Set by the SwiftUI representable when the Metal view exists.
     weak var metalView: MetalTransitionView?
+    /// Called with every real desktop capture (never the placeholder).
+    var onRealSnapshot: ((CGImage) -> Void)?
     private var previewVelocity = 0.0
     private var lastRenderedProgress = 0.0
 
@@ -94,6 +96,7 @@ public final class PreviewModel: ObservableObject {
                 self.usesPlaceholder = false
                 self.isCapturing = false
                 self.render()
+                self.onRealSnapshot?(image)
             } catch {
                 self?.errorText = "Capture failed: \(error.localizedDescription)"
                 self?.isCapturing = false
