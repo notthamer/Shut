@@ -130,7 +130,10 @@ final class TunerHost {
         if panel == nil {
             let p = TunerPanelController(title: "Tune", content: makeContent(), width: Self.panelWidth)
             p.registerHotKey()
-            p.onVisibilityChanged = { [weak self] visible in self?.onPanelVisibility?(visible) }
+            p.onVisibilityChanged = { [weak self] visible in
+                self?.onPanelVisibility?(visible)
+                if !visible { self?.previewModel.stop(); self?.previewModel.followLid = false }
+            }
             panel = p
         }
         panel?.toggle()

@@ -196,6 +196,7 @@ public final class PreviewModel: ObservableObject {
                 if !keepGoing { self.stop(); self.render() }
             }
         }
+        playTimer?.tolerance = 0.002
         RunLoop.main.add(playTimer!, forMode: .common)
     }
 

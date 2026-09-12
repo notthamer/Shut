@@ -123,6 +123,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         angleTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.updateAngle() }
         }
+        angleTimer?.tolerance = 0.05
         RunLoop.main.add(angleTimer!, forMode: .eventTracking)
     }
 

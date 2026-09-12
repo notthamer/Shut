@@ -85,8 +85,41 @@ public final class LidAngleDevice {
     }
 
     deinit {
+        stopDoorbell()
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+    }
+
+    // MARK: - Doorbell
+
+    private var doorbellQueue: DispatchQueue?
+    private var doorbellBuffer = [UInt8](repeating: 0, count: 8)
+    private var onDoorbell: (() -> Void)?
+
+    /// The sensor pushes an input report whenever the angle changes by a whole
+    /// degree (plus a slow heartbeat). We don't read the angle from it, the
+    /// feature report is the reliable source; it's only a bell that says "look
+    /// now", which lets the poll thread park while the lid is still.
+    public func startDoorbell(on queue: DispatchQueue, _ handler: @escaping () -> Void) {
+        guard doorbellQueue == nil else { return }
+        doorbellQueue = queue
+        onDoorbell = handler
+        IOHIDDeviceSetDispatchQueue(device, queue)
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        doorbellBuffer.withUnsafeMutableBufferPointer { buffer in
+            IOHIDDeviceRegisterInputReportCallback(device, buffer.baseAddress!, buffer.count, { context, _, _, _, _, _, _ in
+                guard let context else { return }
+                Unmanaged<LidAngleDevice>.fromOpaque(context).takeUnretainedValue().onDoorbell?()
+            }, context)
+        }
+        IOHIDDeviceActivate(device)
+    }
+
+    private func stopDoorbell() {
+        guard doorbellQueue != nil else { return }
+        IOHIDDeviceCancel(device)
+        onDoorbell = nil
+        doorbellQueue = nil
     }
 
     /// Reads the raw feature report bytes. Useful for `--debug` and for verifying the

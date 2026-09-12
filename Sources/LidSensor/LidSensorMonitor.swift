@@ -23,6 +23,14 @@ public struct LidSample: Sendable {
 public final class LidSensorMonitor: ObservableObject {
     public static let idleRateHz: Double = 10
     public static let activeRateHz: Double = 120
+    /// While parked (still for a while) we only poll this often as a fallback;
+    /// the sensor's own change notification wakes us immediately.
+    public static let parkedRateHz: Double = 1
+    /// Fitted rate above which the lid counts as moving. A single one-degree
+    /// flicker at rest never reaches it.
+    public static let movingThresholdDegreesPerSecond: Double = 1.5
+    /// Seconds of stillness before dropping from idle polling to parked.
+    public static let parkAfter: TimeInterval = 1.2
 
     @Published public private(set) var capability: HingeCapability = .unsupported
     @Published public private(set) var state: HingeState?
@@ -80,6 +88,13 @@ public final class LidSensorMonitor: ObservableObject {
     private var lastMovement: TimeInterval = 0
     private var lastRawAngle: Double?
     private let settleTime: TimeInterval = 1.0
+    // Mailbox: only the newest state crosses to the main thread, once per pass.
+    private var doorbellPending = false
+    private var lastDoorbell: TimeInterval = 0
+    private var pendingState: HingeState?
+    private var pendingCalibration: HingeCalibration?
+    private var pendingDegreesPerSecond = 0.0
+    private var mainHopScheduled = false
     private let defaults: UserDefaults?
     private let calibrationKey = "hingeCalibration"
     private var lastPersistedCalibration: HingeCalibration
@@ -110,6 +125,14 @@ public final class LidSensorMonitor: ObservableObject {
             if let d = try? LidAngleDevice.open(), (try? d.readAngle()) != nil {
                 device = d
                 scheduleTimer(rateHz: Self.idleRateHz)
+                // Wake from parked the moment the sensor reports a change. The bell
+                // also rings on a slow heartbeat, so we take one reading and only
+                // leave parked if the angle actually changed.
+                d.startDoorbell(on: queue) { [weak self] in
+                    guard let self, self.currentRate == Self.parkedRateHz else { return }
+                    self.doorbellPending = true
+                    self.tick()
+                }
                 return .continuousAngle
             }
             if LidStateProvider.isAvailable() {
@@ -174,31 +197,61 @@ public final class LidSensorMonitor: ObservableObject {
         DispatchQueue.main.async { self.pollRateHz = rateHz }
     }
 
+    /// Whether to poll at the active rate: the lid is moving by the fitted rate,
+    /// or the raw reading jumped by more than the one-degree flicker a resting
+    /// lid produces. Pure, so it is testable.
+    static func isMoving(degreesPerSecond: Double, rawStep: Double) -> Bool {
+        abs(degreesPerSecond) > movingThresholdDegreesPerSecond || abs(rawStep) >= 2
+    }
+
     private func tick() {
         guard let device, let raw = try? device.readAngle() else { return }
         let now = Date().timeIntervalSince1970
         stampSample(now)
 
-        if let last = lastRawAngle, last != raw { lastMovement = now }
+        let rawStep = lastRawAngle.map { raw - $0 } ?? 0
         lastRawAngle = raw
+        if doorbellPending {
+            doorbellPending = false
+            if rawStep != 0 { lastDoorbell = now }   // a real change: watch at idle rate for a while
+        }
         guard let state = normalizer.normalize(HingeSample(angle: raw, lidIsOpen: raw > 1, timestamp: now)) else { return }
         let dps = -state.velocity * max(normalizer.animationRange.upperBound - normalizer.animationRange.lowerBound, 1)
-        if abs(dps) > 2 { lastMovement = now }
+        if Self.isMoving(degreesPerSecond: dps, rawStep: rawStep) { lastMovement = now }
 
-        let wantedRate = (now - lastMovement) < settleTime ? Self.activeRateHz : Self.idleRateHz
+        // Active while moving; idle for a while after movement or a change the
+        // doorbell reported; parked otherwise (1 Hz fallback plus the doorbell).
+        let sinceMove = now - lastMovement, sinceBell = now - lastDoorbell
+        let wantedRate: Double
+        if sinceMove < settleTime { wantedRate = Self.activeRateHz }
+        else if sinceMove < settleTime + Self.parkAfter || sinceBell < Self.parkAfter { wantedRate = Self.idleRateHz }
+        else { wantedRate = Self.parkedRateHz }
         if wantedRate != currentRate { scheduleTimer(rateHz: wantedRate) }
 
         onSample?(LidSample(timestamp: now, rawAngle: raw, angle: state.angle ?? raw,
                             degreesPerSecond: dps, progress: state.progress, pollRateHz: currentRate))
         persistCalibrationIfDrifted(now: now)
 
+        // Mailbox: coalesce into one main-thread hop per run-loop pass.
+        pendingState = state
+        pendingDegreesPerSecond = dps
         let calibrationNow = normalizer.calibration
-        DispatchQueue.main.async {
+        if calibrationNow != calibration { pendingCalibration = calibrationNow }
+        guard !mainHopScheduled else { return }
+        mainHopScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let (state, dps, calibration): (HingeState?, Double, HingeCalibration?) = self.queue.sync {
+                self.mainHopScheduled = false
+                defer { self.pendingState = nil; self.pendingCalibration = nil }
+                return (self.pendingState, self.pendingDegreesPerSecond, self.pendingCalibration)
+            }
+            guard let state else { return }
             self.state = state
             self.angle = state.angle
             self.degreesPerSecond = dps
-            self.lastSampleDate = Date(timeIntervalSince1970: now)
-            if self.calibration != calibrationNow { self.calibration = calibrationNow }
+            self.lastSampleDate = Date(timeIntervalSince1970: state.timestamp)
+            if let calibration { self.calibration = calibration }
         }
     }
 

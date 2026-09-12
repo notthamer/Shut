@@ -52,6 +52,8 @@ public final class AppController: ObservableObject {
     private var pourOutWorkItem: DispatchWorkItem?
     private var pourOutOvershoot = 0.06
     private let blackScreenLimit: TimeInterval = 1.5
+    private var lastChangeAt = Date()
+    private var lastRenderedProgress: Double?
 
     /// Progress at which the overlay appears; Bendable engages at 0.3 % closure.
     private let showAt = 0.012
@@ -95,9 +97,21 @@ public final class AppController: ObservableObject {
         unlock.onUnlock = { [weak self] in self?.sessionUnlocked() }
         unlock.onLock = { [weak self] in self?.blackSince = nil }
 
-        safetyTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+    }
+
+    /// The safety check only has work while an overlay is on screen.
+    private func startSafetyTimer() {
+        guard safetyTimer == nil else { return }
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.safetyCheck() }
         }
+        timer.tolerance = 0.1
+        safetyTimer = timer
+    }
+
+    private func stopSafetyTimer() {
+        safetyTimer?.invalidate()
+        safetyTimer = nil
     }
 
     // MARK: - Hinge (continuous sensor)
@@ -128,6 +142,9 @@ public final class AppController: ObservableObject {
             // back at the top, clear the overlay.
             if driver.mode == .follow, p <= hideBelow, driver.progress < 0.01 {
                 teardown(reason: "lid reopened")
+            } else if displayLink?.isRunning == false {
+                // The link paused while nothing changed; a new reading restarts it.
+                displayLink?.start()
             }
 
         case .drained, .pouring:
@@ -228,6 +245,8 @@ public final class AppController: ObservableObject {
         }
         progressVelocity = 0
         lastFrameProgress = driver.progress
+        lastRenderedProgress = nil
+        lastChangeAt = Date()
 
         if overlay == nil {
             overlay = OverlayWindow(screen: screen, renderer: renderer, transition: transition, context: context)
@@ -240,6 +259,7 @@ public final class AppController: ObservableObject {
         overlay?.show(on: screen)
         shownAt = Date()
         state = .closing
+        startSafetyTimer()
         onTransitionVisibilityChanged?(true)
         if registry.isSubstituting {
             Log.overlay.info("overlay shown (\(transition.id, privacy: .public), substituting for \(self.registry.current.id, privacy: .public))")
@@ -255,6 +275,7 @@ public final class AppController: ObservableObject {
     /// Hide everything and drop the snapshot. Safe to call from any state.
     func teardown(reason: String) {
         displayLink?.stop()
+        stopSafetyTimer()
         overlay?.hide()
         overlay?.metalView.isBlackedOut = false
         blackSince = nil
@@ -289,13 +310,22 @@ public final class AppController: ObservableObject {
 
         let raw = (p - lastFrameProgress) / max(dt, 0.001)
         progressVelocity += (raw - progressVelocity) * min(1, dt / 0.05)
+        let changed = abs(p - lastFrameProgress) > 1e-5 || abs(progressVelocity) > 1e-3
         lastFrameProgress = p
 
-        progress = p
-        overlay.metalView.progress = p
-        overlay.metalView.context.time = Float(Date().timeIntervalSince(shownAt ?? Date()))
-        overlay.metalView.context.velocity = Float(progressVelocity)
-        overlay.metalView.render()
+        if changed { lastChangeAt = Date() }
+        if changed || lastRenderedProgress == nil {
+            progress = p
+            overlay.metalView.progress = p
+            overlay.metalView.context.time = Float(Date().timeIntervalSince(shownAt ?? Date()))
+            overlay.metalView.context.velocity = Float(progressVelocity)
+            overlay.metalView.render()
+            lastRenderedProgress = p
+        } else if state == .closing, driver.mode == .follow, Date().timeIntervalSince(lastChangeAt) > 0.5 {
+            // Nothing has moved for half a second (lid resting mid-close, or held
+            // shut): stop drawing until the next hinge reading.
+            displayLink?.stop()
+        }
 
         if state == .pouring, driver.isSettled {
             teardown(reason: "pour-out complete")
@@ -352,6 +382,7 @@ public final class AppController: ObservableObject {
         shownAt = Date()
         blackSince = nil
         state = .drained
+        startSafetyTimer()
         Log.overlay.info("drained: black overlay in place")
     }
 
@@ -418,6 +449,8 @@ public final class AppController: ObservableObject {
                        damping: transition.doubleParam("pourOutDamping", default: 0.72))
         progressVelocity = 0
         lastFrameProgress = 1
+        lastRenderedProgress = nil
+        lastChangeAt = Date()
         state = .pouring
         blackSince = nil
         shownAt = Date()

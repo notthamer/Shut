@@ -71,6 +71,8 @@ final class PopoverController {
     func close() {
         guard let panel, panel.isVisible else { return }
         removeMonitors()
+        model.preview.stop()
+        model.preview.followLid = false
         anchorButton?.highlight(false)
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.12

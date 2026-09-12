@@ -217,3 +217,29 @@ final class HingeNormalizerTests: XCTestCase {
         XCTAssertEqual(normalizer.calibration.openAngle, 100, accuracy: 2)
     }
 }
+
+final class PollRateTests: XCTestCase {
+    func testOneDegreeFlickerAtRestIsNotMotion() {
+        XCTAssertFalse(LidSensorMonitor.isMoving(degreesPerSecond: 0.3, rawStep: 1))
+        XCTAssertFalse(LidSensorMonitor.isMoving(degreesPerSecond: -0.8, rawStep: -1))
+    }
+
+    func testRealMovementIsMotion() {
+        XCTAssertTrue(LidSensorMonitor.isMoving(degreesPerSecond: -3, rawStep: -1), "a slow close by fitted rate")
+        XCTAssertTrue(LidSensorMonitor.isMoving(degreesPerSecond: 0, rawStep: -4), "a big raw jump before the fit catches up")
+    }
+
+    func testDitheringNormalizerReportsNearZeroRate() {
+        var normalizer = HingeNormalizer(calibration: HingeCalibration(closedAngle: 0, openAngle: 123), smoothing: 0.25, autoCalibrates: false)
+        var worst = 0.0
+        for i in 0..<600 {
+            let t = Double(i) / 10
+            let reading = i % 7 == 0 ? 123.0 : 122.0   // an occasional flicker while parked
+            if let s = normalizer.normalize(HingeSample(angle: reading, lidIsOpen: true, timestamp: t)), t > 2 {
+                let dps = -s.velocity * 45
+                worst = max(worst, abs(dps))
+            }
+        }
+        XCTAssertLessThan(worst, LidSensorMonitor.movingThresholdDegreesPerSecond, "parked dither must stay below the moving threshold")
+    }
+}
