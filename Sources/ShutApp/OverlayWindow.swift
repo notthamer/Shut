@@ -15,7 +15,7 @@ final class OverlayWindow: NSWindow {
         // the window lands on the right display anyway.
         super.init(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         level = .screenSaver
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        collectionBehavior = Self.everySpace
         ignoresMouseEvents = true
         isOpaque = true
         hasShadow = false
@@ -40,9 +40,34 @@ final class OverlayWindow: NSWindow {
         metalView.isTransparent = transparent
     }
 
-    func show(on screen: NSScreen) {
+    /// Wanted: one window that is on every desktop and full-screen Space.
+    static let everySpace: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+    /// Fallback: follow whichever Space is active when the window is ordered in.
+    static let activeSpaceOnly: NSWindow.CollectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+
+    /// How the window ended up on screen, for the log.
+    enum Placement: String { case everySpace, movedToActiveSpace, offActiveSpace }
+
+    /// Orders the window in and makes sure it is on the Space the user is looking
+    /// at. `canJoinAllSpaces` alone is not enough in practice: on macOS 15/26 the
+    /// window server sometimes keeps a reused window on the Space where it was
+    /// first ordered in, and `isOnActiveSpace` then reports false while the
+    /// window is "visible". When that happens the window is re-ordered with
+    /// `.moveToActiveSpace`, which pins it to the current Space (desktop or
+    /// full-screen app). That is exactly where the lid is closing, and the
+    /// window is hidden again before the user could switch away.
+    @discardableResult
+    func show(on screen: NSScreen) -> Placement {
+        setFrame(screen.frame, display: false)
+        collectionBehavior = Self.everySpace
+        orderFrontRegardless()
+        if isOnActiveSpace { return .everySpace }
+
+        orderOut(nil)
+        collectionBehavior = Self.activeSpaceOnly
         setFrame(screen.frame, display: false)
         orderFrontRegardless()
+        return isOnActiveSpace ? .movedToActiveSpace : .offActiveSpace
     }
 
     func hide() {

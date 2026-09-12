@@ -257,6 +257,9 @@ public final class AppController: ObservableObject {
         lastRenderedProgress = nil
         lastChangeAt = Date()
 
+        // A fresh window per close: a window built while this Space is active is
+        // guaranteed to belong to it, whereas one reused across Spaces was seen
+        // to stay behind on the Space of its first close (see OverlayWindow.show).
         if overlay == nil {
             overlay = OverlayWindow(screen: screen, renderer: renderer, transition: transition, context: context)
         }
@@ -265,7 +268,7 @@ public final class AppController: ObservableObject {
         overlay?.metalView.context = context
         overlay?.metalView.progress = driver.progress
         overlay?.metalView.render()
-        overlay?.show(on: screen)
+        let placement = overlay?.show(on: screen) ?? .offActiveSpace
         shownAt = Date()
         state = .closing
         startSafetyTimer()
@@ -274,6 +277,9 @@ public final class AppController: ObservableObject {
             Log.overlay.info("overlay shown (\(transition.id, privacy: .public), substituting for \(self.registry.current.id, privacy: .public))")
         } else {
             Log.overlay.info("overlay shown (\(transition.id, privacy: .public))")
+        }
+        if placement != .everySpace {
+            Log.overlay.notice("overlay placement fallback: \(placement.rawValue, privacy: .public)")
         }
 
         if displayLink == nil { displayLink = DisplayLinkDriver(screen: screen) }
@@ -300,6 +306,9 @@ public final class AppController: ObservableObject {
         sensor.keepAwake = false
         overlay?.hide()
         overlay?.metalView.isBlackedOut = false
+        // Drop the window so the next close builds one on the Space it happens on.
+        overlay?.close()
+        overlay = nil
         blackSince = nil
         pourOutWorkItem?.cancel()
         pourOutWorkItem = nil
@@ -399,7 +408,10 @@ public final class AppController: ObservableObject {
         overlay?.setTransparent(false)
         overlay?.metalView.isBlackedOut = true
         overlay?.metalView.render()
-        overlay?.show(on: screen)
+        let placement = overlay?.show(on: screen) ?? .offActiveSpace
+        if placement != .everySpace {
+            Log.overlay.notice("drained overlay placement fallback: \(placement.rawValue, privacy: .public)")
+        }
         if shownAt == nil { onTransitionVisibilityChanged?(true) }
         shownAt = Date()
         blackSince = nil

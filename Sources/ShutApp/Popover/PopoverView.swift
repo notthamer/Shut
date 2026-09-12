@@ -4,6 +4,9 @@ import Tuner
 /// The whole popover: header, preview column, controls column, footer.
 struct PopoverView: View {
     @ObservedObject var model: PopoverModel
+    /// In the main window the header leaves room for the traffic lights and
+    /// drops the "open as a window" button.
+    var hostedInWindow = false
     @Environment(\.tunerTheme) private var theme
 
     static let width: CGFloat = 600
@@ -12,7 +15,7 @@ struct PopoverView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PopoverHeader(model: model)
+            PopoverHeader(model: model, hostedInWindow: hostedInWindow)
                 .background(theme.elevated)
             Rectangle().fill(theme.border).frame(height: 1)
             HStack(spacing: 0) {
@@ -38,6 +41,7 @@ struct PopoverView: View {
 
 struct PopoverHeader: View {
     @ObservedObject var model: PopoverModel
+    var hostedInWindow = false
     @Environment(\.tunerTheme) private var theme
 
     /// Green: following the lid. Orange: running, but substituting. Grey: paused
@@ -60,10 +64,15 @@ struct PopoverHeader: View {
             }
             .help(model.sensor.capability.explanation)
             Spacer(minLength: 8)
+            if !hostedInWindow {
+                IconButton("macwindow", help: "Open Shut as a window you can move and minimize.", action: model.openWindow)
+            }
             SmallPill(isOn: model.settings.isEnabled, size: .regular) { model.settings.isEnabled.toggle() }
                 .help(model.settings.isEnabled ? "Stop animating the lid." : "Start animating the lid.")
         }
         .padding(.horizontal, 14)
+        // Traffic lights sit in the first 64 pt of a window's header.
+        .padding(.leading, hostedInWindow ? 58 : 0)
         .frame(height: 52)
     }
 }
@@ -116,6 +125,31 @@ struct SmallPill: View {
         .buttonStyle(.plain)
         .tunerAnimation(TunerTheme.quick, value: isOn)
         .accessibilityValue(isOn ? "On" : "Off")
+    }
+}
+
+/// A 24-pt symbol button with the same hover surface as QuietButton.
+struct IconButton: View {
+    let symbol: String
+    let help: String
+    let action: () -> Void
+    @Environment(\.tunerTheme) private var theme
+    @State private var hover = false
+    init(_ symbol: String, help: String, action: @escaping () -> Void) {
+        self.symbol = symbol; self.help = help; self.action = action
+    }
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
+                .frame(width: 26, height: 26)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover ? theme.surfaceHover : .clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .help(help)
     }
 }
 

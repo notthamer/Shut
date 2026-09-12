@@ -52,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var thumbnails: TransitionThumbnailRenderer?
     private var popoverModel: PopoverModel!
     private var popover: PopoverController!
+    private var mainWindow: MainWindowController!
     private let welcome = WelcomeWindow()
     private let dock = DockPresence()
     private var cancellables = Set<AnyCancellable>()
@@ -110,6 +111,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popoverModel.resetStyle = { [weak self] id in self?.tunerHost?.resetStyle(id: id) }
         tunerHost?.onParamsChanged = { [weak self] id in self?.popoverModel.invalidateThumbnail(id: id) }
         popover = PopoverController(model: popoverModel, dock: dock)
+        mainWindow = MainWindowController(model: popoverModel, dock: dock)
+        mainWindow.onShow = { [weak self] in self?.popover.close() }
+        popoverModel.openWindow = { [weak self] in self?.mainWindow.show() }
+        MainMenu.install()
         dock.alwaysVisible = settings.showInDock
         settings.$showInDock.sink { [weak self] on in self?.dock.alwaysVisible = on }.store(in: &cancellables)
         tunerHost?.onPanelVisibility = { [weak self] visible in visible ? self?.dock.retain("tuner") : self?.dock.release("tuner") }
@@ -125,13 +130,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             welcome.show(capability: capability) { [weak self] in
                 self?.settings.isEnabled = true
                 self?.settings.hasCompletedFirstRun = true
-                if let button = self?.menuBar.statusButton { self?.popover.show(relativeTo: button) }
+                self?.mainWindow.show()
             }
         }
     }
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
         let menu = NSMenu()
+        let open = NSMenuItem(title: "Open Shut", action: #selector(dockOpen), keyEquivalent: "")
+        open.target = self
+        menu.addItem(open)
         let tune = NSMenuItem(title: "Tune everything…", action: #selector(dockTune), keyEquivalent: "")
         tune.target = self
         menu.addItem(tune)
@@ -141,13 +149,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return menu
     }
 
+    @objc private func dockOpen() { mainWindow?.show() }
     @objc private func dockTune() { tunerHost?.toggle() }
     @objc private func dockToggle() { settings.isEnabled.toggle() }
 
-    /// Clicking the Dock icon brings the popover back.
+    /// Clicking the Dock icon opens (or brings back) the main window.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if let button = menuBar.statusButton, popover?.isShown == false { popover.show(relativeTo: button) }
-        return true
+        mainWindow?.show()
+        return false
     }
 
     func applicationWillTerminate(_ notification: Notification) {

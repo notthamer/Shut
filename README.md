@@ -64,7 +64,10 @@ Capabilities, or create `App/Local.xcconfig` with a stable identity. See
 
 ## Interface
 
-Everything is in one menu bar popover. Left click the icon.
+Everything is in one panel. Left click the menu bar icon for it as a popover, or
+click the Dock icon (or the window button in the popover's header) for the same
+panel as a window you can move around and minimize. "In Dock" in the footer turns
+the Dock icon off if you want Shut in the menu bar only.
 
 - **Preview** on the left plays the chosen style on a snapshot of your desktop (a
   drawn stand-in until Screen Recording is granted). Drag under it to move the lid by

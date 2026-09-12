@@ -14,14 +14,50 @@ enum BuiltInDisplayAspect {
 struct PreviewMetalView: NSViewRepresentable {
     @ObservedObject var model: PreviewModel
 
-    func makeNSView(context: Context) -> MetalTransitionView {
+    func makeNSView(context: Context) -> PreviewHostView {
         let view = MetalTransitionView(renderer: model.renderer, transition: model.registry.current, context: model.context)
         model.metalView = view
-        return view
+        return PreviewHostView(metal: view) { [weak model] metal in
+            guard let model, model.metalView !== metal else { return }
+            model.metalView = metal
+            model.render()
+        }
     }
 
-    func updateNSView(_ view: MetalTransitionView, context: Context) {
+    func updateNSView(_ host: PreviewHostView, context: Context) {
         model.render()
+    }
+}
+
+/// The popover and the main window both show the preview from one
+/// `PreviewModel`, which draws into a single Metal view at a time. Whichever
+/// host's window is key claims the model, so the preview the user is looking
+/// at is the one that moves.
+final class PreviewHostView: NSView {
+    let metal: MetalTransitionView
+    private let claim: (MetalTransitionView) -> Void
+    private var keyObserver: NSObjectProtocol?
+
+    init(metal: MetalTransitionView, claim: @escaping (MetalTransitionView) -> Void) {
+        self.metal = metal
+        self.claim = claim
+        super.init(frame: .zero)
+        metal.frame = bounds
+        metal.autoresizingMask = [.width, .height]
+        addSubview(metal)
+    }
+
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let keyObserver { NotificationCenter.default.removeObserver(keyObserver) }
+        keyObserver = nil
+        guard let window else { return }
+        claim(metal)
+        keyObserver = NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { guard let self else { return }; self.claim(self.metal) }
+        }
     }
 }
 

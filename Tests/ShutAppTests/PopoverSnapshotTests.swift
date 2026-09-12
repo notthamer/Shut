@@ -25,8 +25,9 @@ final class PopoverSnapshotTests: XCTestCase {
         XCTAssertEqual(model.statusLine, "Fold needs Screen Recording")
         XCTAssertTrue(model.needsPermissionCard)
 
-        for (name, appearance) in [("dark", NSAppearance.Name.darkAqua), ("light", NSAppearance.Name.aqua)] {
-            let hosting = NSHostingView(rootView: AnyView(PopoverView(model: model)))
+        let variants: [(String, NSAppearance.Name, Bool)] = [("dark", .darkAqua, false), ("light", .aqua, false), ("window", .darkAqua, true)]
+        for (name, appearance, inWindow) in variants {
+            let hosting = NSHostingView(rootView: AnyView(PopoverView(model: model, hostedInWindow: inWindow)))
             hosting.frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: 640)
             let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless], backing: .buffered, defer: false)
             window.appearance = NSAppearance(named: appearance)
