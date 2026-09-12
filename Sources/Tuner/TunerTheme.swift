@@ -56,26 +56,21 @@ public struct TunerTheme {
 }
 
 struct TunerThemeKey: EnvironmentKey {
-    static let defaultValue = TunerTheme(colorScheme: .dark)
+    static let defaultValue: TunerTheme? = nil
 }
 
 public extension EnvironmentValues {
+    /// Follows the colour scheme unless a host pins a theme explicitly, so every
+    /// view that reads it, including the root of a hierarchy, agrees.
     var tunerTheme: TunerTheme {
-        get { self[TunerThemeKey.self] }
+        get { self[TunerThemeKey.self] ?? TunerTheme(colorScheme: colorScheme) }
         set { self[TunerThemeKey.self] = newValue }
     }
 }
 
 public extension View {
-    /// Resolves the theme from the current colour scheme and injects it.
-    func tunerThemed() -> some View { modifier(TunerThemeResolver()) }
-}
-
-private struct TunerThemeResolver: ViewModifier {
-    @Environment(\.colorScheme) private var scheme
-    func body(content: Content) -> some View {
-        content.environment(\.tunerTheme, TunerTheme(colorScheme: scheme))
-    }
+    /// Kept for hosts that call it; the theme already follows the colour scheme.
+    func tunerThemed() -> some View { self }
 }
 
 /// Reduce Motion turns every spring into an instant change.

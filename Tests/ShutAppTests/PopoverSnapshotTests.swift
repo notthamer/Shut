@@ -22,26 +22,28 @@ final class PopoverSnapshotTests: XCTestCase {
         XCTAssertTrue(preview.hasSnapshot)
         XCTAssertTrue(preview.usesPlaceholder)
 
-        let hosting = NSHostingView(rootView: AnyView(PopoverView(model: model)))
-        hosting.frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: 640)
-        let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless], backing: .buffered, defer: false)
-        window.appearance = NSAppearance(named: .darkAqua)
-        let container = NSView(frame: hosting.frame)
-        container.wantsLayer = true
-        container.addSubview(hosting)
-        window.contentView = container
-        hosting.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date().addingTimeInterval(0.4))
-
-        let rep = try XCTUnwrap(container.bitmapImageRepForCachingDisplay(in: container.bounds))
-        container.cacheDisplay(in: container.bounds, to: rep)
-        XCTAssertGreaterThan(rep.pixelsWide, 0)
         XCTAssertEqual(model.statusLine, "Fold needs Screen Recording")
         XCTAssertTrue(model.needsPermissionCard)
 
-        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"],
-           let png = rep.representation(using: .png, properties: [:]) {
-            try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("popover.png"))
+        for (name, appearance) in [("dark", NSAppearance.Name.darkAqua), ("light", NSAppearance.Name.aqua)] {
+            let hosting = NSHostingView(rootView: AnyView(PopoverView(model: model)))
+            hosting.frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: 640)
+            let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: appearance)
+            let container = NSView(frame: hosting.frame)
+            container.wantsLayer = true
+            container.addSubview(hosting)
+            window.contentView = container
+            hosting.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.4))
+
+            let rep = try XCTUnwrap(container.bitmapImageRepForCachingDisplay(in: container.bounds))
+            container.cacheDisplay(in: container.bounds, to: rep)
+            XCTAssertGreaterThan(rep.pixelsWide, 0)
+            if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"],
+               let png = rep.representation(using: .png, properties: [:]) {
+                try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("popover-\(name).png"))
+            }
         }
     }
 

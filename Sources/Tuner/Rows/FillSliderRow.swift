@@ -27,6 +27,10 @@ public struct FillSliderRow: View {
     @State private var hovering = false
     @State private var dragging = false
     @State private var dragStart: CGPoint?
+    /// Points of track stretch while dragging past either end (rubber band).
+    @State private var stretch: CGFloat = 0
+    @State private var labelWidth: CGFloat = 0
+    @State private var valueWidth: CGFloat = 0
     @State private var valueHovering = false
     @State private var valueArmed = false
     @State private var editing = false
@@ -61,43 +65,55 @@ public struct FillSliderRow: View {
     public var body: some View {
         GeometryReader { geo in
             let width = geo.size.width
+            let handleX = max(min(fraction * width - 1.5, width - 4), 1)
+            // The handle ducks when it would sit on top of the label or the value.
+            let collides = handleX < labelWidth + 18 || handleX > width - valueWidth - 18
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                    .fill(hovering || dragging ? theme.surfaceHover : theme.surface)
-
-                // Fill
-                RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                    .fill(dragging ? theme.borderHover : theme.surfaceActive)
-                    .frame(width: max(fraction * width, 0))
-                    .tunerAnimation(TunerTheme.quick, value: dragging)
-
-                // Hash marks while active
-                if hovering || dragging {
-                    let marks = isDiscrete ? max(Int(((range.upperBound - range.lowerBound) / step).rounded()) - 1, 0) : 9
-                    ForEach(0..<marks, id: \.self) { i in
-                        Rectangle()
-                            .fill(theme.borderHover)
-                            .frame(width: 1, height: 8)
-                            .offset(x: width * CGFloat(i + 1) / CGFloat(marks + 1))
-                    }
+                // Track and fill stretch together past the ends, like a rubber band.
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
+                        .fill(hovering || dragging ? theme.surfaceHover : theme.surface)
+                    RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
+                        .fill(dragging ? theme.borderHover : theme.surfaceActive)
+                        .frame(width: max(fraction * width, 0))
+                        .tunerAnimation(TunerTheme.quick, value: dragging)
                 }
+                .scaleEffect(x: 1 + abs(stretch) / max(width, 1), y: 1, anchor: stretch > 0 ? .leading : .trailing)
+                .tunerAnimation(.spring(response: 0.35, dampingFraction: 0.85), value: stretch)
+
+                // Hash marks fade in while active.
+                let marks = isDiscrete ? max(Int(((range.upperBound - range.lowerBound) / step).rounded()) - 1, 0) : 9
+                ForEach(0..<marks, id: \.self) { i in
+                    Rectangle()
+                        .fill(theme.borderHover)
+                        .frame(width: 1, height: 8)
+                        .offset(x: width * CGFloat(i + 1) / CGFloat(marks + 1))
+                        .opacity(hovering || dragging ? 1 : 0)
+                }
+                .tunerAnimation(.easeOut(duration: 0.2), value: hovering || dragging)
 
                 // Handle
                 Capsule()
                     .fill(theme.textPrimary)
                     .frame(width: 3, height: 20)
-                    .offset(x: max(min(fraction * width - 1.5, width - 4), 1))
-                    .opacity(handleOpacity)
+                    .scaleEffect(x: hovering || dragging ? 1 : 0.25, y: collides ? 0.75 : 1)
+                    .offset(x: handleX)
+                    .opacity(collides ? handleOpacity * 0.2 : handleOpacity)
                     .tunerAnimation(TunerTheme.quick, value: hovering)
+                    .tunerAnimation(TunerTheme.quick, value: collides)
 
                 HStack(spacing: 8) {
                     Text(label)
                         .font(TunerTheme.label)
                         .foregroundStyle(theme.textLabel)
                         .lineLimit(1)
+                        .background(GeometryReader { g in Color.clear.onAppear { labelWidth = g.size.width }.onChange(of: g.size.width) { _, w in labelWidth = w } })
                         .onTapGesture(count: 2) { reset?() }
                     Spacer(minLength: 4)
-                    if showsValue { valueView }
+                    if showsValue {
+                        valueView
+                            .background(GeometryReader { g in Color.clear.onAppear { valueWidth = g.size.width }.onChange(of: g.size.width) { _, w in valueWidth = w } })
+                    }
                 }
                 .padding(.horizontal, 10)
             }
@@ -169,9 +185,15 @@ public struct FillSliderRow: View {
                 }
                 guard dragging, !editing else { return }
                 setValue(fromX: g.location.x, width: width, snapping: false)
+                // Past either end: dead zone of 32 pt, then up to 8 pt of stretch that
+                // eases in with the square root of the overshoot.
+                let over = g.location.x < 0 ? -g.location.x : (g.location.x > width ? g.location.x - width : 0)
+                let sign: CGFloat = g.location.x < 0 ? -1 : 1
+                let amount = max(over - 32, 0)
+                stretch = amount > 0 ? sign * 8 * sqrt(min(amount / 200, 1)) : 0
             }
             .onEnded { g in
-                defer { dragging = false; dragStart = nil }
+                defer { dragging = false; dragStart = nil; stretch = 0 }
                 guard !editing else { return }
                 if !dragging { setValue(fromX: g.location.x, width: width, snapping: true) }
             }

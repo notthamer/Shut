@@ -128,11 +128,12 @@ public final class TunerPanelController {
 }
 
 /// Rounded panel background with a hairline border; a circle when collapsed.
-final class PanelChrome: NSView {
+/// Public so a host can give other floating windows the same chrome.
+public final class PanelChrome: NSView {
     var hosting: NSHostingView<AnyView>?
-    var isCollapsed = false { didSet { needsDisplay = true; updateMask() } }
+    public var isCollapsed = false { didSet { needsDisplay = true; updateMask() } }
 
-    override init(frame: NSRect) {
+    public override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.masksToBounds = true
@@ -141,7 +142,7 @@ final class PanelChrome: NSView {
 
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 
-    override func layout() {
+    public override func layout() {
         super.layout()
         updateMask()
     }

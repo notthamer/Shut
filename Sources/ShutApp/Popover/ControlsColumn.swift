@@ -15,6 +15,7 @@ struct ControlsColumn: View {
 
                 if model.needsPermissionCard {
                     PermissionCard(model: model)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
                 VStack(spacing: TunerTheme.rowGap) {
@@ -25,9 +26,20 @@ struct ControlsColumn: View {
                 }
 
                 FeelSection(model: model)
+                    .id(model.registry.current.id)
+                    .transition(.opacity)
             }
             .padding(14)
+            .tunerAnimation(TunerTheme.spring, value: model.registry.current.id)
+            .tunerAnimation(TunerTheme.spring, value: model.needsPermissionCard)
         }
+        // A soft fade at the bottom says "there's more" without a scrollbar.
+        .mask(
+            VStack(spacing: 0) {
+                Color.black
+                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: 28)
+            }
+        )
     }
 }
 
@@ -86,11 +98,13 @@ struct StyleCard: View {
             .padding(.horizontal, 6).padding(.vertical, 5)
         }
         .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(isSelected ? theme.surfaceActive : (hover ? theme.surfaceHover : theme.surface)))
-        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(isSelected ? theme.textLabel : .clear, lineWidth: 1.5))
+        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(isSelected ? theme.textTertiary : theme.border, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .scaleEffect(hover && !isSelected ? 1.015 : 1)
         .onHover { hover = $0 }
         .tunerAnimation(TunerTheme.quick, value: hover)
+        .tunerAnimation(TunerTheme.quick, value: isSelected)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(transition.displayName)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
@@ -140,8 +154,8 @@ struct PermissionCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).font(.system(size: 11))
+            HStack(spacing: 8) {
+                Circle().fill(.orange).frame(width: 7, height: 7)
                 Text("\(model.registry.current.displayName) is showing as a plain fade").font(.system(size: 11, weight: .semibold)).foregroundStyle(theme.textRoot)
             }
             Text("It needs Screen Recording to take one still of your desktop as the lid moves. Nothing is saved. macOS checks the permission when the app starts, so restart it after allowing.")
@@ -152,6 +166,7 @@ struct PermissionCard: View {
             }
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.orange.opacity(0.10)))
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(theme.surface))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(theme.border))
     }
 }
