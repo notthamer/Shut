@@ -64,6 +64,11 @@ public final class AppController: ObservableObject {
     private let armAt = 0.003
     /// No sensor sample for this long during a close hides the overlay.
     private let watchdogInterval: TimeInterval = 0.5
+    /// A snapshot older than this is not trusted to match the screen any more.
+    private let snapshotMaxAge: TimeInterval = 1.5
+    private var snapshotIsFresh: Bool {
+        renderer.snapshot != nil && Date().timeIntervalSince(lastCaptureDate) < snapshotMaxAge
+    }
 
     /// Set by the Tuner host so the panel can hide while a real transition plays.
     public var onTransitionVisibilityChanged: ((Bool) -> Void)?
@@ -140,11 +145,23 @@ public final class AppController: ObservableObject {
             if p <= hideBelow / 2 && hinge.direction != .closing {
                 disarm()
             } else if p >= showAt {
-                beginClose()
+                // The picture has to be what is on screen *now*. A lid that rests a
+                // hair below open keeps the app armed, and the user may well switch
+                // Spaces in the meantime; an old snapshot would play the wrong desktop.
+                if !registry.effectiveForLid.needsSnapshot || snapshotIsFresh {
+                    beginClose()
+                } else {
+                    capture()   // its completion begins the close
+                }
             } else if Date().timeIntervalSince(lastCaptureDate) > 1.0,
                       Date().timeIntervalSince(armedAt) < 6.0, hinge.direction == .still {
                 // Resting just below open: keep the snapshot fresh for a few seconds.
                 capture()
+            } else if renderer.snapshot != nil, !snapshotIsFresh,
+                      Date().timeIntervalSince(armedAt) >= 6.0, hinge.direction == .still {
+                // Still resting: let the old picture go rather than hold 30 MB of
+                // stale desktop. A fresh one is taken the moment the close starts.
+                renderer.clearSnapshot()
             }
 
         case .closing:
@@ -278,7 +295,7 @@ public final class AppController: ObservableObject {
         if registry.isSubstituting {
             Log.overlay.info("overlay shown (\(transition.id, privacy: .public), substituting for \(self.registry.current.id, privacy: .public))")
         } else {
-            Log.overlay.info("overlay shown (\(transition.id, privacy: .public))")
+            Log.overlay.info("overlay shown (\(transition.id, privacy: .public)), snapshot \(Int(Date().timeIntervalSince(self.lastCaptureDate) * 1000)) ms old")
         }
         if placement != .everySpace {
             Log.overlay.notice("overlay placement fallback: \(placement.rawValue, privacy: .public)")
@@ -296,8 +313,8 @@ public final class AppController: ObservableObject {
         let visible = overlay.occlusionState.contains(.visible)
         Log.overlay.info("overlay placement: onActiveSpace=\(overlay.isOnActiveSpace) visible=\(visible) level=\(overlay.level.rawValue) frame=\(NSStringFromRect(overlay.frame), privacy: .public) screens=\(NSScreen.screens.count)")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let self, let overlay = self.overlay, overlay.isVisible else { return }
-            Log.overlay.info("overlay after 0.5 s: onActiveSpace=\(overlay.isOnActiveSpace) visible=\(overlay.occlusionState.contains(.visible))")
+            guard let self, let overlay = self.overlay else { return }
+            Log.overlay.info("overlay after 0.5 s: ordered=\(overlay.isVisible) onActiveSpace=\(overlay.isOnActiveSpace) visible=\(overlay.occlusionState.contains(.visible))")
         }
     }
 
