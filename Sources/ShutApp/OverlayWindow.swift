@@ -4,7 +4,16 @@ import TransitionKit
 /// The borderless, click-through window that covers the built-in display while
 /// a transition plays. It sits at screen-saver level so it's above full-screen
 /// apps and the menu bar, joins every Space, and never takes focus.
-final class OverlayWindow: NSWindow {
+///
+/// It is an `NSPanel` with `.nonactivatingPanel`, not a plain `NSWindow`, and
+/// that is load-bearing. Shut is a Dock app (`.regular` activation policy) when
+/// "In Dock" is on, and macOS 26 refuses to place a plain window of a Dock app
+/// on another Space or over another app's full-screen Space, whatever its
+/// collection behavior says: `isOnActiveSpace` stays false and nothing is drawn.
+/// A non-activating panel from the same process lands on the active Space every
+/// time, as does any window from a menu-bar-only (`.accessory`) app. Measured
+/// with a two-process experiment; see docs/ARCHITECTURE.md, "Spaces".
+final class OverlayWindow: NSPanel {
     let metalView: MetalTransitionView
 
     init(screen: NSScreen, renderer: TransitionRenderer, transition: AnyTransition, context: RenderContext) {
@@ -13,7 +22,7 @@ final class OverlayWindow: NSWindow {
         // into it, which a Swift subclass with its own init doesn't inherit, and
         // that call traps at runtime. `screen.frame` is in global coordinates, so
         // the window lands on the right display anyway.
-        super.init(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        super.init(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         level = .screenSaver
         collectionBehavior = Self.everySpace
         ignoresMouseEvents = true
@@ -22,7 +31,8 @@ final class OverlayWindow: NSWindow {
         backgroundColor = .black
         isReleasedWhenClosed = false
         animationBehavior = .none
-        hidesOnDeactivate = false
+        hidesOnDeactivate = false      // NSPanel defaults to true; the lid doesn't care who is active
+        becomesKeyOnlyIfNeeded = true
         isExcludedFromWindowsMenu = true
         contentView = metalView
         metalView.frame = contentView!.bounds

@@ -28,11 +28,11 @@ lid angle sensor ──► LidSensor ──► AppController ──► OverlayWi
    threshold, timed mode for event-only Macs) into the renderer. `drained` is the
    black hold across sleep. `pouring` is the reverse after unlock, on a fresh
    snapshot, with a small overshoot.
-3. **`OverlayWindow`** is a borderless, click-through `NSWindow` at screen-saver
-   level with `canJoinAllSpaces` and `fullScreenAuxiliary`. It is built fresh for
-   every close and its `show(on:)` checks `isOnActiveSpace`; when the window server
-   ignores the all-Spaces flag (seen on macOS 26 with full-screen apps) it re-orders
-   the window with `moveToActiveSpace` and logs the fallback.
+3. **`OverlayWindow`** is a borderless, click-through, non-activating `NSPanel`
+   at screen-saver level with `canJoinAllSpaces` and `fullScreenAuxiliary`. It is
+   built fresh for every close and its `show(on:)` checks `isOnActiveSpace`; if the
+   window server still refuses, it re-orders the window with `moveToActiveSpace`
+   and logs the fallback. See "Spaces" below for why it is a panel.
 4. **`TransitionRenderer`** draws one frame: the snapshot, a `TransitionUniforms`
    buffer (stride 240, mirrored in `Common.metal` and checked by a GPU probe test),
    and either a full-screen triangle (Sinkhole, Frost) or a 48×48 mesh with
@@ -89,6 +89,24 @@ on. `TunerHost` registers each style's parameters with the Tuner in one line.
   top highlight); the app injects the preview column and hides the panel while a
   real transition plays. `TunerTheme` is derived from the SwiftUI color scheme so
   light and dark both work.
+
+## Spaces and full-screen apps
+
+The lid can close on any desktop Space or over any full-screen app, and the effect
+has to appear there. Two facts, measured on macOS 26 with a two-process experiment
+(one process holds a full-screen Space, the other tries to show an overlay):
+
+| Overlay is a… | App is menu-bar-only (`.accessory`) | App is in the Dock (`.regular`) |
+| --- | --- | --- |
+| plain `NSWindow` | on the active Space | **refused**: `isOnActiveSpace` false, never visible |
+| non-activating `NSPanel` | on the active Space | on the active Space |
+
+Collection behavior (`canJoinAllSpaces`, `fullScreenAuxiliary`, `moveToActiveSpace`)
+makes no difference in the refused cell. Shut is a Dock app whenever "In Dock" is
+on or a window is open, so the overlay is a non-activating panel. `show(on:)`
+still verifies `isOnActiveSpace` and logs `overlay placement fallback` if macOS
+ever changes the rules again; that line in Console is the first thing to look for
+when "nothing showed".
 
 ## External displays
 

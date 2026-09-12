@@ -16,7 +16,9 @@ final class OverlayWindowTests: XCTestCase {
         let window = OverlayWindow(screen: screen, renderer: renderer,
                                    transition: AnyTransition(FadeTransition()), context: context)
         XCTAssertEqual(window.frame, screen.frame)
-        XCTAssertEqual(window.level, .screenSaver)
+        XCTAssertEqual(window.level, .screenSaver, "NSPanel setters such as isFloatingPanel silently reset the level")
+        XCTAssertTrue(window.styleMask.contains(.nonactivatingPanel), "a plain window from a Dock app is refused on other Spaces")
+        XCTAssertFalse(window.hidesOnDeactivate)
         XCTAssertTrue(window.ignoresMouseEvents)
         XCTAssertFalse(window.isVisible)
         // Rendering with no snapshot must be a no-op, not a crash.

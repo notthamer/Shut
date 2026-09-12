@@ -35,7 +35,9 @@ is described in `README.md` and `docs/ARCHITECTURE.md`.
    (which verifies `isOnActiveSpace` and falls back to `moveToActiveSpace`), and
    tear it down the moment the built-in display leaves the screen list. Never
    fall back to `NSScreen.main`; a black overlay on an external monitor is the one
-   thing this app must never do.
+   thing this app must never do. The overlay stays a **non-activating `NSPanel`**:
+   a plain `NSWindow` from a Dock app is refused on other Spaces and full-screen
+   apps (measured; see `docs/ARCHITECTURE.md`, "Spaces").
 10. **Never block the main thread on the GPU or the sensor.** At most two frames
     in flight; `nextDrawable()` is skipped, not awaited; the sensor clock is read
     through a lock, not the main-thread state.
