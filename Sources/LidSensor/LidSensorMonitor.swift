@@ -56,6 +56,22 @@ public final class LidSensorMonitor: ObservableObject {
     public var animationRange: ClosedRange<Double> { queue.sync { normalizer.animationRange } }
 
     private let queue = DispatchQueue(label: "app.shut.lidsensor", qos: .userInteractive)
+    private let sampleClockLock = NSLock()
+    private var lastSampleTimestamp: TimeInterval = 0
+
+    /// Seconds since the sensor last produced a reading, read straight from the
+    /// sampling thread. The published `lastSampleDate` goes through the main
+    /// queue and can look stale whenever the main thread stalls; a watchdog must
+    /// use this instead.
+    public var timeSinceLastSample: TimeInterval {
+        sampleClockLock.lock(); defer { sampleClockLock.unlock() }
+        guard lastSampleTimestamp > 0 else { return .infinity }
+        return Date().timeIntervalSince1970 - lastSampleTimestamp
+    }
+
+    private func stampSample(_ now: TimeInterval) {
+        sampleClockLock.lock(); lastSampleTimestamp = now; sampleClockLock.unlock()
+    }
     private var device: LidAngleDevice?
     private var lidState: LidStateProvider?
     private var timer: DispatchSourceTimer?
@@ -101,6 +117,7 @@ public final class LidSensorMonitor: ObservableObject {
                 let started = provider.start { [weak self] isOpen in
                     guard let self else { return }
                     let now = Date().timeIntervalSince1970
+                    self.stampSample(now)
                     let state = self.queue.sync { self.normalizer.normalize(HingeSample(angle: nil, lidIsOpen: isOpen, timestamp: now)) }
                     DispatchQueue.main.async {
                         self.state = state
@@ -160,6 +177,7 @@ public final class LidSensorMonitor: ObservableObject {
     private func tick() {
         guard let device, let raw = try? device.readAngle() else { return }
         let now = Date().timeIntervalSince1970
+        stampSample(now)
 
         if let last = lastRawAngle, last != raw { lastMovement = now }
         lastRawAngle = raw

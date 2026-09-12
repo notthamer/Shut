@@ -137,25 +137,31 @@ public final class TransitionRenderer {
     // MARK: - Drawing
 
     /// Renders one frame of `transition` at `progress` into `drawable`.
+    /// Returns false if nothing was encoded (no snapshot, no pipeline).
+    @discardableResult
     public func draw(to drawable: CAMetalDrawable, transition: AnyTransition,
-                     progress: Double, context: RenderContext) {
+                     progress: Double, context: RenderContext,
+                     onComplete: (@Sendable () -> Void)? = nil) -> Bool {
         guard let commandBuffer = encode(to: drawable.texture, transition: transition,
-                                         progress: progress, context: context) else { return }
+                                         progress: progress, context: context) else { return false }
+        if let onComplete { commandBuffer.addCompletedHandler { _ in onComplete() } }
         commandBuffer.present(drawable)
         commandBuffer.commit()
+        return true
     }
 
     /// Fills the drawable with opaque black. Used for the "drained" state between
     /// sleep and pour-out, when there is deliberately no snapshot in memory.
-    public func drawBlack(to drawable: CAMetalDrawable) {
+    public func drawBlack(to drawable: CAMetalDrawable, onComplete: (@Sendable () -> Void)? = nil) {
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = drawable.texture
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         pass.colorAttachments[0].storeAction = .store
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return }
+              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { onComplete?(); return }
         encoder.endEncoding()
+        if let onComplete { commandBuffer.addCompletedHandler { _ in onComplete() } }
         commandBuffer.present(drawable)
         commandBuffer.commit()
     }

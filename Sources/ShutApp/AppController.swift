@@ -275,11 +275,13 @@ public final class AppController: ObservableObject {
     private func frame(dt: Double) {
         guard let overlay else { return }
 
-        if state == .closing, sensor.capability == .continuousAngle,
-           let last = sensor.lastSampleDate, Date().timeIntervalSince(last) > watchdogInterval {
-            Log.lid.error("sensor watchdog fired; hiding overlay")
-            teardown(reason: "sensor watchdog")
-            return
+        if state == .closing, sensor.capability == .continuousAngle {
+            let gap = sensor.timeSinceLastSample
+            if gap > watchdogInterval, gap.isFinite {
+                Log.lid.error("sensor watchdog: no sample for \(Int(gap * 1000)) ms; hiding overlay")
+                teardown(reason: "sensor watchdog")
+                return
+            }
         }
 
         var p = driver.step(dt: dt, hinge: hinge?.progress)

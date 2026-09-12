@@ -74,18 +74,34 @@ public final class MetalTransitionView: NSView {
     /// When true the view ignores the snapshot and paints solid black.
     public var isBlackedOut = false
 
-    /// Draws the current progress (or black). Cheap to call; skipped if there's
-    /// nothing to draw or no drawable available this instant.
+    /// At most two frames in flight. `nextDrawable()` blocks the calling thread
+    /// when the compositor is behind (a browser hammering the GPU, for instance),
+    /// and this runs on the main thread, so rather than wait we drop the frame:
+    /// the next display-link tick draws the newest progress anyway.
+    private let inFlight = DispatchSemaphore(value: 2)
+
+    /// Draws the current progress (or black). Never blocks: skipped if a frame
+    /// can't start this instant.
     public func render() {
         guard bounds.width > 0 else { return }
         updateDrawableSize()
-        if isBlackedOut {
-            guard let drawable = metalLayer.nextDrawable() else { return }
-            renderer.drawBlack(to: drawable)
+        guard !isBlackedOut, renderer.snapshot != nil || !transition.needsSnapshot || isBlackedOut else {
+            if isBlackedOut { drawBlackFrame() }
             return
         }
-        guard renderer.snapshot != nil else { return }
-        guard let drawable = metalLayer.nextDrawable() else { return }
-        renderer.draw(to: drawable, transition: transition, progress: progress, context: context)
+        guard inFlight.wait(timeout: .now()) == .success else { return }
+        guard let drawable = metalLayer.nextDrawable() else { inFlight.signal(); return }
+        let semaphore = inFlight
+        if !renderer.draw(to: drawable, transition: transition, progress: progress, context: context,
+                          onComplete: { semaphore.signal() }) {
+            semaphore.signal()
+        }
+    }
+
+    private func drawBlackFrame() {
+        guard inFlight.wait(timeout: .now()) == .success else { return }
+        guard let drawable = metalLayer.nextDrawable() else { inFlight.signal(); return }
+        let semaphore = inFlight
+        renderer.drawBlack(to: drawable, onComplete: { semaphore.signal() })
     }
 }
