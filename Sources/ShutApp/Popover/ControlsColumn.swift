@@ -11,14 +11,18 @@ struct ControlsColumn: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
-                StyleGallery(model: model)
+                VStack(alignment: .leading, spacing: 8) {
+                    Eyebrow("Style")
+                    StyleGallery(model: model)
+                }
 
                 if model.needsPermissionCard {
                     PermissionCard(model: model)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                VStack(spacing: TunerTheme.rowGap) {
+                VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
+                    Eyebrow("Timing").padding(.bottom, 2)
                     SpeedRow(model: model)
                     ToggleRow("Animate opening",
                               isOn: Binding(get: { model.settings.animateOpening }, set: { model.settings.animateOpening = $0 }),
@@ -99,9 +103,16 @@ struct StyleCard: View {
         }
         .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(isSelected ? theme.surfaceActive : (hover ? theme.surfaceHover : theme.surface)))
         .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(isSelected ? theme.textTertiary : theme.border, lineWidth: 1))
+        .overlay(alignment: .top) {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(LinearGradient(colors: [theme.innerHighlight, .clear], startPoint: .top, endPoint: .bottom))
+                .frame(height: 10)
+                .mask(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(lineWidth: 1))
+        }
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .scaleEffect(hover && !isSelected ? 1.015 : 1)
+        .shadow(color: .black.opacity(hover ? 0.25 : 0), radius: 8, y: 4)
+        .scaleEffect(hover && !isSelected ? 1.02 : 1)
         .onHover { hover = $0 }
         .tunerAnimation(TunerTheme.quick, value: hover)
         .tunerAnimation(TunerTheme.quick, value: isSelected)
@@ -139,10 +150,11 @@ struct FeelSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
             HStack {
-                Text("Adjust \(model.registry.current.displayName)").font(TunerTheme.folderTitle).foregroundStyle(theme.textLabel)
+                Eyebrow("Adjust \(model.registry.current.displayName)")
                 Spacer()
                 QuietButton("Reset") { model.resetStyle(model.registry.current.id) }
             }
+            .padding(.bottom, 2)
             model.featuredDials(model.registry.current.id)
         }
     }

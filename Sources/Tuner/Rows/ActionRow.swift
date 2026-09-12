@@ -29,6 +29,7 @@ public struct ActionRow: View {
                 .onEnded { _ in pressed = false; action() })
             .tunerAnimation(TunerTheme.quick, value: pressed)
             .focusable()
+            .focusEffectDisabled()
             .onKeyPress(.return) { action(); return .handled }
             .onKeyPress(.space) { action(); return .handled }
     }

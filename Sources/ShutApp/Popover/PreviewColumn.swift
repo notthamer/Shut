@@ -24,7 +24,14 @@ struct PreviewColumn: View {
             .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(theme.border))
-            .shadow(color: .black.opacity(0.28), radius: 9, y: 3)
+            .overlay(alignment: .top) {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(LinearGradient(colors: [theme.innerHighlight, .clear], startPoint: .top, endPoint: .bottom))
+                    .frame(height: 14)
+                    .mask(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(lineWidth: 1))
+            }
+            .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+            .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
 
             VStack(spacing: 3) {
                 FillSliderRow("", value: $preview.progress, in: 0...1, step: 0.005, decimals: 2,
@@ -37,16 +44,21 @@ struct PreviewColumn: View {
             }
             .padding(.top, 12)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(model.registry.current.displayName).font(.system(size: 13, weight: .semibold)).foregroundStyle(theme.textRoot)
+            VStack(alignment: .leading, spacing: 4) {
+                Eyebrow("Selected")
+                Text(model.registry.current.displayName).font(.system(size: 14, weight: .semibold)).tracking(-0.2).foregroundStyle(theme.textRoot)
                 Text(model.registry.current.summary).font(.system(size: 11)).foregroundStyle(theme.textLabel)
+                    .lineSpacing(1.5)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.top, 14)
+            .padding(.top, 16)
+            .id(model.registry.current.id)
+            .transition(.opacity)
+            .tunerAnimation(TunerTheme.quick, value: model.registry.current.id)
 
             Spacer(minLength: 10)
 
-            ActionRow("Play on screen") { model.play() }
+            PrimaryButton("Play on screen") { model.play() }
                 .help("Runs the effect full screen, exactly as closing the lid would.")
         }
     }

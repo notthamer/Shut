@@ -13,23 +13,25 @@ struct PopoverView: View {
     var body: some View {
         VStack(spacing: 0) {
             PopoverHeader(model: model)
-            Rectangle().fill(theme.surfaceSubtle).frame(height: 1)
+                .background(theme.elevated)
+            Rectangle().fill(theme.border).frame(height: 1)
             HStack(spacing: 0) {
                 PreviewColumn(model: model)
                     .padding(14)
                     .frame(width: Self.previewWidth, height: Self.bodyHeight)
-                Rectangle().fill(theme.surfaceSubtle).frame(width: 1)
+                Rectangle().fill(theme.border).frame(width: 1)
                 ControlsColumn(model: model)
                     .frame(width: Self.width - Self.previewWidth - 1, height: Self.bodyHeight)
             }
             .opacity(model.settings.isEnabled ? 1 : 0.45)
             .allowsHitTesting(model.settings.isEnabled)
             .tunerAnimation(TunerTheme.quick, value: model.settings.isEnabled)
-            Rectangle().fill(theme.surfaceSubtle).frame(height: 1)
+            Rectangle().fill(theme.border).frame(height: 1)
             PopoverFooter(model: model)
+                .background(theme.elevated)
         }
         .frame(width: Self.width)
-        .background(theme.panel)
+        .background(theme.panelGlass)
         .tunerThemed()
     }
 }
@@ -38,12 +40,23 @@ struct PopoverHeader: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
 
+    /// Green: following the lid. Orange: running, but substituting. Grey: paused
+    /// or nothing to follow.
+    private var statusColor: Color {
+        guard model.settings.isEnabled else { return theme.textTertiary }
+        if model.registry.isSubstituting { return .orange }
+        return model.sensor.capability == .unsupported ? theme.textTertiary : Color.green.opacity(0.9)
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             LogoMark(size: 28)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Shut.").font(TunerTheme.rootTitle).foregroundStyle(theme.textRoot)
-                Text(model.statusLine).font(.system(size: 10.5)).foregroundStyle(theme.textLabel)
+                Text("Shut.").font(TunerTheme.rootTitle).tracking(-0.2).foregroundStyle(theme.textRoot)
+                HStack(spacing: 5) {
+                    Circle().fill(statusColor).frame(width: 5, height: 5)
+                    Text(model.statusLine).font(.system(size: 10.5)).foregroundStyle(theme.textLabel)
+                }
             }
             .help(model.sensor.capability.explanation)
             Spacer(minLength: 8)

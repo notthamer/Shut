@@ -132,12 +132,34 @@ public final class TunerPanelController {
 public final class PanelChrome: NSView {
     var hosting: NSHostingView<AnyView>?
     public var isCollapsed = false { didSet { needsDisplay = true; updateMask() } }
+    private let blur = NSVisualEffectView()
+    private let highlight = CAGradientLayer()
 
     public override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.masksToBounds = true
+        // Glass: the desktop shows faintly through the panel.
+        blur.material = .popover
+        blur.blendingMode = .behindWindow
+        blur.state = .active
+        blur.frame = bounds
+        blur.autoresizingMask = [.width, .height]
+        addSubview(blur, positioned: .below, relativeTo: nil)
+        // One point of light along the top edge.
+        highlight.colors = [NSColor.white.withAlphaComponent(0.10).cgColor, NSColor.white.withAlphaComponent(0).cgColor]
+        highlight.startPoint = CGPoint(x: 0.5, y: 0)
+        highlight.endPoint = CGPoint(x: 0.5, y: 1)
+        highlight.zPosition = 10
+        layer?.addSublayer(highlight)
         updateMask()
+    }
+
+    public override func addSubview(_ view: NSView) {
+        super.addSubview(view)
+        // Keep the blur at the bottom whatever is added later.
+        blur.removeFromSuperview()
+        super.addSubview(blur, positioned: .below, relativeTo: nil)
     }
 
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
@@ -151,7 +173,10 @@ public final class PanelChrome: NSView {
         layer?.cornerRadius = isCollapsed ? bounds.width / 2 : TunerTheme.panelRadius
         layer?.cornerCurve = .continuous
         layer?.borderWidth = 1
-        layer?.borderColor = NSColor.labelColor.withAlphaComponent(0.1).cgColor
+        layer?.borderColor = NSColor.labelColor.withAlphaComponent(0.12).cgColor
+        // AppKit's y goes up: the top edge is at maxY.
+        highlight.frame = CGRect(x: 0, y: bounds.height - 1.5, width: bounds.width, height: 1.5)
+        highlight.isHidden = isCollapsed
     }
 }
 

@@ -26,6 +26,13 @@ public struct TunerTheme {
     public var textTertiary: Color { mono(isDark ? 0.40 : 0.35) }
     public var focusRing: Color { mono(isDark ? 0.60 : 0.55) }
     public var danger: Color { Color(red: 1.0, green: 0.23, blue: 0.19) }
+    /// A hairline of light along the top edge of a surface, the "edge catch"
+    /// that makes glass read as glass.
+    public var innerHighlight: Color { isDark ? Color.white.opacity(0.07) : Color.white.opacity(0.9) }
+    /// Header and footer bands sit a step above the body.
+    public var elevated: Color { isDark ? Color.white.opacity(0.025) : Color.black.opacity(0.02) }
+    /// Panel fill with a little translucency so a blur behind it shows through.
+    public var panelGlass: Color { panel.opacity(isDark ? 0.86 : 0.9) }
 
     /// White alpha in dark mode, black alpha in light.
     private func mono(_ alpha: Double) -> Color {
@@ -49,6 +56,9 @@ public struct TunerTheme {
     public static let rootTitle = Font.system(size: 15, weight: .semibold)
     public static let folderTitle = Font.system(size: 13, weight: .semibold)
     public static let caption = Font.system(size: 11, weight: .medium)
+    /// Quiet uppercase section label.
+    public static let eyebrow = Font.system(size: 10.5, weight: .semibold)
+    public static let eyebrowTracking: CGFloat = 0.6
 
     // Motion
     public static let spring = Animation.spring(response: 0.3, dampingFraction: 0.85)

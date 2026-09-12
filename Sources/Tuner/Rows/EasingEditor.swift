@@ -144,6 +144,7 @@ struct EasingCanvas: View {
         .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.surface))
         .clipShape(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous))
         .focusable()
+        .focusEffectDisabled()
         .onKeyPress(phases: .down) { press in
             let d = press.modifiers.contains(.shift) ? 0.1 : 0.01
             let handle = hoverHandle ?? 0

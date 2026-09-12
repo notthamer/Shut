@@ -39,7 +39,7 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
                 .padding(.vertical, TunerTheme.paddingV)
             }
         }
-        .background(theme.panel)
+        .background(theme.panelGlass)
         .onDrop(of: [UTType.json, UTType.fileURL, UTType.plainText], isTargeted: nil) { handleDrop($0) }
         .overlay(alignment: .top) {
             if let flash {
@@ -76,8 +76,8 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
         .padding(.horizontal, TunerTheme.paddingH)
         .padding(.top, TunerTheme.paddingV)
         .padding(.bottom, TunerTheme.paddingV)
-        .background(theme.panel)
-        .overlay(alignment: .bottom) { Rectangle().fill(theme.surfaceSubtle).frame(height: 1) }
+        .background(theme.elevated)
+        .overlay(alignment: .bottom) { Rectangle().fill(theme.border).frame(height: 1) }
     }
 
     private var footer: some View {
@@ -316,7 +316,7 @@ struct FolderView<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text(title).font(TunerTheme.folderTitle).foregroundStyle(theme.textLabel)
+                Eyebrow(title)
                 Spacer()
                 Text("Reset")
                     .font(TunerTheme.caption)
@@ -334,6 +334,7 @@ struct FolderView<Content: View>: View {
             .contentShape(Rectangle())
             .onTapGesture { isOpen.toggle() }
             .focusable()
+            .focusEffectDisabled()
             .onKeyPress(.return) { isOpen.toggle(); return .handled }
             .onKeyPress(.space) { isOpen.toggle(); return .handled }
 

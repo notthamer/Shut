@@ -129,10 +129,7 @@ public struct FillSliderRow: View {
         .focused($rowFocused)
         .onKeyPress(phases: .down) { press in handleKey(press) }
         .onHover { hovering = $0; if !$0 { valueHovering = false; valueArmed = false } }
-        .overlay(
-            RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                .strokeBorder(theme.focusRing, lineWidth: rowFocused && !editing ? 2 : 0)
-        )
+        .tunerFocusRing(rowFocused && !editing)
         .help(help)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)

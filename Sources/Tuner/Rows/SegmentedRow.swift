@@ -51,6 +51,7 @@ public struct SegmentedRow: View {
         .frame(height: TunerTheme.rowHeight)
         .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.surface))
         .focusable()
+        .focusEffectDisabled()
         .onKeyPress(phases: .down) { press in
             switch press.key {
             case .leftArrow, .upArrow: selection = (selection - 1 + options.count) % options.count; return .handled
