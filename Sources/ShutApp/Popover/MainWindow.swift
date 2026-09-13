@@ -38,6 +38,10 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     private func makeWindow() -> NSWindow {
         let hosting = FirstMouseHostingView(rootView: AnyView(PopoverView(model: model, hostedInWindow: true)))
         hosting.sizingOptions = [.intrinsicContentSize]
+        // The title bar is transparent and the header already leaves room for
+        // the traffic lights, so the content must not also be inset below the
+        // title bar: that pushed the whole panel down and clipped the footer.
+        hosting.safeAreaRegions = []
         let size = NSSize(width: PopoverView.width, height: hosting.fittingSize.height)
 
         let w = NSWindow(contentRect: NSRect(origin: .zero, size: size),
