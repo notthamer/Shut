@@ -179,7 +179,7 @@ public struct PrimaryButton: View {
                 .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: TunerTheme.rowHeight)
-                .background(Capsule().fill(TunerTheme.inkBase.opacity(hover ? 0.92 : 1)))
+                .background(Capsule().fill(hover ? TunerTheme.pureBlack : theme.buttonDark))
                 .overlay(alignment: .top) {
                     Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.28), .clear], startPoint: .top, endPoint: .bottom))
                         .frame(height: 14)

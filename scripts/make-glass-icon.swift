@@ -94,9 +94,9 @@ func render(pixels size: Int) -> CGImage {
     c.saveGState()
     c.addPath(path); c.clip()
     if let g = CGGradient(colorsSpace: rgb, colors: [
-        CGColor(red: 0.99, green: 0.995, blue: 1.0, alpha: 1),
-        CGColor(red: 0.90, green: 0.94, blue: 1.0, alpha: 1),
-        CGColor(red: 0.82, green: 0.89, blue: 1.0, alpha: 1),
+        CGColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1),      // Paper White
+        CGColor(red: 0.973, green: 0.973, blue: 0.973, alpha: 1), // Bone
+        CGColor(red: 0.937, green: 0.937, blue: 0.937, alpha: 1), // Linen
     ] as CFArray, locations: [0, 0.55, 1]) {
         c.drawLinearGradient(g, start: CGPoint(x: tile.minX, y: tile.maxY), end: CGPoint(x: tile.maxX, y: tile.minY), options: [])
     }
@@ -127,7 +127,7 @@ func render(pixels size: Int) -> CGImage {
     c.saveGState()
     c.setShadow(offset: CGSize(width: 0, height: -s * 0.006), blur: s * 0.012, color: CGColor(gray: 0, alpha: 0.18))
     c.clip(to: markRect, mask: glyph)
-    c.setFillColor(CGColor(red: 0.106, green: 0.114, blue: 0.133, alpha: 1))
+    c.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))   // Pure Black
     c.fill(markRect)
     c.restoreGState()
 

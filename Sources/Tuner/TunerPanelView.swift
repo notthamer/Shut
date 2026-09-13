@@ -46,7 +46,7 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
                     .font(TunerTheme.caption)
                     .foregroundStyle(Color.white)
                     .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Capsule().fill(TunerTheme.inkBase))
+                    .background(Capsule().fill(theme.buttonDark))
                     .shadow(color: TunerTheme.inkBase.opacity(0.22), radius: 6, y: 3)
                     .padding(.top, 52)
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -175,7 +175,7 @@ struct CopyButton: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Color.white)
                 .frame(width: TunerTheme.rowHeight, height: TunerTheme.rowHeight)
-                .background(Circle().fill(TunerTheme.inkBase))
+                .background(Circle().fill(theme.buttonDark))
                 .overlay(alignment: .top) {
                     Circle().fill(LinearGradient(colors: [Color.white.opacity(0.28), .clear], startPoint: .top, endPoint: .center))
                         .mask(Circle().strokeBorder(lineWidth: 1.5))

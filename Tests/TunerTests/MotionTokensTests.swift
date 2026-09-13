@@ -33,7 +33,7 @@ final class MotionTokensTests: XCTestCase {
         XCTAssertEqual(NSColor(solid.glassSheen).alphaComponent, 0, "no sheen on a solid panel")
         XCTAssertGreaterThan(NSColor(solid.glassEdgeDark).alphaComponent, NSColor(glass.glassEdgeDark).alphaComponent,
                              "Increase Contrast strengthens the edge")
-        XCTAssertGreaterThan(NSColor(solid.ink).alphaComponent, NSColor(glass.ink).alphaComponent,
-                             "Increase Contrast darkens ink")
+        XCTAssertLessThan(NSColor(solid.inkLabel).brightnessComponent, NSColor(glass.inkLabel).brightnessComponent,
+                          "Increase Contrast darkens secondary text from Carbon to Pure Black")
     }
 }

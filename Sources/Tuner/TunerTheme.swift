@@ -26,57 +26,76 @@ public struct TunerTheme {
         self.increaseContrast = increaseContrast
     }
 
+    // MARK: The palette
+    //
+    // Nine neutrals, two washes and one gradient. Everything below is one of
+    // these; nothing else gets a colour.
+
+    public static let voidBlack = Color(red: 0.008, green: 0.008, blue: 0.016)   // #020204 dramatic dark
+    public static let pureBlack = Color.black                                   // #000000 primary text, icons
+    public static let carbon = Color(red: 0.388, green: 0.388, blue: 0.388)     // #636363 secondary text
+    public static let slate = Color(red: 0.533, green: 0.533, blue: 0.533)      // #888888 tertiary text, disabled
+    public static let silver = Color(red: 0.776, green: 0.776, blue: 0.776)     // #C6C6C6 placeholders, dividers
+    public static let softGraphite = Color(red: 0.341, green: 0.341, blue: 0.341) // #575757 dark button fill
+    public static let paperWhite = Color.white                                  // #FFFFFF cards
+    public static let bone = Color(red: 0.973, green: 0.973, blue: 0.973)       // #F8F8F8 the canvas
+    public static let linen = Color(red: 0.937, green: 0.937, blue: 0.937)      // #EFEFEF pills, wells, header wash
+    public static let limeWash = Color(red: 0.949, green: 0.988, blue: 0.702)   // #F2FCB3 accent wash, selection
+    public static let saffron = Color(red: 1.0, green: 0.863, blue: 0.361)      // #FFDC5C warm highlight
+    /// Spectrum Marquee, the brand's signature gradient, left to right:
+    /// blue → lavender → amber → red → magenta.
+    public static let spectrum = Gradient(stops: [
+        .init(color: Color(red: 0.012, green: 0.345, blue: 0.969), location: 0),
+        .init(color: Color(red: 0.882, green: 0.882, blue: 0.996), location: 0.275),
+        .init(color: Color(red: 1.0, green: 0.690, blue: 0.020), location: 0.572),
+        .init(color: Color(red: 0.980, green: 0.239, blue: 0.114), location: 0.84),
+        .init(color: Color(red: 0.992, green: 0.008, blue: 0.961), location: 1),
+    ])
+    /// The spectrum's blue, for the "live" status dot.
+    public static let spectrumBlue = Color(red: 0.012, green: 0.345, blue: 0.969)
+
     // MARK: Ink
 
-    /// #1B1D22: a warm near-black that stays soft on white glass.
-    public static let inkBase = Color(red: 0.106, green: 0.114, blue: 0.133)
-    public var ink: Color { Self.inkBase.opacity(increaseContrast ? 1.0 : 0.88) }
-    public var inkLabel: Color { Self.inkBase.opacity(increaseContrast ? 0.80 : 0.60) }
-    public var inkTertiary: Color { Self.inkBase.opacity(increaseContrast ? 0.62 : 0.40) }
-    public var danger: Color { Color(red: 0.93, green: 0.27, blue: 0.22) }
-    public var focusRing: Color { Self.inkBase.opacity(0.5) }
+    /// Kept for callers that tint with alpha; Pure Black is the base.
+    public static let inkBase = pureBlack
+    public var ink: Color { Self.pureBlack }
+    public var inkLabel: Color { increaseContrast ? Self.pureBlack : Self.carbon }
+    public var inkTertiary: Color { increaseContrast ? Self.carbon : Self.slate }
+    public var danger: Color { Color(red: 0.980, green: 0.239, blue: 0.114) }
+    public var focusRing: Color { Self.carbon }
 
     // MARK: Glass (the panel itself; PanelChrome draws these in AppKit)
 
-    /// The panel's cream (#F8F6F2): warm white, nearly opaque, so the desktop is
-    /// only a hint behind it. Fully solid when transparency is reduced.
-    public static let cream = Color(red: 0.973, green: 0.965, blue: 0.949)
-    /// A deeper cream (#ECE8E2) for wells cut into the panel.
-    public static let creamDeep = Color(red: 0.925, green: 0.910, blue: 0.886)
-    public var glassTint: Color { reduceTransparency ? Self.cream : Self.cream.opacity(0.95) }
+    /// The canvas is Bone, nearly opaque over the blur so the desktop is only a
+    /// hint behind it. Fully solid when transparency is reduced.
+    public var glassTint: Color { reduceTransparency ? Self.bone : Self.bone.opacity(0.95) }
     /// The specular sheen, a radial highlight in the top-left.
     public var glassSheen: Color { reduceTransparency ? .clear : Color.white.opacity(0.55) }
-    public var glassEdgeLight: Color { Color.white.opacity(0.7) }
-    public var glassEdgeDark: Color { Self.inkBase.opacity(increaseContrast ? 0.25 : 0.08) }
+    public var glassEdgeLight: Color { Self.paperWhite.opacity(0.8) }
+    public var glassEdgeDark: Color { increaseContrast ? Self.carbon : Self.silver.opacity(0.7) }
 
     // MARK: Surfaces on glass
 
-    /// Buttons, cards, menus: a lighter pane that stands proud of the panel.
-    public var raised: Color { Color.white.opacity(0.85) }
-    public var raisedHover: Color { Color.white }
-    /// Slider tracks, editors, wells: a pane cut into the panel.
-    public var inset: Color { Self.creamDeep.opacity(0.9) }
-    public var insetShadow: Color { Self.inkBase.opacity(0.14) }
+    /// Buttons, cards, menus: Paper White standing proud of the canvas.
+    public var raised: Color { Self.paperWhite.opacity(0.9) }
+    public var raisedHover: Color { Self.paperWhite }
+    /// Slider tracks, editors, wells: Linen cut into the canvas.
+    public var inset: Color { Self.linen }
+    public var insetShadow: Color { Self.pureBlack.opacity(0.10) }
     /// Soft-clay depth: a dark shadow to the bottom-right and a light one to
     /// the top-left, the way a raised pane sits under a lamp.
-    public var shadowLight: Color { Color.white.opacity(0.9) }
-    /// Slider fills run warm, from red through orange to yellow, so the colour
-    /// under the knob says how far along it is.
-    public static let warm: [Color] = [
-        Color(red: 0.96, green: 0.42, blue: 0.30),
-        Color(red: 0.99, green: 0.66, blue: 0.36),
-        Color(red: 1.0, green: 0.88, blue: 0.52),
-    ]
-    /// Slider fills and selection: sky over glass (#DCEBFF).
-    public var tintSky: Color { Color(red: 0.863, green: 0.922, blue: 1.0).opacity(0.7) }
-    /// A deeper sky for the fill while it is being dragged.
-    public var tintSkyActive: Color { Color(red: 0.776, green: 0.867, blue: 1.0).opacity(0.85) }
-    /// The permission card (#FFE9C7).
-    public var tintAmber: Color { Color(red: 1.0, green: 0.914, blue: 0.78).opacity(0.8) }
-    public var shadowSoft: Color { Self.inkBase.opacity(0.10) }
-    public var shadowContact: Color { Self.inkBase.opacity(0.10) }
-    /// Hairline between sections of one panel.
-    public var hairline: Color { Self.inkBase.opacity(increaseContrast ? 0.2 : 0.06) }
+    public var shadowLight: Color { Self.paperWhite.opacity(0.9) }
+    /// The dark fill for the one strong action and for switches that are on.
+    public var buttonDark: Color { Self.softGraphite }
+    /// Selection: Lime Wash.
+    public var tintSky: Color { Self.limeWash }
+    public var tintSkyActive: Color { Self.saffron }
+    /// Warm highlight zones: the permission card.
+    public var tintAmber: Color { Self.saffron.opacity(0.45) }
+    public var shadowSoft: Color { Self.pureBlack.opacity(0.10) }
+    public var shadowContact: Color { Self.pureBlack.opacity(0.10) }
+    /// Hairline between sections of one panel: Silver.
+    public var hairline: Color { increaseContrast ? Self.carbon : Self.silver.opacity(0.6) }
 
     // MARK: Names the rows were written against (kept so every call site reads
     // naturally; they resolve to the glass tokens above).

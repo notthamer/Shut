@@ -170,7 +170,7 @@ struct PermissionCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Circle().fill(.orange).frame(width: 7, height: 7)
+                Circle().fill(TunerTheme.saffron).frame(width: 7, height: 7)
                 Text("\(model.registry.current.displayName) is showing as a plain fade").font(TunerTheme.font(11, weight: .semibold)).foregroundStyle(theme.textRoot)
             }
             Text("It needs Screen Recording to take one still of your desktop as the lid moves. Nothing is saved. macOS checks the permission when the app starts, so restart it after allowing.")

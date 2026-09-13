@@ -31,14 +31,16 @@ is described in `README.md` and `docs/ARCHITECTURE.md`.
    window material (blur, white tint, sheen, light catch, edges, animatable
    corner radius). Everything on it is `glassSurface(.raised | .inset |
    .tinted(_))`; knobs are `GlassBead`; the one strong action is the ink
-   `PrimaryButton`. The panel is cream (`TunerTheme.cream`, 95 % over the
-   blur); rows are raised pills (radius = half the 36-pt row height) in soft
-   clay (a dark shadow bottom-right, a light one top-left); wells are inset
-   into a deeper cream. Sliders: warm red-to-yellow fill (`TunerTheme.warm`)
-   revealed by the knob's travel, thin ticks, a `ChromeKnob`. Radii 22 (panel)
-   / 16 (card) / 12 (wells); text is ink (`ink`, `inkLabel`, `inkTertiary`);
-   the only tints are amber (selection, permission) and the warm slider
-   gradient. Plain-English `help` on every
+   `PrimaryButton`. **The palette is fixed** (`TunerTheme`): Bone is the
+   canvas, Paper White the raised pills and cards, Linen the wells; Pure Black,
+   Carbon and Slate are the three text levels, Silver the hairlines, Soft
+   Graphite the dark button and on-switch fill; Lime Wash is selection,
+   Saffron the warm highlight (permission card, warnings); the Spectrum
+   Marquee gradient is the slider fill and nothing else. No other colour.
+   Rows are raised pills (radius = half the 36-pt row height) in soft clay (a
+   dark shadow bottom-right, a light one top-left); sliders reveal the
+   spectrum as the `ChromeKnob` travels. Radii 22 (panel) / 16 (card) / 12
+   (wells). Plain-English `help` on every
    control. Reduce Transparency makes the glass solid, Increase Contrast darkens
    ink and edges: both go through the theme, never hard-coded colours. Text is
    Apfel Grotezk via `TunerTheme.font(_:weight:)` (bundled in

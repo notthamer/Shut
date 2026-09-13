@@ -119,7 +119,7 @@ public struct FillSliderRow: View {
                     // the colour at the knob reads the value: red low, yellow high.
                     // Softly blurred, like light through frosted glass.
                     Capsule()
-                        .fill(LinearGradient(colors: TunerTheme.warm, startPoint: .leading, endPoint: .trailing))
+                        .fill(LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing))
                         .frame(width: width)
                         .blur(radius: 2.5)
                         .overlay(alignment: .top) {
@@ -147,7 +147,7 @@ public struct FillSliderRow: View {
                 }
                 .clipShape(Capsule())
                 // A warm glow spills out of the well around the fill.
-                .shadow(color: TunerTheme.warm[1].opacity(dragging ? 0.45 : 0.3), radius: 6)
+                .shadow(color: TunerTheme.saffron.opacity(dragging ? 0.5 : 0.3), radius: 6)
 
                 ChromeKnob(size: knob)
                     .scaleEffect(dragging ? 1.08 : (hovering ? 1.04 : 1))

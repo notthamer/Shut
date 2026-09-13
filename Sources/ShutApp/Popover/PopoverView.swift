@@ -45,8 +45,8 @@ struct PopoverHeader: View {
     /// or nothing to follow.
     private var statusColor: Color {
         guard model.settings.isEnabled else { return theme.textTertiary }
-        if model.registry.isSubstituting { return .orange }
-        return model.sensor.capability == .unsupported ? theme.textTertiary : Color.green.opacity(0.9)
+        if model.registry.isSubstituting { return TunerTheme.saffron }
+        return model.sensor.capability == .unsupported ? theme.textTertiary : TunerTheme.spectrumBlue
     }
 
     var body: some View {
@@ -110,7 +110,7 @@ struct SmallPill: View {
         Button(action: action) {
             // Ink when on, an inset glass trough when off; the knob is a glass
             // bead that slides on the liquid spring.
-            Capsule().fill(isOn ? TunerTheme.inkBase : theme.inset)
+            Capsule().fill(isOn ? theme.buttonDark : theme.inset)
                 .overlay(Capsule().strokeBorder(isOn ? Color.clear : theme.glassEdgeDark, lineWidth: 1))
                 .overlay(
                     Capsule().strokeBorder(LinearGradient(colors: [theme.insetShadow, .clear], startPoint: .top, endPoint: .bottom), lineWidth: 2)

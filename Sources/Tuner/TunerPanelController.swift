@@ -249,7 +249,7 @@ public final class PanelChrome: NSView {
         let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
         let contrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
         blur.isHidden = reduce
-        tint.backgroundColor = NSColor(red: 0.973, green: 0.965, blue: 0.949, alpha: reduce ? 1 : 0.95).cgColor
+        tint.backgroundColor = NSColor(red: 0.973, green: 0.973, blue: 0.973, alpha: reduce ? 1 : 0.95).cgColor   // Bone
         sheen.isHidden = reduce
         layer?.borderColor = NSColor.black.withAlphaComponent(contrast ? 0.25 : 0.08).cgColor
         innerEdge.strokeColor = NSColor.white.withAlphaComponent(contrast ? 0.9 : 0.7).cgColor

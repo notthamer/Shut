@@ -85,11 +85,12 @@ app.shut.mac` clears it.
 
 ## Interface
 
-One panel, two ways in. The whole interface is a sheet of cream glass over your
-desktop with a soft sheen; controls sit on it as raised pills of soft clay or
-wells cut into it, sliders fill with a warm red-to-yellow gradient under a
-chrome knob, and everything that moves settles with a little give. It stays
-light in dark mode on purpose, and goes solid when Reduce Transparency is on. Labels are set in
+One panel, two ways in. The whole interface is a sheet of bone-white glass over
+your desktop with a soft sheen; controls sit on it as white pills of soft clay or
+wells cut into it, sliders fill with the spectrum gradient under a chrome knob,
+selection is a lime wash, and everything that moves settles with a little give.
+It stays light in dark mode on purpose, and goes solid when Reduce Transparency
+is on. Labels are set in
 Apfel Grotezk; numbers stay monospaced so they hold still while they change.
 
 - **Menu bar.** Left click the icon for the panel as a popover. It closes when you

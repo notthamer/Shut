@@ -87,10 +87,11 @@ final class GradientBackdrop: NSView {
         super.init(frame: frame)
         wantsLayer = true
         let gradient = CAGradientLayer()
+        // Bone to Linen, with a wash of lime in the corner.
         gradient.colors = [
-            NSColor(red: 0.80, green: 0.88, blue: 1.0, alpha: 1).cgColor,
-            NSColor(red: 0.90, green: 0.86, blue: 0.98, alpha: 1).cgColor,
-            NSColor(red: 0.99, green: 0.97, blue: 0.95, alpha: 1).cgColor,
+            NSColor(red: 0.949, green: 0.988, blue: 0.702, alpha: 1).cgColor,
+            NSColor(red: 0.973, green: 0.973, blue: 0.973, alpha: 1).cgColor,
+            NSColor(red: 0.937, green: 0.937, blue: 0.937, alpha: 1).cgColor,
         ]
         gradient.startPoint = CGPoint(x: 0, y: 1)
         gradient.endPoint = CGPoint(x: 1, y: 0)
