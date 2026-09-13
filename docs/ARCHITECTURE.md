@@ -100,9 +100,11 @@ on. `TunerHost` registers each style's parameters with the Tuner in one line.
   shadow; `Knob` is the shared slider handle; `SpectrumLine` is the gradient's
   one appearance; `Eyebrow` numbers the chapters. Panels fade in; nothing moves.
   Reduce Transparency turns the paper solid.
-- **Icon.** `scripts/make-glass-icon.swift` recovers the "S" mark from
-  `App/mark-source.png` and sets it in ink on a glass squircle for every icon
-  size, the `.icns`, and the in-app `logo.png`.
+- **Icon.** `scripts/make-glass-icon.swift` reads the clean mark from
+  `App/mark-source.png` (its alpha is the mask), fills it with the Spectrum
+  Marquee on a Void Black squircle for every icon size, the `.icns`, and the
+  in-app `logo.png`. The menu bar glyph is the same alpha as a template image
+  (`AppAssets.menuBarIcon`, from `Resources/mark.png`).
 
 ## Spaces and full-screen apps
 

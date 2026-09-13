@@ -4,10 +4,9 @@
 //
 //   swift scripts/make-glass-icon.swift
 //
-// Reads the glyph from App/mark-source.png (the mark's ink is recovered from
-// its luminance, the way the menu bar glyph is), draws it in Pure Black on a
-// Paper White macOS squircle with a Silver edge and a soft shadow, then writes
-// every icon size, rebuilds
+// Reads the mark from App/mark-source.png (a black glyph on transparency; its
+// alpha is the mask), fills it with the Spectrum Marquee on a Void Black macOS
+// squircle with a soft shadow, then writes every icon size, rebuilds
 // App/Shut.icns with iconutil, and writes Sources/ShutApp/Resources/logo.png.
 // Run it again whenever the glyph changes.
 
@@ -23,17 +22,10 @@ let sourceBackupURL = root.appendingPathComponent("App/mark-source.png")
 
 // MARK: Recover the glyph as an ink mask
 
-guard let source = NSImage(contentsOf: FileManager.default.fileExists(atPath: sourceBackupURL.path) ? sourceBackupURL : sourceURL),
+guard let source = NSImage(contentsOf: sourceBackupURL),
       let cg = source.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
     fatalError("cannot read the source mark at \(sourceURL.path)")
 }
-// Keep the original artwork next to the project so the script is repeatable
-// after it has overwritten the iconset.
-if !FileManager.default.fileExists(atPath: sourceBackupURL.path),
-   let data = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) {
-    try? data.write(to: sourceBackupURL)
-}
-
 let w = cg.width, h = cg.height
 var pixels = [UInt8](repeating: 0, count: w * h * 4)
 let rgb = CGColorSpaceCreateDeviceRGB()
@@ -41,22 +33,15 @@ guard let ctx = CGContext(data: &pixels, width: w, height: h, bitsPerComponent: 
                           space: rgb, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { fatalError() }
 ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
 
+// The mark ships as a clean black glyph on transparency; its alpha is the mask.
 var mask = [UInt8](repeating: 0, count: w * h * 4)
 var minX = w, maxX = 0, minY = h, maxY = 0
-let border = Double(min(w, h)) * 0.2   // the source bakes a white tile and shadow; ignore its outer band
 for y in 0..<h {
     for x in 0..<w {
         let i = (y * w + x) * 4
-        let luma = 0.299 * Double(pixels[i]) + 0.587 * Double(pixels[i + 1]) + 0.114 * Double(pixels[i + 2])
-        let alpha = Double(pixels[i + 3]) / 255
-        // Sharpen: the source is anti-aliased with a soft halo around the S.
-        // A steep ramp keeps the strokes and the motion streaks and drops the halo.
-        let raw = (1 - luma / 255) * alpha * 255
-        var ink = UInt8(min(max((raw - 90) * 2.2, 0), 255))
-        let inBorder = Double(x) < border || Double(x) > Double(w) - border || Double(y) < border || Double(y) > Double(h) - border
-        if inBorder { ink = 0 }
-        mask[i + 3] = ink
-        if ink > 110 { minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y) }
+        let alpha = pixels[i + 3]
+        mask[i + 3] = alpha
+        if alpha > 110 { minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y) }
     }
 }
 guard maxX > minX, maxY > minY,
@@ -90,23 +75,31 @@ func render(pixels size: Int) -> CGImage {
     c.addPath(path); c.setFillColor(CGColor(gray: 1, alpha: 1)); c.fillPath()
     c.restoreGState()
 
-    // Paper: a flat Paper White tile with a one-point Silver edge. No sheen.
+    // The stage: a Void Black tile with a faint inner edge.
     c.saveGState()
-    c.addPath(path); c.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1)); c.fillPath()
-    c.addPath(path)
-    c.setStrokeColor(CGColor(red: 0.776, green: 0.776, blue: 0.776, alpha: 1)); c.setLineWidth(max(s * 0.004, 1)); c.strokePath()
+    c.addPath(path); c.setFillColor(CGColor(red: 0.008, green: 0.008, blue: 0.016, alpha: 1)); c.fillPath()
+    c.addPath(squircle(in: tile.insetBy(dx: s * 0.004, dy: s * 0.004)))
+    c.setStrokeColor(CGColor(gray: 1, alpha: 0.10)); c.setLineWidth(max(s * 0.004, 1)); c.strokePath()
     c.restoreGState()
 
-    // The mark, in ink, centred, at 52 % of the tile.
+    // The mark, filled with the Spectrum Marquee, centred, at 54 % of the tile.
     let glyphAspect = CGFloat(glyph.width) / CGFloat(glyph.height)
-    var markSize = CGSize(width: tile.width * 0.52, height: tile.width * 0.52 / glyphAspect)
-    if markSize.height > tile.height * 0.52 { markSize = CGSize(width: tile.height * 0.52 * glyphAspect, height: tile.height * 0.52) }
+    var markSize = CGSize(width: tile.width * 0.54, height: tile.width * 0.54 / glyphAspect)
+    if markSize.height > tile.height * 0.54 { markSize = CGSize(width: tile.height * 0.54 * glyphAspect, height: tile.height * 0.54) }
     let markRect = CGRect(x: tile.midX - markSize.width / 2, y: tile.midY - markSize.height / 2, width: markSize.width, height: markSize.height)
     c.saveGState()
-    c.setShadow(offset: CGSize(width: 0, height: -s * 0.006), blur: s * 0.012, color: CGColor(gray: 0, alpha: 0.18))
     c.clip(to: markRect, mask: glyph)
-    c.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))   // Pure Black
-    c.fill(markRect)
+    if let spectrum = CGGradient(colorsSpace: rgb, colors: [
+        CGColor(red: 0.012, green: 0.345, blue: 0.969, alpha: 1),   // blue
+        CGColor(red: 0.882, green: 0.882, blue: 0.996, alpha: 1),   // lavender
+        CGColor(red: 1.0, green: 0.690, blue: 0.020, alpha: 1),     // amber
+        CGColor(red: 0.980, green: 0.239, blue: 0.114, alpha: 1),   // red
+        CGColor(red: 0.992, green: 0.008, blue: 0.961, alpha: 1),   // magenta
+    ] as CFArray, locations: [0, 0.275, 0.572, 0.84, 1]) {
+        // Left to right with a slight rise, so the sweep reads as motion.
+        c.drawLinearGradient(spectrum, start: CGPoint(x: markRect.minX, y: markRect.minY + markRect.height * 0.3),
+                             end: CGPoint(x: markRect.maxX, y: markRect.maxY - markRect.height * 0.3), options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+    }
     c.restoreGState()
 
     return c.makeImage()!

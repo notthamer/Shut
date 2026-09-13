@@ -31,7 +31,8 @@ is described in `README.md` and `docs/ARCHITECTURE.md`.
    cards and the primary button, Linen pills and wells, Pure Black / Carbon /
    Slate ink, Silver borders, Soft Graphite dark fills, Lime Wash selection,
    Saffron warm highlight, Void Black only on the welcome stage; the Spectrum
-   Marquee appears once per panel as a 2-pt `SpectrumLine`, never as a fill.
+   Marquee appears once per panel as a 2-pt `SpectrumLine`, never as a fill,
+   and fills the mark on the app icon (Void Black tile, `scripts/make-glass-icon.swift`).
    **Depth** is a one-point border (`surface(.card/.pill/.well/.wash)`); nothing
    inside a panel casts a shadow, except the preview's product window (the
    three-layer drop shadow) and the windows themselves. **Radii**: 12 (cards,
