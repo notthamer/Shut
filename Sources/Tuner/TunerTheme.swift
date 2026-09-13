@@ -1,22 +1,19 @@
 import AppKit
 import SwiftUI
 
-/// The visual system for every Tuner surface: light liquid glass.
+/// The visual system for every Tuner surface: an editorial broadsheet, after the
+/// way The Browser Company designs Dia.
 ///
-/// One appearance. Every panel is a sheet of frosted glass over the desktop
-/// (blur, a white tint, a specular sheen, a light edge), controls sit on it as
-/// raised or inset glass, and text is ink. The app forces the Aqua appearance
-/// on its windows so the glass reads the same over any wallpaper and in any
-/// system appearance. Hand-built, so it runs on macOS 14 and up.
-///
-/// The layout and motion language (fill-slider rows, folders, versions) was
-/// inspired by Josh Puckett's web tuning panel; the motion rules follow Emil
-/// Kowalski's design-engineering skills. Both are credited in the README.
+/// Bone paper, black ink, one-point Silver borders instead of shadows, floating
+/// pills, a light serif for headlines, a humanist grotesk for copy, a mono for
+/// eyebrows. Two washes (Lime, Saffron) and one gradient (the Spectrum Marquee,
+/// used once as a thin line). Motion changes colour and opacity at 0.2 s, never
+/// position. One appearance; every window forces Aqua so the paper reads the
+/// same over any wallpaper and in dark mode.
 public struct TunerTheme {
     /// System Settings → Accessibility → Display. Read when the theme is built,
-    /// which happens on every environment read, so a change shows on the next
-    /// view update. Reduce Transparency makes the glass solid; Increase
-    /// Contrast darkens ink and edges.
+    /// which happens on every environment read. Reduce Transparency makes the
+    /// paper solid; Increase Contrast darkens secondary ink and borders.
     public let reduceTransparency: Bool
     public let increaseContrast: Bool
 
@@ -31,19 +28,19 @@ public struct TunerTheme {
     // Nine neutrals, two washes and one gradient. Everything below is one of
     // these; nothing else gets a colour.
 
-    public static let voidBlack = Color(red: 0.008, green: 0.008, blue: 0.016)   // #020204 dramatic dark
-    public static let pureBlack = Color.black                                   // #000000 primary text, icons
+    public static let voidBlack = Color(red: 0.008, green: 0.008, blue: 0.016)   // #020204 the dark stage (welcome)
+    public static let pureBlack = Color.black                                   // #000000 primary text, icons, fills
     public static let carbon = Color(red: 0.388, green: 0.388, blue: 0.388)     // #636363 secondary text
     public static let slate = Color(red: 0.533, green: 0.533, blue: 0.533)      // #888888 tertiary text, disabled
-    public static let silver = Color(red: 0.776, green: 0.776, blue: 0.776)     // #C6C6C6 placeholders, dividers
+    public static let silver = Color(red: 0.776, green: 0.776, blue: 0.776)     // #C6C6C6 borders, dividers, ticks
     public static let softGraphite = Color(red: 0.341, green: 0.341, blue: 0.341) // #575757 dark button fill
-    public static let paperWhite = Color.white                                  // #FFFFFF cards
+    public static let paperWhite = Color.white                                  // #FFFFFF cards, the primary button
     public static let bone = Color(red: 0.973, green: 0.973, blue: 0.973)       // #F8F8F8 the canvas
     public static let linen = Color(red: 0.937, green: 0.937, blue: 0.937)      // #EFEFEF pills, wells, header wash
-    public static let limeWash = Color(red: 0.949, green: 0.988, blue: 0.702)   // #F2FCB3 accent wash, selection
+    public static let limeWash = Color(red: 0.949, green: 0.988, blue: 0.702)   // #F2FCB3 selection, highlight zones
     public static let saffron = Color(red: 1.0, green: 0.863, blue: 0.361)      // #FFDC5C warm highlight
     /// Spectrum Marquee, the brand's signature gradient, left to right:
-    /// blue → lavender → amber → red → magenta.
+    /// blue → lavender → amber → red → magenta. Appears once, as a thin line.
     public static let spectrum = Gradient(stops: [
         .init(color: Color(red: 0.012, green: 0.345, blue: 0.969), location: 0),
         .init(color: Color(red: 0.882, green: 0.882, blue: 0.996), location: 0.275),
@@ -54,143 +51,139 @@ public struct TunerTheme {
     /// The spectrum's blue, for the "live" status dot.
     public static let spectrumBlue = Color(red: 0.012, green: 0.345, blue: 0.969)
 
-    // MARK: Ink
+    // MARK: Roles
 
-    /// Kept for callers that tint with alpha; Pure Black is the base.
     public static let inkBase = pureBlack
     public var ink: Color { Self.pureBlack }
     public var inkLabel: Color { increaseContrast ? Self.pureBlack : Self.carbon }
     public var inkTertiary: Color { increaseContrast ? Self.carbon : Self.slate }
     public var danger: Color { Color(red: 0.980, green: 0.239, blue: 0.114) }
-    public var focusRing: Color { Self.carbon }
+    public var focusRing: Color { Self.pureBlack }
 
-    // MARK: Glass (the panel itself; PanelChrome draws these in AppKit)
-
-    /// The canvas is Bone, nearly opaque over the blur so the desktop is only a
-    /// hint behind it. Fully solid when transparency is reduced.
-    public var glassTint: Color { reduceTransparency ? Self.bone : Self.bone.opacity(0.95) }
-    /// The specular sheen, a radial highlight in the top-left.
-    public var glassSheen: Color { reduceTransparency ? .clear : Color.white.opacity(0.55) }
-    public var glassEdgeLight: Color { Self.paperWhite.opacity(0.8) }
-    public var glassEdgeDark: Color { increaseContrast ? Self.carbon : Self.silver.opacity(0.7) }
-
-    // MARK: Surfaces on glass
-
-    /// Buttons, cards, menus: Paper White standing proud of the canvas.
-    public var raised: Color { Self.paperWhite.opacity(0.9) }
-    public var raisedHover: Color { Self.paperWhite }
-    /// Slider tracks, editors, wells: Linen cut into the canvas.
-    public var inset: Color { Self.linen }
-    public var insetShadow: Color { Self.pureBlack.opacity(0.10) }
-    /// Soft-clay depth: a dark shadow to the bottom-right and a light one to
-    /// the top-left, the way a raised pane sits under a lamp.
-    public var shadowLight: Color { Self.paperWhite.opacity(0.9) }
-    /// The dark fill for the one strong action and for switches that are on.
+    /// The canvas: Bone over the behind-window blur, solid when transparency is reduced.
+    public var paper: Color { reduceTransparency ? Self.bone : Self.bone.opacity(0.95) }
+    /// Cards and the primary button.
+    public var card: Color { Self.paperWhite }
+    /// Pills, wells, hover fills.
+    public var linen: Color { Self.linen }
+    /// The one-point edge on everything.
+    public var border: Color { increaseContrast ? Self.carbon : Self.silver }
+    public var borderHover: Color { Self.carbon }
+    /// The primary button's edge.
+    public var borderStrong: Color { Self.pureBlack }
+    /// Section dividers.
+    public var hairline: Color { increaseContrast ? Self.carbon : Self.silver.opacity(0.7) }
+    /// Dark secondary fill: switches that are on, the Copy button.
     public var buttonDark: Color { Self.softGraphite }
-    /// Selection: Lime Wash.
-    public var tintSky: Color { Self.limeWash }
-    public var tintSkyActive: Color { Self.saffron }
-    /// Warm highlight zones: the permission card.
-    public var tintAmber: Color { Self.saffron.opacity(0.45) }
-    public var shadowSoft: Color { Self.pureBlack.opacity(0.10) }
-    public var shadowContact: Color { Self.pureBlack.opacity(0.10) }
-    /// Hairline between sections of one panel: Silver.
-    public var hairline: Color { increaseContrast ? Self.carbon : Self.silver.opacity(0.6) }
+    public var washLime: Color { Self.limeWash }
+    public var washSaffron: Color { Self.saffron.opacity(0.55) }
 
-    // MARK: Names the rows were written against (kept so every call site reads
-    // naturally; they resolve to the glass tokens above).
+    // MARK: Names older call sites use (kept so nothing breaks mid-migration)
 
-    public var panel: Color { .white }
-    public var dropdown: Color { .white }
-    public var surface: Color { inset }
-    public var surfaceHover: Color { Color.white.opacity(0.5) }
-    public var surfaceActive: Color { tintAmber }
+    public var panel: Color { Self.paperWhite }
+    public var dropdown: Color { Self.paperWhite }
+    public var surface: Color { Self.linen }
+    public var surfaceHover: Color { Self.linen }
+    public var surfaceActive: Color { Self.limeWash }
     public var surfaceSubtle: Color { hairline }
-    public var border: Color { glassEdgeDark }
-    public var borderHover: Color { tintSkyActive }
     public var textRoot: Color { ink }
     public var textPrimary: Color { ink }
     public var textLabel: Color { inkLabel }
     public var textTertiary: Color { inkTertiary }
-    public var innerHighlight: Color { glassEdgeLight }
+    public var innerHighlight: Color { .clear }
     public var elevated: Color { .clear }
-    public var panelGlass: Color { glassTint }
+    public var panelGlass: Color { paper }
+    public var glassTint: Color { paper }
+    public var glassSheen: Color { .clear }
+    public var glassEdgeLight: Color { .clear }
+    public var glassEdgeDark: Color { border }
+    public var raised: Color { card }
+    public var raisedHover: Color { Self.linen }
+    public var inset: Color { Self.linen }
+    public var insetShadow: Color { .clear }
+    public var shadowSoft: Color { .clear }
+    public var shadowContact: Color { .clear }
+    public var shadowLight: Color { .clear }
+    public var tintSky: Color { Self.limeWash }
+    public var tintSkyActive: Color { Self.saffron }
+    public var tintAmber: Color { washSaffron }
 
-    // MARK: Metrics
+    // MARK: Metrics (Dia's radius set: 12, 20, 24, full)
 
-    public static let panelWidth: CGFloat = 280
+    public static let panelWidth: CGFloat = 300
     public static let previewWidth: CGFloat = 300
     public static let rowHeight: CGFloat = 36
-    public static let rowGap: CGFloat = 6
+    public static let rowGap: CGFloat = 8
+    public static let sectionGap: CGFloat = 24
+    public static let cardRadius: CGFloat = 12
+    public static let wellRadius: CGFloat = 12
     public static let rowRadius: CGFloat = 12
-    public static let cardRadius: CGFloat = 16
-    public static let panelRadius: CGFloat = 22
+    public static let pillRadius: CGFloat = 20
+    public static let panelRadius: CGFloat = 24
+    public static let fullRadius: CGFloat = 999
     public static let collapsedSize: CGFloat = 44
-    public static let paddingH: CGFloat = 12
-    public static let paddingV: CGFloat = 10
+    public static let paddingH: CGFloat = 16
+    public static let paddingV: CGFloat = 12
 
-    // MARK: Fonts
+    // MARK: Type scale
     //
-    // Text is Apfel Grotezk (see TunerFonts); numbers are the system monospaced
-    // face so values line up while they change.
+    // display and heading in the serif; body and captions in the grotesk;
+    // eyebrows and values in mono. Tracking is negative on the serif, wide and
+    // uppercase on eyebrows, neutral elsewhere.
 
     public static func font(_ size: CGFloat, weight: Font.Weight = .regular) -> Font { TunerFonts.font(size, weight: weight) }
-    public static var label: Font { font(13, weight: .medium) }
-    public static let value = Font.system(size: 13, weight: .medium, design: .monospaced)
-    public static var rootTitle: Font { font(16, weight: .semibold) }
-    public static var folderTitle: Font { font(13, weight: .semibold) }
-    public static var caption: Font { font(11, weight: .medium) }
-    /// The smallest text on any surface: 10 pt is the macOS floor, and small
-    /// text wants a touch of positive tracking to stay legible.
-    public static var captionSmall: Font { font(10, weight: .medium) }
-    public static let captionSmallTracking: CGFloat = 0.2
-    /// Names under thumbnails and similar 11-pt labels.
-    public static var cardTitle: Font { font(11, weight: .medium) }
-    public static let cardTitleTracking: CGFloat = 0.1
-    /// Quiet uppercase section label.
-    public static var eyebrow: Font { font(10.5, weight: .semibold) }
-    public static let eyebrowTracking: CGFloat = 0.6
+    public static func display(_ size: CGFloat) -> Font { TunerFonts.display(size) }
+    public static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font { TunerFonts.mono(size, weight: weight) }
+
+    public static var displayFont: Font { display(28) }
+    public static let displayTracking: CGFloat = -0.8
+    public static var heading: Font { display(20) }
+    public static let headingTracking: CGFloat = -0.5
+    public static var body: Font { font(13) }
+    public static var bodyMedium: Font { font(13, weight: .medium) }
+    public static var bodySmall: Font { font(12) }
+    public static var eyebrow: Font { mono(11) }
+    public static let eyebrowTracking: CGFloat = 1.1
+    public static let value = Font.system(size: 12, weight: .regular, design: .monospaced)
+
+    // Older names.
+    public static var label: Font { body }
+    public static var rootTitle: Font { heading }
+    public static var folderTitle: Font { eyebrow }
+    public static var caption: Font { bodySmall }
+    public static var captionSmall: Font { font(11) }
+    public static let captionSmallTracking: CGFloat = 0
+    public static var cardTitle: Font { bodySmall }
+    public static let cardTitleTracking: CGFloat = 0
 
     // MARK: Motion
     //
-    // Critically damped by default: a surface that merely appears, a row that
-    // hovers has no momentum to spend on a bounce. `liquid` is the one exception,
-    // for knobs and pills that travel: they settle with a little give, which is
-    // what makes the glass feel fluid. Curves and values follow Emil Kowalski's
-    // design-engineering rules; see README credits.
-    public static let spring = Animation.spring(response: 0.3, dampingFraction: 0.95)
-    public static let quick = Animation.spring(response: 0.18, dampingFraction: 1.0)
-    /// Press feedback: fires on mouse-down and settles within ~150 ms.
-    public static let press = Animation.spring(response: 0.15, dampingFraction: 1.0)
-    /// A knob or selection pill on the move.
-    public static let liquid = Animation.spring(response: 0.35, dampingFraction: 0.72)
-    /// The Tuner bubble ⇄ panel morph, and the popover materialising.
-    public static let morphDuration: Double = 0.22
-    /// Strong ease-out, cubic-bezier(0.23, 1, 0.32, 1): entrances, exits, fades.
-    /// The built-in `.easeOut` is too weak to read as intentional.
-    public static func easeOut(_ duration: Double) -> Animation {
-        .timingCurve(0.23, 1, 0.32, 1, duration: duration)
-    }
-    /// Strong ease-in-out, cubic-bezier(0.77, 0, 0.175, 1): things already on
-    /// screen moving from A to B.
-    public static func easeInOut(_ duration: Double) -> Animation {
-        .timingCurve(0.77, 0, 0.175, 1, duration: duration)
-    }
-    /// What movement-free changes become under Reduce Motion: a short fade,
-    /// because reduced motion means gentler, not none.
-    public static let reducedFade = Animation.timingCurve(0.23, 1, 0.32, 1, duration: 0.12)
-    /// Slow-motion review. `SHUT_MOTION_SCALE=4` plays every UI animation four
-    /// times slower so timing and easing can be judged frame by frame.
+    // One transition: 0.2 s on cubic-bezier(0.4, 0, 0.2, 1), applied to colour,
+    // border and opacity. Nothing moves, scales or bounces; things change colour,
+    // not position. The older names all resolve to it.
+    public static let ease = Animation.timingCurve(0.4, 0, 0.2, 1, duration: 0.2)
+    public static let spring = ease
+    public static let quick = ease
+    public static let press = ease
+    public static let liquid = ease
+    public static let morphDuration: Double = 0.2
+    public static func easeOut(_ duration: Double) -> Animation { .timingCurve(0.4, 0, 0.2, 1, duration: min(duration, 0.3)) }
+    public static func easeInOut(_ duration: Double) -> Animation { easeOut(duration) }
+    public static let reducedFade = Animation.timingCurve(0.4, 0, 0.2, 1, duration: 0.12)
+    /// Slow-motion review. `SHUT_MOTION_SCALE=4` plays every transition four
+    /// times slower so timing can be judged frame by frame.
     public static let motionScale: Double = {
         let raw = ProcessInfo.processInfo.environment["SHUT_MOTION_SCALE"] ?? ""
         return max(Double(raw) ?? 1, 0.1)
     }()
 
-    /// The animation a modifier actually applies. Pure, so it is testable:
-    /// `motion` is true for anything that moves or scales, which Reduce Motion
-    /// drops; everything else (opacity, colour, fill) becomes `reducedFade`.
+    /// The animation a modifier actually applies. `motion` marks anything that
+    /// would move or scale: that is never animated here, so it resolves to nil
+    /// and the change is immediate. Colour and opacity changes get `ease`, or
+    /// the shorter `reducedFade` under Reduce Motion.
     public static func resolve(_ animation: Animation, motion: Bool, reduceMotion: Bool) -> Animation? {
-        if reduceMotion { return motion ? nil : reducedFade }
+        if motion { return nil }
+        if reduceMotion { return reducedFade }
         return motionScale == 1 ? animation : animation.speed(1 / motionScale)
     }
 
@@ -218,14 +211,13 @@ public extension View {
 }
 
 public extension View {
-    /// For opacity, colour and fill changes. Under Reduce Motion it becomes a
-    /// short fade rather than an instant cut.
+    /// For opacity, colour and fill changes: the 0.2 s ease.
     func tunerAnimation<V: Equatable>(_ animation: Animation, value: V) -> some View {
         modifier(TunerAnimated(animation: animation, value: value, motion: false))
     }
 
-    /// For anything that moves, scales or re-lays out. Under Reduce Motion it is
-    /// dropped entirely.
+    /// For anything that would move, scale or re-lay out. Never animated: the
+    /// change is immediate.
     func tunerMotion<V: Equatable>(_ animation: Animation, value: V) -> some View {
         modifier(TunerAnimated(animation: animation, value: value, motion: true))
     }

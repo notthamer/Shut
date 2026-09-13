@@ -7,17 +7,14 @@ import XCTest
 /// press feedback uses the documented scale, and the accessibility flags change
 /// the surfaces they are meant to.
 final class MotionTokensTests: XCTestCase {
-    func testReduceMotionKeepsFadesAndDropsMovement() {
-        XCTAssertNil(TunerTheme.resolve(TunerTheme.quick, motion: true, reduceMotion: true),
-                     "movement is dropped under Reduce Motion")
-        XCTAssertNotNil(TunerTheme.resolve(TunerTheme.quick, motion: false, reduceMotion: true),
-                        "fades and colour changes stay, shorter")
-        XCTAssertNotNil(TunerTheme.resolve(TunerTheme.quick, motion: true, reduceMotion: false))
-    }
-
-    func testPressFeedbackScale() {
-        XCTAssertEqual(PressScaleStyle().scale, 0.97)
-        XCTAssertEqual(PressScaleStyle(scale: 0.96).scale, 0.96)
+    func testNothingMovesAndColourChangesEase() {
+        XCTAssertNil(TunerTheme.resolve(TunerTheme.ease, motion: true, reduceMotion: false),
+                     "movement is never animated: things change colour, not position")
+        XCTAssertNil(TunerTheme.resolve(TunerTheme.ease, motion: true, reduceMotion: true))
+        XCTAssertNotNil(TunerTheme.resolve(TunerTheme.ease, motion: false, reduceMotion: false),
+                        "colour and opacity changes ease over 0.2 s")
+        XCTAssertNotNil(TunerTheme.resolve(TunerTheme.ease, motion: false, reduceMotion: true),
+                        "and stay, shorter, under Reduce Motion")
     }
 
     func testMotionScaleIsRealTimeUnlessAsked() {
@@ -28,11 +25,10 @@ final class MotionTokensTests: XCTestCase {
     func testAccessibilityFlagsChangeSurfaces() {
         let glass = TunerTheme(reduceTransparency: false, increaseContrast: false)
         let solid = TunerTheme(reduceTransparency: true, increaseContrast: true)
-        XCTAssertLessThan(NSColor(glass.glassTint).alphaComponent, 1, "the cream lets a hint of the desktop through")
-        XCTAssertEqual(NSColor(solid.glassTint).alphaComponent, 1, "Reduce Transparency makes the panel solid")
-        XCTAssertEqual(NSColor(solid.glassSheen).alphaComponent, 0, "no sheen on a solid panel")
-        XCTAssertGreaterThan(NSColor(solid.glassEdgeDark).alphaComponent, NSColor(glass.glassEdgeDark).alphaComponent,
-                             "Increase Contrast strengthens the edge")
+        XCTAssertLessThan(NSColor(glass.paper).alphaComponent, 1, "the paper lets a hint of the desktop through")
+        XCTAssertEqual(NSColor(solid.paper).alphaComponent, 1, "Reduce Transparency makes the paper solid")
+        XCTAssertLessThan(NSColor(solid.border).brightnessComponent, NSColor(glass.border).brightnessComponent,
+                          "Increase Contrast darkens the border from Silver to Carbon")
         XCTAssertLessThan(NSColor(solid.inkLabel).brightnessComponent, NSColor(glass.inkLabel).brightnessComponent,
                           "Increase Contrast darkens secondary text from Carbon to Pure Black")
     }

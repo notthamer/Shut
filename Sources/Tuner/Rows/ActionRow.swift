@@ -28,17 +28,3 @@ public struct ActionRow: View {
         .focusEffectDisabled()
     }
 }
-
-/// Press feedback for every pressable surface: scales down on mouse-down (not
-/// on release, which would feel dead) and settles on a critically damped spring.
-/// 0.97 for rows and cards; 0.96 for small icon and text buttons, where the
-/// element is small enough that 0.97 reads as nothing.
-public struct PressScaleStyle: ButtonStyle {
-    let scale: CGFloat
-    public init(scale: CGFloat = 0.97) { self.scale = scale }
-    public func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? scale : 1)
-            .tunerMotion(TunerTheme.press, value: configuration.isPressed)
-    }
-}

@@ -11,6 +11,7 @@ final class FontTests: XCTestCase {
             XCTAssertNotNil(NSFont(name: name, size: 13), name)
         }
         XCTAssertEqual(TunerFonts.postScriptName(for: .semibold), "ApfelGrotezk-Fett", "no 600 in the family; titles round up")
+        XCTAssertNotNil(NSFont(name: TunerFonts.displayPostScriptName, size: 28), "Playfair Display registers from the bundle")
         XCTAssertEqual(TunerFonts.nsFont(13, weight: .medium).fontName, "ApfelGrotezk-Mittel")
     }
 }

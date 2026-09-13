@@ -107,24 +107,20 @@ public final class TunerPanelController {
                 ?? NSRect(origin: panel.frame.origin, size: Self.defaultSize)
         }
         let collapsed = isCollapsed
-        // The content fades out, the panel resizes on the strong ease-out, and
-        // the new content fades in: the frame moves, the content never teleports.
+        // Dia motion: the content crossfades; the frame simply changes.
         let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = (reduce ? 0 : 0.08) * TunerTheme.motionScale
+            ctx.duration = (reduce ? 0 : 0.1) * TunerTheme.motionScale
             hosting.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 chrome?.isCollapsed = collapsed
                 self.hosting.rootView = collapsed ? AnyView(CollapsedBubble { [weak self] in self?.toggleCollapsed() }) : self.content
+                self.panel.setFrame(target, display: true)
                 NSAnimationContext.runAnimationGroup { ctx in
-                    ctx.duration = (reduce ? 0 : 0.22) * TunerTheme.motionScale
-                    ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
-                    self.panel.animator().setFrame(target, display: true)
-                }
-                NSAnimationContext.runAnimationGroup { ctx in
-                    ctx.duration = (reduce ? 0 : 0.12) * TunerTheme.motionScale
+                    ctx.duration = (reduce ? 0 : 0.2) * TunerTheme.motionScale
+                    ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1)
                     self.hosting.animator().alphaValue = 1
                 }
             }
@@ -178,26 +174,16 @@ public struct WindowDragHandle: NSViewRepresentable {
     }
 }
 
-/// A sheet of light liquid glass: the window chrome for every Shut panel.
-/// Public so a host can give other floating windows the same material.
-///
-/// Layers, bottom to top:
-/// 1. behind-window blur (`NSVisualEffectView`, Aqua forced),
-/// 2. white tint,
-/// 3. a radial sheen in the top-left, the specular highlight of a curved pane,
-/// 4. a light catch along the top edge,
-/// 5. an inner light edge and an outer dark hairline,
-/// then the SwiftUI content. The corner radius animates between the panel's
-/// 22 pt and a full circle for the collapsed bubble, so a morph reads as one
-/// object changing shape. The window's own shadow follows the shape.
+/// The window chrome for every Shut panel: a sheet of Bone paper over a
+/// behind-window blur (the reference's glass nav bar), a one-point Silver
+/// border, 24-pt corners. A circle when collapsed. Public so a host can give
+/// other floating windows the same material. The window's own shadow is the
+/// only shadow: nothing inside casts one.
 public final class PanelChrome: NSView {
     var hosting: NSHostingView<AnyView>?
-    public var isCollapsed = false { didSet { animateShape() } }
+    public var isCollapsed = false { didSet { updateShape() } }
     private let blur = NSVisualEffectView()
     private let tint = CALayer()
-    private let sheen = CAGradientLayer()
-    private let highlight = CAGradientLayer()
-    private let innerEdge = CAShapeLayer()
     private var accessibilityObserver: NSObjectProtocol?
 
     public override init(frame: NSRect) {
@@ -219,21 +205,6 @@ public final class PanelChrome: NSView {
         tint.zPosition = 1
         layer?.addSublayer(tint)
 
-        sheen.type = .radial
-        sheen.colors = [NSColor.white.withAlphaComponent(0.55).cgColor, NSColor.white.withAlphaComponent(0).cgColor]
-        sheen.locations = [0, 1]
-        sheen.zPosition = 2
-        layer?.addSublayer(sheen)
-
-        highlight.colors = [NSColor.white.withAlphaComponent(0.9).cgColor, NSColor.white.withAlphaComponent(0).cgColor]
-        highlight.zPosition = 3
-        layer?.addSublayer(highlight)
-
-        innerEdge.fillColor = nil
-        innerEdge.lineWidth = 1
-        innerEdge.zPosition = 20
-        layer?.addSublayer(innerEdge)
-
         applyAccessibility()
         accessibilityObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main
@@ -243,20 +214,18 @@ public final class PanelChrome: NSView {
         updateShape()
     }
 
-    /// Reduce Transparency: no blur, a solid white tint, no sheen. Increase
-    /// Contrast: a defined dark edge.
+    /// Reduce Transparency: no blur, solid Bone. Increase Contrast: a Carbon edge.
     private func applyAccessibility() {
         let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
         let contrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
         blur.isHidden = reduce
         tint.backgroundColor = NSColor(red: 0.973, green: 0.973, blue: 0.973, alpha: reduce ? 1 : 0.95).cgColor   // Bone
-        sheen.isHidden = reduce
-        layer?.borderColor = NSColor.black.withAlphaComponent(contrast ? 0.25 : 0.08).cgColor
-        innerEdge.strokeColor = NSColor.white.withAlphaComponent(contrast ? 0.9 : 0.7).cgColor
+        layer?.borderColor = (contrast ? NSColor(red: 0.388, green: 0.388, blue: 0.388, alpha: 1)
+                                       : NSColor(red: 0.776, green: 0.776, blue: 0.776, alpha: 1)).cgColor   // Carbon / Silver
         hosting?.needsDisplay = true
     }
 
-    /// Puts the content above the glass layers. Use this rather than addSubview.
+    /// Puts the content above the paper. Use this rather than addSubview.
     public func install(_ content: NSView) {
         content.frame = bounds
         content.autoresizingMask = [.width, .height]
@@ -272,42 +241,12 @@ public final class PanelChrome: NSView {
         updateShape()
     }
 
-    private var targetRadius: CGFloat { isCollapsed ? min(bounds.width, bounds.height) / 2 : TunerTheme.panelRadius }
-
     private func updateShape() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        if layer?.animation(forKey: "radius") == nil { layer?.cornerRadius = targetRadius }
-        let radius = layer?.cornerRadius ?? targetRadius
+        layer?.cornerRadius = isCollapsed ? min(bounds.width, bounds.height) / 2 : TunerTheme.panelRadius
         tint.frame = bounds
-        // AppKit's y goes up: the top edge is at maxY, so gradients that should
-        // fade downward run from y = 1 to y = 0 in unit space.
-        sheen.frame = bounds
-        sheen.startPoint = CGPoint(x: 0.3, y: 1.2)
-        sheen.endPoint = CGPoint(x: 1.2, y: 1.2 - 0.9 * bounds.width / max(bounds.height, 1))
-        highlight.frame = CGRect(x: 0, y: bounds.height - 18, width: bounds.width, height: 18)
-        highlight.startPoint = CGPoint(x: 0.5, y: 1)
-        highlight.endPoint = CGPoint(x: 0.5, y: 0)
-        innerEdge.frame = bounds
-        let inner = max(radius - 1.5, 0)
-        innerEdge.path = CGPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), cornerWidth: inner, cornerHeight: inner, transform: nil)
-        highlight.isHidden = isCollapsed
         CATransaction.commit()
-    }
-
-    /// Corner radius morph for collapse/expand; the controller animates the
-    /// frame over the same duration so the two read as one change of shape.
-    private func animateShape() {
-        guard let layer else { return }
-        let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        let animation = CABasicAnimation(keyPath: "cornerRadius")
-        animation.fromValue = layer.presentation()?.cornerRadius ?? layer.cornerRadius
-        animation.toValue = targetRadius
-        animation.duration = (reduce ? 0 : TunerTheme.morphDuration) * TunerTheme.motionScale
-        animation.timingFunction = CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
-        layer.cornerRadius = targetRadius
-        layer.add(animation, forKey: "radius")
-        updateShape()
     }
 }
 
@@ -324,8 +263,7 @@ struct CollapsedBubble: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(theme.ink)
         }
-        .scaleEffect(pressed ? 0.94 : 1)
-        .tunerMotion(TunerTheme.press, value: pressed)
+        .opacity(pressed ? 0.55 : 1)
         .contentShape(Circle())
         .gesture(DragGesture(minimumDistance: 0)
             .onChanged { _ in pressed = true }
