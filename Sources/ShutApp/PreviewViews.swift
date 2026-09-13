@@ -25,6 +25,7 @@ struct PreviewMetalView: NSViewRepresentable {
     }
 
     func updateNSView(_ host: PreviewHostView, context: Context) {
+        host.setBackdrop(model.registry.current.isTransparent ? model.snapshotImage : nil)
         model.render()
     }
 }
@@ -38,13 +39,33 @@ final class PreviewHostView: NSView {
     private let claim: (MetalTransitionView) -> Void
     private var keyObserver: NSObjectProtocol?
 
+    /// Shown under the Metal view for mask styles, so the preview composites
+    /// over the snapshot the way the overlay composites over the desktop.
+    private let backdrop = NSImageView()
+
     init(metal: MetalTransitionView, claim: @escaping (MetalTransitionView) -> Void) {
         self.metal = metal
         self.claim = claim
         super.init(frame: .zero)
+        backdrop.imageScaling = .scaleAxesIndependently
+        backdrop.frame = bounds
+        backdrop.autoresizingMask = [.width, .height]
+        backdrop.isHidden = true
+        addSubview(backdrop)
         metal.frame = bounds
         metal.autoresizingMask = [.width, .height]
         addSubview(metal)
+    }
+
+    func setBackdrop(_ image: CGImage?) {
+        if let image {
+            if backdrop.image?.size.width != CGFloat(image.width) || backdrop.isHidden {
+                backdrop.image = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+            }
+            backdrop.isHidden = false
+        } else {
+            backdrop.isHidden = true
+        }
     }
 
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }

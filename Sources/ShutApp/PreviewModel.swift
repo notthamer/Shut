@@ -13,6 +13,10 @@ public final class PreviewModel: ObservableObject {
     @Published public var followLid = false { didSet { followLidChanged() } }
     @Published public private(set) var isCapturing = false
     @Published public private(set) var hasSnapshot = false
+    /// The picture behind mask styles (Shutter, Fade), which draw with alpha
+    /// over whatever is beneath them: on the lid that is the live desktop, in
+    /// the preview it has to be the snapshot itself.
+    @Published public private(set) var snapshotImage: CGImage?
     @Published public private(set) var isPlaying = false
     @Published public private(set) var frameTimeMs: Double = 0
     @Published public private(set) var errorText: String?
@@ -78,6 +82,7 @@ public final class PreviewModel: ObservableObject {
         guard !isCapturing else { return }
         guard ScreenRecordingPermission.isGranted else {
             if let placeholder = PlaceholderDesktop.image(), (try? renderer.setSnapshot(placeholder)) != nil {
+                snapshotImage = placeholder
                 hasSnapshot = true
                 usesPlaceholder = true
                 errorText = nil
@@ -92,6 +97,7 @@ public final class PreviewModel: ObservableObject {
                 let image = try await ScreenCapturer.captureBuiltInDisplay()
                 guard let self else { return }
                 try self.renderer.setSnapshot(image)
+                self.snapshotImage = image
                 self.hasSnapshot = true
                 self.usesPlaceholder = false
                 self.isCapturing = false
