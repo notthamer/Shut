@@ -47,7 +47,6 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
                     .foregroundStyle(Color.white)
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .background(Capsule().fill(theme.buttonDark))
-                    .shadow(color: TunerTheme.inkBase.opacity(0.22), radius: 6, y: 3)
                     .padding(.top, 52)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -60,7 +59,7 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
     private var header: some View {
         VStack(spacing: TunerTheme.rowGap) {
             HStack {
-                Text(title).font(TunerTheme.rootTitle).foregroundStyle(theme.textRoot)
+                Text(title).font(TunerTheme.heading).tracking(TunerTheme.headingTracking).foregroundStyle(theme.ink)
                 Spacer()
                 if let onCollapse {
                     PanelIconButton(systemName: "slider.horizontal.3", action: onCollapse)
@@ -77,7 +76,8 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
         .padding(.horizontal, TunerTheme.paddingH)
         .padding(.top, TunerTheme.paddingV)
         .padding(.bottom, TunerTheme.paddingV)
-        .overlay(alignment: .bottom) { Rectangle().fill(theme.hairline).frame(height: 1) }
+        // The one place the spectrum appears: a thin line under the header.
+        .overlay(alignment: .bottom) { SpectrumLine(height: 2) }
     }
 
     private var footer: some View {
@@ -152,10 +152,8 @@ struct FolderHeaderStyle: ButtonStyle {
     @Environment(\.tunerTheme) private var theme
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                .fill(configuration.isPressed ? theme.inset : .clear)
-                .padding(.horizontal, -6))
-            .tunerAnimation(TunerTheme.press, value: configuration.isPressed)
+            .opacity(configuration.isPressed ? 0.55 : 1)
+            .tunerAnimation(TunerTheme.ease, value: configuration.isPressed)
     }
 }
 
@@ -176,14 +174,9 @@ struct CopyButton: View {
                 .foregroundStyle(Color.white)
                 .frame(width: TunerTheme.rowHeight, height: TunerTheme.rowHeight)
                 .background(Circle().fill(theme.buttonDark))
-                .overlay(alignment: .top) {
-                    Circle().fill(LinearGradient(colors: [Color.white.opacity(0.28), .clear], startPoint: .top, endPoint: .center))
-                        .mask(Circle().strokeBorder(lineWidth: 1.5))
-                }
-                .shadow(color: TunerTheme.inkBase.opacity(0.22), radius: 6, y: 3)
                 .contentShape(Circle())
         }
-        .buttonStyle(PressScaleStyle())
+        .buttonStyle(PressStyle())
         .keyboardShortcut("c", modifiers: [.command, .shift])
         .help("Copy these values as JSON (⇧⌘C)")
         .accessibilityLabel("Copy JSON")
@@ -204,7 +197,7 @@ struct PanelIconButton: View {
                 .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(PressScaleStyle(scale: 0.96))
+        .buttonStyle(PressStyle())
         .onHover { hover = $0 }
     }
 }
@@ -246,7 +239,7 @@ struct VersionsMenu<P: TunableParameters>: View {
             }
         } label: {
             HStack(spacing: 8) {
-                Text(currentName).font(TunerTheme.label).foregroundStyle(theme.textPrimary).lineLimit(1)
+                Text(currentName).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
                 Spacer()
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10, weight: .semibold))
@@ -255,9 +248,10 @@ struct VersionsMenu<P: TunableParameters>: View {
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity)
             .frame(height: TunerTheme.rowHeight)
-            .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(hover ? theme.raisedHover : .clear))
-            .glassSurface(.raised)
-            .contentShape(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous))
+            .background(Capsule().fill(hover ? theme.linen : theme.card))
+            .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+            .tunerAnimation(TunerTheme.ease, value: hover)
+            .contentShape(Capsule())
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -285,6 +279,7 @@ public struct TunerFoldersView<P: TunableParameters>: View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(Array(P.schema.folders.enumerated()), id: \.offset) { index, folder in
                 FolderView(title: folder.name,
+                           number: String(format: "%02d", index + 1),
                            isOpen: Binding(get: { open.contains(index) },
                                            set: { if $0 { open.insert(index) } else { open.remove(index) } }),
                            onReset: { store.reset(folder: index) }) {
@@ -299,9 +294,11 @@ public struct TunerFoldersView<P: TunableParameters>: View {
     }
 }
 
-/// Title, chevron that turns when open, hairline rules, Reset on the right.
+/// A chapter: a hairline, a numbered eyebrow with Reset as a text link, and
+/// the rows. Open and close is a crossfade.
 struct FolderView<Content: View>: View {
     let title: String
+    var number: String? = nil
     @Binding var isOpen: Bool
     let onReset: () -> Void
     @ViewBuilder let content: () -> Content
@@ -310,28 +307,23 @@ struct FolderView<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // The header is a button so it answers on mouse-down; Reset is its own
-            // button inside it, and wins the click when it is the target.
+            Rectangle().fill(theme.hairline).frame(height: 1)
             Button { isOpen.toggle() } label: {
                 HStack(spacing: 8) {
-                    Eyebrow(title)
+                    Eyebrow(title, number: number)
                     Spacer()
                     Button(action: onReset) {
                         Text("Reset")
-                            .font(TunerTheme.caption)
-                            .foregroundStyle(resetHover ? theme.textPrimary : theme.textTertiary)
+                            .font(TunerTheme.bodySmall)
+                            .foregroundStyle(resetHover ? theme.ink : theme.inkTertiary)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(PressScaleStyle(scale: 0.96))
+                    .buttonStyle(PressStyle())
                     .onHover { resetHover = $0 }
+                    .tunerAnimation(TunerTheme.ease, value: resetHover)
                     .help("Put this group back to its defaults")
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(theme.textLabel)
-                        .opacity(0.6)
-                        .rotationEffect(.degrees(isOpen ? 180 : 0))
                 }
-                .frame(height: TunerTheme.rowHeight)
+                .frame(height: TunerTheme.rowHeight + 4)
                 .contentShape(Rectangle())
             }
             .buttonStyle(FolderHeaderStyle())
@@ -342,12 +334,10 @@ struct FolderView<Content: View>: View {
 
             if isOpen {
                 content()
-                    .padding(.bottom, 10)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .padding(.bottom, 12)
+                    .transition(.opacity)
             }
         }
-        .padding(.horizontal, 10)
-        .glassSurface(.raised, radius: TunerTheme.cardRadius)
-        .tunerMotion(TunerTheme.easeOut(0.22), value: isOpen)
+        .tunerAnimation(TunerTheme.ease, value: isOpen)
     }
 }

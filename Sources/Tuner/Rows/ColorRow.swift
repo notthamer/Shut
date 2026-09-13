@@ -17,23 +17,19 @@ public struct ColorRow: View {
 
     public var body: some View {
         HStack(spacing: 10) {
-            Text(label).font(TunerTheme.label).foregroundStyle(theme.textLabel).lineLimit(1)
+            Text(label).font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineLimit(1)
             Spacer(minLength: 4)
-            Text(color.hex).font(TunerTheme.value).foregroundStyle(theme.textPrimary)
+            Text(color.hex).font(TunerTheme.value).foregroundStyle(theme.ink)
                 .padding(.trailing, 6)
             ColorPicker("", selection: Binding(get: { Color(color) }, set: { color = TunerColor($0) }), supportsOpacity: true)
                 .labelsHidden()
                 .frame(width: 30, height: 20)
-                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(theme.glassEdgeDark, lineWidth: 1))
-                .shadow(color: theme.shadowSoft, radius: 3, y: 1)
-                .scaleEffect(swatchHover ? 1.08 : 1)
+                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(swatchHover ? theme.borderHover : theme.border, lineWidth: 1))
                 .onHover { swatchHover = $0 }
-                .tunerMotion(TunerTheme.quick, value: swatchHover)
+                .tunerAnimation(TunerTheme.ease, value: swatchHover)
         }
-        .padding(.leading, 14)
-        .padding(.trailing, 8)
         .frame(height: TunerTheme.rowHeight)
-        .glassSurface(.raised, radius: TunerTheme.rowHeight / 2)
         .help(help)
     }
 }

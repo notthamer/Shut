@@ -9,9 +9,6 @@ public struct SegmentedRow: View {
     let help: String
 
     @Environment(\.tunerTheme) private var theme
-    @Namespace private var pill
-    /// The pill stretches a little along its travel and settles: liquid.
-    @State private var stretch: CGFloat = 1
 
     public init(_ label: String, options: [String], selection: Binding<Int>, help: String = "") {
         self.label = label
@@ -23,50 +20,33 @@ public struct SegmentedRow: View {
     public var body: some View {
         HStack(spacing: 12) {
             Text(label)
-                .font(TunerTheme.label)
-                .foregroundStyle(theme.textLabel)
+                .font(TunerTheme.body)
+                .foregroundStyle(theme.inkLabel)
                 .lineLimit(1)
             Spacer(minLength: 4)
-            HStack(spacing: 0) {
+            HStack(spacing: 2) {
                 ForEach(Array(options.enumerated()), id: \.offset) { index, name in
                     Button { selection = index } label: {
                         Text(name)
-                            .font(TunerTheme.label)
-                            .foregroundStyle(index == selection ? theme.textPrimary : theme.textLabel)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
+                            .font(TunerTheme.body)
+                            .foregroundStyle(index == selection ? theme.ink : theme.inkLabel)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 5)
                             .background {
-                                if index == selection {
-                                    Capsule()
-                                        .fill(theme.tintAmber)
-                                        .overlay(Capsule().strokeBorder(theme.glassEdgeDark, lineWidth: 1))
-                                        .overlay(alignment: .top) {
-                                            Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.9), .clear], startPoint: .top, endPoint: .bottom))
-                                                .frame(height: 8)
-                                                .mask(Capsule().strokeBorder(lineWidth: 1))
-                                        }
-                                        .shadow(color: theme.shadowSoft, radius: 4, y: 2)
-                                        .scaleEffect(x: stretch, y: 1)
-                                        .matchedGeometryEffect(id: "pill", in: pill)
-                                }
+                                Capsule().fill(theme.card)
+                                    .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+                                    .opacity(index == selection ? 1 : 0)
                             }
-                            .contentShape(Rectangle())
+                            .contentShape(Capsule())
                     }
-                    .buttonStyle(PressScaleStyle(scale: 0.97))
+                    .buttonStyle(PressStyle())
+                    .tunerAnimation(TunerTheme.ease, value: selection)
                 }
             }
             .padding(2)
-            .tunerMotion(TunerTheme.liquid, value: selection)
-            .tunerMotion(TunerTheme.liquid, value: stretch)
-            .onChange(of: selection) { _, _ in
-                stretch = 1.12
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { stretch = 1 }
-            }
+            .surface(.pill)
         }
-        .padding(.leading, 14)
-        .padding(.trailing, 4)
         .frame(height: TunerTheme.rowHeight)
-        .glassSurface(.raised, radius: TunerTheme.rowHeight / 2)
         .focusable()
         .focusEffectDisabled()
         .onKeyPress(phases: .down) { press in

@@ -18,7 +18,7 @@ public struct EasingEditor: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
             HStack {
-                Text(label).font(TunerTheme.label).foregroundStyle(theme.textLabel)
+                Text(label).font(TunerTheme.body).foregroundStyle(theme.inkLabel)
                 Spacer()
                 Menu {
                     Button("Linear") { curve = .linear }
@@ -36,7 +36,7 @@ public struct EasingEditor: View {
 
             EasingCanvas(curve: $curve)
                 .aspectRatio(256.0 / 180.0, contentMode: .fit)
-                .glassSurface(.inset)
+                .surface(.well)
 
             HStack(spacing: 8) {
                 Text("Ease").font(TunerTheme.label).foregroundStyle(theme.textLabel)
@@ -50,9 +50,7 @@ public struct EasingEditor: View {
                     .onSubmit(commitText)
                     .onChange(of: textFocused) { _, f in if !f { commitText() } }
             }
-            .padding(.horizontal, 14)
             .frame(height: TunerTheme.rowHeight)
-            .glassSurface(.raised, radius: TunerTheme.rowHeight / 2)
         }
         .onAppear { syncText() }
         .onChange(of: curve) { _, _ in if !textFocused { syncText() } }
@@ -104,10 +102,8 @@ struct EasingCanvas: View {
                 ForEach(0..<2, id: \.self) { i in
                     let p = i == 0 ? fit.project(curve.x1, curve.y1) : fit.project(curve.x2, curve.y2)
                     let active = dragging == i || hoverHandle == i
-                    GlassBead(size: 12)
-                        .overlay(Circle().fill(TunerTheme.inkBase).frame(width: 4, height: 4).opacity(active ? 1 : 0))
-                        .scaleEffect(active ? 1.15 : 1)
-                        .tunerMotion(TunerTheme.liquid, value: active)
+                    Knob(size: 12, fill: active ? TunerTheme.pureBlack : theme.buttonDark)
+                        .tunerAnimation(TunerTheme.ease, value: active)
                         .frame(width: 24, height: 24)
                         .contentShape(Circle())
                         .position(p)

@@ -15,16 +15,17 @@ public struct ActionRow: View {
     public var body: some View {
         Button(action: action) {
             Text(label)
-                .font(TunerTheme.label)
-                .foregroundStyle(theme.textPrimary)
+                .font(TunerTheme.bodyMedium)
+                .foregroundStyle(theme.ink)
                 .frame(maxWidth: .infinity)
                 .frame(height: TunerTheme.rowHeight)
-                .background(Capsule().fill(hover ? theme.raisedHover : .clear))
-                .glassSurface(.raised, radius: TunerTheme.rowHeight / 2)
+                .background(Capsule().fill(hover ? theme.linen : theme.card))
+                .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
                 .contentShape(Capsule())
         }
-        .buttonStyle(PressScaleStyle())
+        .buttonStyle(PressStyle())
         .onHover { hover = $0 }
+        .tunerAnimation(TunerTheme.ease, value: hover)
         .focusEffectDisabled()
     }
 }

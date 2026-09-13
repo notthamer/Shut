@@ -44,7 +44,7 @@ public struct SpringEditor: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
             HStack {
-                Text(label).font(TunerTheme.label).foregroundStyle(theme.textLabel)
+                Text(label).font(TunerTheme.body).foregroundStyle(theme.inkLabel)
                 Spacer()
                 Text(String(format: "settles in %.2f s", settleTime))
                     .font(TunerTheme.caption).foregroundStyle(theme.textTertiary).monospacedDigit()
@@ -110,6 +110,6 @@ struct SpringPlot: View {
             for i in 1..<samples.count { path.addLine(to: point(i)) }
             context.stroke(path, with: .color(theme.ink), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
         }
-        .glassSurface(.inset)
+        .surface(.well)
     }
 }
