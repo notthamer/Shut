@@ -83,9 +83,22 @@ final class PopoverModel: ObservableObject {
     }
 
     func select(_ id: String) {
+        guard let transition = registry.transition(id: id) else {
+            Log.app.error("select: unknown style \(id, privacy: .public)")
+            return
+        }
         registry.select(id: id)
         settings.transitionID = id
-        preview.render()
+        Log.app.info("style selected: \(id, privacy: .public)")
+        // Every style is the untouched desktop at Open, so a pick made with the
+        // scrubber resting there would look like nothing happened. Glide to the
+        // point where the style is recognisable; a scrubber already mid-way just
+        // re-renders in place.
+        if preview.progress < 0.05, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            preview.glide(to: transition.thumbnailProgress)
+        } else {
+            preview.render()
+        }
     }
 
     func thumbnail(for transition: TransitionKit.AnyTransition) -> CGImage? {

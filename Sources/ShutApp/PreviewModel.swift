@@ -177,6 +177,23 @@ public final class PreviewModel: ObservableObject {
         }
     }
 
+    /// Eases the scrubber to a progress over `duration` on the strong ease-out,
+    /// so a style change is visible even when the lid rests at Open.
+    public func glide(to target: Double, duration: Double = 0.4) {
+        followLid = false
+        let start = progress
+        guard abs(target - start) > 0.001 else { render(); return }
+        var elapsed = 0.0
+        run { [weak self] dt in
+            guard let self else { return false }
+            elapsed += dt
+            let t = min(elapsed / duration, 1)
+            let eased = 1 - pow(1 - t, 3)
+            self.progress = start + (target - start) * eased
+            return t < 1
+        }
+    }
+
     public func stop() {
         playTimer?.invalidate()
         playTimer = nil
