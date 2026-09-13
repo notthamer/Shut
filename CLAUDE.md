@@ -25,40 +25,27 @@ is described in `README.md` and `docs/ARCHITECTURE.md`.
    Apache-2.0; we credit its research and write our own implementation. Bendable is
    MIT: ported files say so in their header and `THIRD_PARTY_LICENSES.md` carries
    the license. Never use the DialKit name in code or UI.
-7. **Match the visual system: light liquid glass.** One appearance; every window
-   sets `TunerTheme.appearance` (Aqua) and the app sets it on `NSApp`, so the
-   glass reads the same over any wallpaper and in dark mode. `PanelChrome` is the
-   window material (blur, white tint, sheen, light catch, edges, animatable
-   corner radius). Everything on it is `glassSurface(.raised | .inset |
-   .tinted(_))`; knobs are `GlassBead`; the one strong action is the ink
-   `PrimaryButton`. **The palette is fixed** (`TunerTheme`): Bone is the
-   canvas, Paper White the raised pills and cards, Linen the wells; Pure Black,
-   Carbon and Slate are the three text levels, Silver the hairlines, Soft
-   Graphite the dark button and on-switch fill; Lime Wash is selection,
-   Saffron the warm highlight (permission card, warnings); the Spectrum
-   Marquee gradient is the slider fill and nothing else. No other colour.
-   Rows are raised pills (radius = half the 36-pt row height) in soft clay (a
-   dark shadow bottom-right, a light one top-left); sliders reveal the
-   spectrum as the `ChromeKnob` travels. Radii 22 (panel) / 16 (card) / 12
-   (wells). Plain-English `help` on every
-   control. Reduce Transparency makes the glass solid, Increase Contrast darkens
-   ink and edges: both go through the theme, never hard-coded colours. Text is
-   Apfel Grotezk via `TunerTheme.font(_:weight:)` (bundled in
-   `Sources/Tuner/Fonts/`, OFL, registered by `TunerFonts` at first use);
-   numbers use `TunerTheme.value` (system monospaced). SF Symbols keep
-   `.system` fonts, which set their weight.
-   **Motion rules** (from Emil Kowalski's design-engineering skills, credited in
-   the README): keyboard-initiated actions never animate (⌃⌥T, Escape, arrow
-   nudges); everything else is critically damped (`TunerTheme.quick`/`spring`),
-   entrances and exits use `TunerTheme.easeOut(_:)`, on-screen moves
-   `easeInOut(_:)`, UI stays under 300 ms, exits are faster than entrances, nothing
-   enters from scale 0, popovers grow from their trigger. Every pressable gets
-   `PressScaleStyle` (0.97 rows and cards, 0.96 small buttons) so feedback lands on
-   mouse-down. Use `tunerMotion` for anything that moves or scales and
-   `tunerAnimation` for opacity, colour and fills: Reduce Motion drops the first
-   and shortens the second to a 120 ms fade. `PanelChrome` and `panelGlass` go
-   solid under Reduce Transparency. Review timing in slow motion with
-   `SHUT_MOTION_SCALE=4` in the scheme's environment.
+7. **Match the visual system: an editorial broadsheet, after Dia.** One
+   appearance; every window sets `TunerTheme.appearance` (Aqua) and the app sets
+   it on `NSApp`. **Palette** (fixed, in `TunerTheme`): Bone paper, Paper White
+   cards and the primary button, Linen pills and wells, Pure Black / Carbon /
+   Slate ink, Silver borders, Soft Graphite dark fills, Lime Wash selection,
+   Saffron warm highlight, Void Black only on the welcome stage; the Spectrum
+   Marquee appears once per panel as a 2-pt `SpectrumLine`, never as a fill.
+   **Depth** is a one-point border (`surface(.card/.pill/.well/.wash)`); nothing
+   inside a panel casts a shadow, except the preview's product window (the
+   three-layer drop shadow) and the windows themselves. **Radii**: 12 (cards,
+   wells), 20 (pills), 24 (panels), full (buttons); no others. **Type**: Playfair
+   Display via `TunerTheme.display(_:)` for the wordmark, headings and the welcome
+   (weight 400, negative tracking, never bold); Apfel Grotezk via
+   `TunerTheme.font(_:weight:)` for labels and body (500 only for emphasis);
+   system mono for eyebrows (`Eyebrow`, uppercase, wide tracking, numbered
+   chapters "01 02 03") and values. **Motion**: `TunerTheme.ease` (0.2 s,
+   cubic-bezier 0.4 0 0.2 1) on colour, border and opacity only; `tunerMotion`
+   resolves to nil, `PressStyle` dims, panels fade, folders crossfade; sliders
+   follow the pointer 1:1 with no rubber band. Plain-English `help` on every
+   control. Reduce Transparency makes the paper solid, Increase Contrast darkens
+   secondary ink and borders: both go through the theme, never hard-coded.
 8. **Progress is 0 = open, 1 = shut** everywhere above the sensor.
 9. **The overlay belongs to the built-in display and to the Space the lid is
    closing on.** Build it fresh per close, show it with `OverlayWindow.show(on:)`

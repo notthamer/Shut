@@ -31,12 +31,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-## Apfel Grotezk
+## Apfel Grotezk and Playfair Display
 
-The typeface in `Sources/Tuner/Fonts/` is Apfel Grotezk by Collletttivo
-(https://www.collletttivo.it), Copyright © 2023 Collletttivo, licensed under the
-SIL Open Font License 1.1. The full license text ships alongside the fonts as
-`Sources/Tuner/Fonts/LICENSE.txt`; its terms are reproduced below.
+The typefaces in `Sources/Tuner/Fonts/` are Apfel Grotezk by Collletttivo
+(https://www.collletttivo.it), Copyright © 2023 Collletttivo, and Playfair Display
+by Claus Eggers Sørensen (https://github.com/clauseggers/Playfair), Copyright
+2017 The Playfair Display Project Authors. Both are licensed under the SIL Open
+Font License 1.1. Each license ships alongside the fonts
+(`ApfelGrotezk-OFL.txt`, `PlayfairDisplay-OFL.txt`); the terms are reproduced
+below once.
 
 ```
 Copyright © 2023, Collletttivo (https://www.collletttivo.it/ | collletttivo@gmail.com)

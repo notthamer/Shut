@@ -15,24 +15,21 @@ final class WelcomeWindow {
             onEnable()
             self?.window?.close()
         }
-        // The card is a pane of glass; the window behind it paints a soft
-        // gradient so the glass has something to blur even over a plain desktop.
+        // The dark stage: Void Black, the wordmark in Paper White, one button.
         let windowSize = NSSize(width: 480, height: 380)
-        let margin: CGFloat = 24
         let w = NSWindow(contentRect: NSRect(origin: .zero, size: windowSize),
                          styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
-        w.appearance = TunerTheme.appearance
+        w.appearance = NSAppearance(named: .darkAqua)   // the one dark surface: light traffic lights
         w.titlebarAppearsTransparent = true
         w.titleVisibility = .hidden
         w.isMovableByWindowBackground = true
         w.isReleasedWhenClosed = false
-        let backdrop = GradientBackdrop(frame: NSRect(origin: .zero, size: windowSize))
-        let card = PanelChrome(frame: NSRect(x: margin, y: margin, width: windowSize.width - 2 * margin, height: windowSize.height - 2 * margin))
-        card.autoresizingMask = [.width, .height]
+        let stage = VoidBackdrop(frame: NSRect(origin: .zero, size: windowSize))
         let hosting = NSHostingView(rootView: content)
-        card.install(hosting)
-        backdrop.addSubview(card)
-        w.contentView = backdrop
+        hosting.frame = stage.bounds
+        hosting.autoresizingMask = [.width, .height]
+        stage.addSubview(hosting)
+        w.contentView = stage
         w.center()
         window = w
         NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { [weak self] _ in
@@ -54,64 +51,55 @@ struct WelcomeView: View {
     @State private var appeared = false
 
     var body: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 20) {
             Spacer()
-            LogoMark(size: 88)
+            LogoMark(size: 72)
                 .modifier(Entrance(appeared: appeared, delay: 0))
-            Text("Choose how your Mac closes.")
-                .font(TunerTheme.font(22, weight: .semibold))
-                .tracking(-0.4)
-                .foregroundStyle(theme.textRoot)
-                .modifier(Entrance(appeared: appeared, delay: 0.04))
-            Text(capability.explanation)
-                .font(TunerTheme.font(12.5))
-                .foregroundStyle(theme.textLabel)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 320)
-                .modifier(Entrance(appeared: appeared, delay: 0.08))
+            Text("Shut.")
+                .font(TunerTheme.display(40)).tracking(-1.2)
+                .foregroundStyle(TunerTheme.paperWhite)
+                .modifier(Entrance(appeared: appeared, delay: 0.05))
+            VStack(spacing: 8) {
+                Text("Ways to close your Mac.")
+                    .font(TunerTheme.font(15))
+                    .foregroundStyle(TunerTheme.paperWhite.opacity(0.85))
+                Text(capability.explanation)
+                    .font(TunerTheme.bodySmall)
+                    .foregroundStyle(TunerTheme.paperWhite.opacity(0.55))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .frame(maxWidth: 320)
+            }
+            .modifier(Entrance(appeared: appeared, delay: 0.1))
             Spacer()
             PrimaryButton("Enable", action: enable)
                 .frame(width: 180)
-                .padding(.bottom, 24)
-                .modifier(Entrance(appeared: appeared, delay: 0.12))
+                .padding(.bottom, 28)
+                .modifier(Entrance(appeared: appeared, delay: 0.15))
         }
-        .frame(width: 432, height: 332)
+        .frame(width: 480, height: 380)
         .onAppear { appeared = true }
-        .tunerThemed()
+        .environment(\.colorScheme, .dark)
     }
 }
 
-/// Sky, lilac and white: the soft light the welcome glass floats in.
-final class GradientBackdrop: NSView {
+/// Void Black: the stage the welcome opens on.
+final class VoidBackdrop: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
-        let gradient = CAGradientLayer()
-        // Bone to Linen, with a wash of lime in the corner.
-        gradient.colors = [
-            NSColor(red: 0.949, green: 0.988, blue: 0.702, alpha: 1).cgColor,
-            NSColor(red: 0.973, green: 0.973, blue: 0.973, alpha: 1).cgColor,
-            NSColor(red: 0.937, green: 0.937, blue: 0.937, alpha: 1).cgColor,
-        ]
-        gradient.startPoint = CGPoint(x: 0, y: 1)
-        gradient.endPoint = CGPoint(x: 1, y: 0)
-        gradient.frame = bounds
-        gradient.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-        layer?.addSublayer(gradient)
+        layer?.backgroundColor = NSColor(red: 0.008, green: 0.008, blue: 0.016, alpha: 1).cgColor
     }
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 }
 
-/// Fade plus a small rise on the strong ease-out. Under Reduce Motion only the
-/// fade remains (the modifier resolves to the short reduced fade).
+/// A staggered fade. Nothing moves.
 private struct Entrance: ViewModifier {
     let appeared: Bool
     let delay: Double
-    @Environment(\.accessibilityReduceMotion) private var reduce
     func body(content: Content) -> some View {
         content
             .opacity(appeared ? 1 : 0)
-            .offset(y: appeared || reduce ? 0 : 6)
-            .tunerAnimation(TunerTheme.easeOut(0.32).delay(delay), value: appeared)
+            .tunerAnimation(TunerTheme.easeOut(0.3).delay(delay), value: appeared)
     }
 }

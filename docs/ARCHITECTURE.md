@@ -92,15 +92,14 @@ on. `TunerHost` registers each style's parameters with the Tuner in one line.
 - **`Tuner`** is a separate package (see its README section). `TunerPanelController`
   hosts `TunerPanelView` in a `KeyablePanel` with `PanelChrome`; the app injects
   the preview column and hides the panel while a real transition plays.
-- **Material.** `PanelChrome` is a sheet of light liquid glass, hand-built so it
-  runs on macOS 14: behind-window blur, a white tint, a radial sheen in the
-  top-left, a light catch along the top edge, an inner light edge and an outer
-  hairline, with a corner radius that animates between 22 pt and a circle for
-  the Tuner's collapsed bubble. `TunerTheme` is single-appearance (Aqua is forced
-  on every window and on `NSApp`); `glassSurface(.raised/.inset/.tinted)` builds
-  every control on the pane, `GlassBead` is the shared knob, and the popover
-  materializes (opacity, scale from the menu bar edge, and a content blur resolve
-  together) rather than fading. Reduce Transparency turns the glass solid.
+- **Material.** `PanelChrome` is a sheet of Bone paper over a behind-window blur
+  with a one-point Silver border and 24-pt corners (a circle when the Tuner is
+  collapsed). `TunerTheme` is single-appearance (Aqua is forced on every window
+  and on `NSApp`) and holds Dia's palette, type scale and the one 0.2 s ease;
+  `surface(.card/.pill/.well/.wash)` builds every control with a border and no
+  shadow; `Knob` is the shared slider handle; `SpectrumLine` is the gradient's
+  one appearance; `Eyebrow` numbers the chapters. Panels fade in; nothing moves.
+  Reduce Transparency turns the paper solid.
 - **Icon.** `scripts/make-glass-icon.swift` recovers the "S" mark from
   `App/mark-source.png` and sets it in ink on a glass squircle for every icon
   size, the `.icns`, and the in-app `logo.png`.

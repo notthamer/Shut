@@ -49,23 +49,14 @@ final class PopoverController {
         dock.retain("popover")
         installMonitors()
 
-        // Materialize: the pane arrives as glass, not as a fade. Opacity, scale
-        // (from 94 %, anchored at the top edge where it hangs from the menu bar)
-        // and a blur on the content all resolve together over 200 ms on the
-        // strong ease-out. Critically damped: a panel that merely appears has
-        // no momentum to spend on a bounce.
-        chrome?.layer?.anchorPoint = CGPoint(x: 0.5, y: 1)
-        chrome?.layer?.position = CGPoint(x: size.width / 2, y: size.height)
+        // Dia motion: the panel fades in over 0.2 s. Nothing moves or scales.
         panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
-        let duration = Self.duration(TunerTheme.morphDuration)
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = duration
-            ctx.timingFunction = Self.easeOut
+            ctx.duration = Self.duration(0.2)
+            ctx.timingFunction = Self.ease
             panel.animator().alphaValue = 1
         }
-        scaleChrome(from: 0.94, to: 1, duration: duration)
-        blurContent(from: 6, to: 0, duration: duration)
     }
 
     /// Click-outside and the status item close with a short exit that mirrors
@@ -82,70 +73,26 @@ final class PopoverController {
             return
         }
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = Self.duration(0.12)
-            ctx.timingFunction = Self.easeOut
+            ctx.duration = Self.duration(0.15)
+            ctx.timingFunction = Self.ease
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             Task { @MainActor in
                 panel.orderOut(nil)
-                self?.chrome?.layer?.transform = CATransform3DIdentity
-                self?.hosting?.layer?.filters = nil
                 self?.dock.release("popover")
             }
         })
-        scaleChrome(from: 1, to: 0.97, duration: Self.duration(0.12))
-        blurContent(from: 0, to: 4, duration: Self.duration(0.12))
     }
 
-    /// The content's blur during materialize. Layer filters are an AppKit
-    /// feature; the filter is removed once the panel is at rest so scrolling
-    /// and hover stay cheap.
-    private func blurContent(from: Double, to: Double, duration: Double) {
-        guard let layer = hosting?.layer, !Self.reduceMotion,
-              let filter = CIFilter(name: "CIGaussianBlur") else { return }
-        filter.name = "blur"
-        filter.setValue(from, forKey: kCIInputRadiusKey)
-        layer.filters = [filter]
-        let animation = CABasicAnimation(keyPath: "filters.blur.inputRadius")
-        animation.fromValue = from
-        animation.toValue = to
-        animation.duration = duration
-        animation.timingFunction = Self.easeOut
-        animation.fillMode = .forwards
-        animation.isRemovedOnCompletion = false
-        layer.add(animation, forKey: "blur")
-        if to == 0 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.02) { [weak self] in
-                self?.hosting?.layer?.removeAnimation(forKey: "blur")
-                self?.hosting?.layer?.filters = nil
-            }
-        }
-    }
-
-    private static let easeOut = CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
+    private static let ease = CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1)
     private static var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
     private static func duration(_ seconds: Double) -> Double { seconds * TunerTheme.motionScale }
 
-    /// The panel's scale, on the strong ease-out. Skipped under Reduce Motion,
-    /// where the fade alone carries the transition.
-    private func scaleChrome(from: CGFloat, to: CGFloat, duration: Double) {
-        guard let layer = chrome?.layer, !Self.reduceMotion else { return }
-        let scale = CABasicAnimation(keyPath: "transform")
-        scale.fromValue = CATransform3DMakeScale(from, from, 1)
-        scale.toValue = CATransform3DMakeScale(to, to, 1)
-        scale.duration = duration
-        scale.timingFunction = Self.easeOut
-        scale.fillMode = .forwards
-        scale.isRemovedOnCompletion = false
-        layer.add(scale, forKey: "scale")
-        layer.transform = CATransform3DMakeScale(to, to, 1)
-    }
 
     private func makePanel() -> NSPanel {
         let size = NSSize(width: PopoverView.width, height: 0)
         let hosting = FirstMouseHostingView(rootView: AnyView(PopoverView(model: model)))
         hosting.sizingOptions = [.intrinsicContentSize]
-        hosting.wantsLayer = true
         self.hosting = hosting
         let fitted = hosting.fittingSize
         let frame = NSRect(origin: .zero, size: NSSize(width: size.width, height: fitted.height))

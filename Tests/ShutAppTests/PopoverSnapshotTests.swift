@@ -58,6 +58,27 @@ final class PopoverSnapshotTests: XCTestCase {
         }
     }
 
+    /// The welcome is the one dark surface; rasterise it so the stage is checked
+    /// as an image.
+    func testWelcomeRendersOffscreen() throws {
+        let frame = NSRect(x: 0, y: 0, width: 480, height: 380)
+        let stage = VoidBackdrop(frame: frame)
+        let hosting = NSHostingView(rootView: WelcomeView(capability: .continuousAngle, enable: {}))
+        hosting.frame = frame
+        stage.addSubview(hosting)
+        let window = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = stage
+        hosting.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        let rep = try XCTUnwrap(stage.bitmapImageRepForCachingDisplay(in: stage.bounds))
+        stage.cacheDisplay(in: stage.bounds, to: rep)
+        XCTAssertGreaterThan(rep.pixelsWide, 0)
+        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"],
+           let png = rep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("welcome.png"))
+        }
+    }
+
     func testSpeedMapsToBand() {
         let defaults = UserDefaults(suiteName: "PopoverSpeed-\(UUID().uuidString)")!
         let settings = AppSettings(defaults: defaults)

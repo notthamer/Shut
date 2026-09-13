@@ -85,13 +85,14 @@ app.shut.mac` clears it.
 
 ## Interface
 
-One panel, two ways in. The whole interface is a sheet of bone-white glass over
-your desktop with a soft sheen; controls sit on it as white pills of soft clay or
-wells cut into it, sliders fill with the spectrum gradient under a chrome knob,
-selection is a lime wash, and everything that moves settles with a little give.
-It stays light in dark mode on purpose, and goes solid when Reduce Transparency
-is on. Labels are set in
-Apfel Grotezk; numbers stay monospaced so they hold still while they change.
+One panel, two ways in. The interface is an editorial broadsheet: bone paper
+over a faint blur of your desktop, black ink, one-point borders instead of
+shadows, floating pills, a light serif for headlines, numbered chapters in mono,
+lime for selection and saffron for warnings, and the spectrum once, as a thin
+line under the header. Motion changes colour and opacity in 0.2 s and never
+position. It stays light in dark mode on purpose, and goes solid when Reduce
+Transparency is on. Headlines are Playfair Display, labels Apfel Grotezk, and
+numbers monospaced so they hold still while they change.
 
 - **Menu bar.** Left click the icon for the panel as a popover. It closes when you
   click away or press Escape. Right click for a plain menu (pause, style, presets,
@@ -299,9 +300,13 @@ the version.
   shape. License in `THIRD_PARTY_LICENSES.md`.
 - [DialKit](https://github.com/joshpuckett/dialkit), MIT © 2026 Josh Puckett: the
   design of the tuning panel. No code was copied; the name is not used in code.
-- [Apfel Grotezk](https://github.com/collletttivo/apfel-grotezk) by Collletttivo, SIL
-  Open Font License 1.1: the typeface every label is set in. Bundled with its
-  license in `Sources/Tuner/Fonts/`.
+- [Apfel Grotezk](https://github.com/collletttivo/apfel-grotezk) by Collletttivo and
+  [Playfair Display](https://github.com/clauseggers/Playfair) by Claus Eggers
+  Sørensen, both SIL Open Font License 1.1: the label face and the display face.
+  Bundled with their licenses in `Sources/Tuner/Fonts/`.
+- [Dia](https://www.diabrowser.com) by The Browser Company: the editorial system
+  (paper, ink, borders, pills, chapter eyebrows, the spectrum line) the interface
+  is modelled on. No assets copied.
 - [Emil Kowalski's skills](https://github.com/emilkowalski/skills), MIT: the motion
   rules the interface follows (easing, durations, springs, press feedback, reduced
   motion), translated from the web to SwiftUI and AppKit. Guidance only, no code.

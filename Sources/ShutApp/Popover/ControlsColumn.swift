@@ -10,19 +10,19 @@ struct ControlsColumn: View {
 
     var body: some View {
         ScrollView(showsIndicators: true) {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Eyebrow("Style")
+            VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Eyebrow("Style", number: "01")
                     StyleGallery(model: model)
                 }
 
                 if model.needsPermissionCard {
                     PermissionCard(model: model)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .transition(.opacity)
                 }
 
                 VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
-                    Eyebrow("Timing").padding(.bottom, 2)
+                    Eyebrow("Timing", number: "02").padding(.bottom, 2)
                     SpeedRow(model: model)
                     ToggleRow("Animate opening",
                               isOn: Binding(get: { model.settings.animateOpening }, set: { model.settings.animateOpening = $0 }),
@@ -33,11 +33,11 @@ struct ControlsColumn: View {
                     .id(model.registry.current.id)
                     .transition(.blurFade)
             }
-            .padding(14)
+            .padding(16)
             // A style change swaps the dials: a blur-bridged fade so the outgoing
             // and incoming rows read as one block changing, not two overlapping.
-            .tunerAnimation(TunerTheme.easeOut(0.18), value: model.registry.current.id)
-            .tunerAnimation(TunerTheme.spring, value: model.needsPermissionCard)
+            .tunerAnimation(TunerTheme.ease, value: model.registry.current.id)
+            .tunerAnimation(TunerTheme.ease, value: model.needsPermissionCard)
         }
     }
 }
@@ -70,7 +70,7 @@ struct StyleCard: View {
     let select: () -> Void
     @Environment(\.tunerTheme) private var theme
     @State private var hover = false
-    static let radius: CGFloat = 14
+    static let radius: CGFloat = TunerTheme.cardRadius
 
     var body: some View {
         Button(action: select) { card }
@@ -95,32 +95,30 @@ struct StyleCard: View {
                 }
             }
             .frame(height: 44)
-            .clipped()
-            .tunerAnimation(TunerTheme.easeOut(0.16), value: version)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .padding([.horizontal, .top], 4)
+            .tunerAnimation(TunerTheme.ease, value: version)
             HStack(spacing: 4) {
                 Text(transition.displayName)
-                    .font(TunerTheme.cardTitle)
-                    .tracking(TunerTheme.cardTitleTracking)
-                    .fontWeight(isSelected ? .semibold : .medium)
-                    .foregroundStyle(isSelected ? theme.textRoot : theme.textLabel)
+                    .font(isSelected ? TunerTheme.bodyMedium : TunerTheme.body)
+                    .foregroundStyle(isSelected ? theme.ink : theme.inkLabel)
                     .lineLimit(1)
                 Spacer(minLength: 0)
                 if isSelected {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 9)).foregroundStyle(theme.textRoot)
+                    Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.ink)
                 }
             }
-            .padding(.horizontal, 6).padding(.vertical, 5)
+            .padding(.horizontal, 8).padding(.vertical, 6)
         }
-        .background(RoundedRectangle(cornerRadius: Self.radius, style: .continuous).fill(hover && !isSelected ? theme.raisedHover : .clear))
-        .clipShape(RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
-        .glassSurface(isSelected ? .tinted(theme.tintAmber) : .raised, radius: Self.radius)
+        // Lime wash when chosen, Paper White otherwise, Linen on hover; a
+        // one-point border does the depth, no shadow, nothing scales.
+        .surface(isSelected ? .wash(theme.washLime) : .card, radius: Self.radius)
+        .overlay(RoundedRectangle(cornerRadius: Self.radius, style: .continuous).fill(hover && !isSelected ? theme.linen.opacity(0.6) : .clear).allowsHitTesting(false))
         .overlay(RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
-            .strokeBorder(TunerTheme.inkBase.opacity(isSelected ? 0.35 : 0), lineWidth: 1.5))
+            .strokeBorder(isSelected ? theme.borderStrong : .clear, lineWidth: 1))
         .contentShape(RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
-        .scaleEffect(hover && !isSelected ? 1.02 : 1)
-        .tunerAnimation(TunerTheme.quick, value: hover)
-        .tunerMotion(TunerTheme.quick, value: hover)
-        .tunerAnimation(TunerTheme.quick, value: isSelected)
+        .tunerAnimation(TunerTheme.ease, value: hover)
+        .tunerAnimation(TunerTheme.ease, value: isSelected)
     }
 }
 
@@ -139,8 +137,8 @@ struct SpeedRow: View {
                 Text(String(format: "starts %.0f° above shut", model.settings.bandDegrees)).monospacedDigit(); Spacer()
                 Text("Fast")
             }
-            .font(TunerTheme.captionSmall).tracking(TunerTheme.captionSmallTracking)
-            .foregroundStyle(theme.textTertiary)
+            .font(TunerTheme.bodySmall)
+            .foregroundStyle(theme.inkTertiary)
             .padding(.horizontal, 2)
         }
     }
@@ -153,7 +151,7 @@ struct FeelSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
             HStack {
-                Eyebrow("Adjust \(model.registry.current.displayName)")
+                Eyebrow("Adjust \(model.registry.current.displayName)", number: "03")
                 Spacer()
                 QuietButton("Reset") { model.resetStyle(model.registry.current.id) }
             }
@@ -171,16 +169,16 @@ struct PermissionCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Circle().fill(TunerTheme.saffron).frame(width: 7, height: 7)
-                Text("\(model.registry.current.displayName) is showing as a plain fade").font(TunerTheme.font(11, weight: .semibold)).foregroundStyle(theme.textRoot)
+                Text("\(model.registry.current.displayName) is showing as a plain fade").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
             }
             Text("It needs Screen Recording to take one still of your desktop as the lid moves. Nothing is saved. macOS checks the permission when the app starts, so restart it after allowing.")
-                .font(TunerTheme.font(11)).foregroundStyle(theme.textLabel).fixedSize(horizontal: false, vertical: true)
+                .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: TunerTheme.rowGap) {
                 ActionRow("Allow…") { model.allowScreenRecording() }
                 ActionRow("Restart") { model.relaunch() }
             }
         }
-        .padding(12)
-        .glassSurface(.tinted(theme.tintAmber), radius: TunerTheme.cardRadius)
+        .padding(16)
+        .surface(.wash(theme.washSaffron), radius: TunerTheme.cardRadius)
     }
 }

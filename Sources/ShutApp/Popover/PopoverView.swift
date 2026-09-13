@@ -16,7 +16,8 @@ struct PopoverView: View {
     var body: some View {
         VStack(spacing: 0) {
             PopoverHeader(model: model, hostedInWindow: hostedInWindow)
-            Rectangle().fill(theme.hairline).frame(height: 1)
+            // The one place the spectrum appears: a thin line under the header.
+            SpectrumLine(height: 2)
             HStack(spacing: 0) {
                 PreviewColumn(model: model)
                     .padding(14)
@@ -51,10 +52,10 @@ struct PopoverHeader: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            Text("Shut.").font(TunerTheme.rootTitle).tracking(-0.2).foregroundStyle(theme.textRoot)
+            Text("Shut.").font(TunerTheme.displayFont).tracking(TunerTheme.displayTracking).foregroundStyle(theme.ink)
                 .help(model.statusLine)
             Circle().fill(statusColor).frame(width: 6, height: 6)
-                .tunerAnimation(TunerTheme.easeOut(0.2), value: statusColor)
+                .tunerAnimation(TunerTheme.ease, value: statusColor)
                 .help(model.statusLine)
             Spacer(minLength: 8)
             if !hostedInWindow {
@@ -66,7 +67,7 @@ struct PopoverHeader: View {
         .padding(.horizontal, 14)
         // Traffic lights sit in the first 64 pt of a window's header.
         .padding(.leading, hostedInWindow ? 58 : 0)
-        .frame(height: 44)
+        .frame(height: 56)
     }
 }
 
@@ -78,11 +79,11 @@ struct PopoverFooter: View {
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
             HStack(spacing: 8) {
-                Text("Open at login").font(TunerTheme.caption).foregroundStyle(theme.textLabel)
+                Text("Open at login").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                 SmallPill(isOn: launchAtLogin) { launchAtLogin.toggle(); model.setLaunchAtLogin(launchAtLogin) }
             }
             HStack(spacing: 8) {
-                Text("In Dock").font(TunerTheme.caption).foregroundStyle(theme.textLabel)
+                Text("In Dock").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                 SmallPill(isOn: model.settings.showInDock) { model.settings.showInDock.toggle() }
                     .help("Keep Shut in the Dock. Off keeps it in the menu bar only.")
             }
@@ -92,8 +93,8 @@ struct PopoverFooter: View {
             QuietButton("Quit", action: model.quit)
                 .keyboardShortcut("q", modifiers: .command)
         }
-        .padding(.horizontal, 14)
-        .frame(height: 44)
+        .padding(.horizontal, 16)
+        .frame(height: 48)
         .onAppear { launchAtLogin = model.launchAtLogin() }
     }
 }
@@ -108,23 +109,21 @@ struct SmallPill: View {
     var body: some View {
         let w: CGFloat = size == .small ? 26 : 36, h: CGFloat = size == .small ? 14 : 20
         Button(action: action) {
-            // Ink when on, an inset glass trough when off; the knob is a glass
-            // bead that slides on the liquid spring.
-            Capsule().fill(isOn ? theme.buttonDark : theme.inset)
-                .overlay(Capsule().strokeBorder(isOn ? Color.clear : theme.glassEdgeDark, lineWidth: 1))
-                .overlay(
-                    Capsule().strokeBorder(LinearGradient(colors: [theme.insetShadow, .clear], startPoint: .top, endPoint: .bottom), lineWidth: 2)
-                        .opacity(isOn ? 0 : 1)
-                )
+            // Soft Graphite when on, a bordered Linen trough when off, a Paper
+            // White knob. The colour eases; the knob simply moves.
+            Capsule().fill(isOn ? theme.buttonDark : theme.linen)
+                .overlay(Capsule().strokeBorder(isOn ? Color.clear : theme.border, lineWidth: 1))
                 .frame(width: w, height: h)
                 .overlay(alignment: isOn ? .trailing : .leading) {
-                    GlassBead(size: h - 4).padding(2)
+                    Circle().fill(theme.card)
+                        .overlay(Circle().strokeBorder(theme.border, lineWidth: isOn ? 0 : 1))
+                        .frame(width: h - 4, height: h - 4)
+                        .padding(2)
                 }
                 .contentShape(Capsule())
         }
-        .buttonStyle(PressScaleStyle(scale: 0.96))
-        .tunerAnimation(TunerTheme.quick, value: isOn)
-        .tunerMotion(TunerTheme.liquid, value: isOn)
+        .buttonStyle(PressStyle())
+        .tunerAnimation(TunerTheme.ease, value: isOn)
         .accessibilityValue(isOn ? "On" : "Off")
     }
 }
@@ -143,13 +142,14 @@ struct IconButton: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
-                .frame(width: 26, height: 26)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(hover ? theme.raisedHover : .clear))
-                .contentShape(Rectangle())
+                .foregroundStyle(hover ? theme.ink : theme.inkLabel)
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(hover ? theme.linen : .clear))
+                .contentShape(Circle())
         }
-        .buttonStyle(PressScaleStyle(scale: 0.96))
+        .buttonStyle(PressStyle())
         .onHover { hover = $0 }
+        .tunerAnimation(TunerTheme.ease, value: hover)
         .help(help)
     }
 }
@@ -162,15 +162,16 @@ struct QuietButton: View {
     init(_ title: String, action: @escaping () -> Void) { self.title = title; self.action = action }
     var body: some View {
         Button(action: action) {
+            // A text link: ink on hover, otherwise Carbon; no fill.
             Text(title)
-                .font(TunerTheme.caption)
-                .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
-                .padding(.horizontal, 8).padding(.vertical, 5)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(hover ? theme.raisedHover : .clear))
+                .font(TunerTheme.bodySmall)
+                .foregroundStyle(hover ? theme.ink : theme.inkLabel)
+                .padding(.horizontal, 6).padding(.vertical, 5)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(PressScaleStyle(scale: 0.96))
+        .buttonStyle(PressStyle())
         .onHover { hover = $0 }
+        .tunerAnimation(TunerTheme.ease, value: hover)
     }
 }
 

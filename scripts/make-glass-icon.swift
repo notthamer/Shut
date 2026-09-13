@@ -4,10 +4,10 @@
 //
 //   swift scripts/make-glass-icon.swift
 //
-// Reads the glyph from the largest PNG in App/Assets.xcassets/AppIcon.appiconset
-// (the mark's ink is recovered from its luminance, the way the menu bar glyph
-// is), draws it in ink on a macOS squircle of white-to-sky glass with a sheen,
-// a light edge and a soft shadow, then writes every icon size, rebuilds
+// Reads the glyph from App/mark-source.png (the mark's ink is recovered from
+// its luminance, the way the menu bar glyph is), draws it in Pure Black on a
+// Paper White macOS squircle with a Silver edge and a soft shadow, then writes
+// every icon size, rebuilds
 // App/Shut.icns with iconutil, and writes Sources/ShutApp/Resources/logo.png.
 // Run it again whenever the glyph changes.
 
@@ -90,33 +90,11 @@ func render(pixels size: Int) -> CGImage {
     c.addPath(path); c.setFillColor(CGColor(gray: 1, alpha: 1)); c.fillPath()
     c.restoreGState()
 
-    // Glass: white to sky, top-left to bottom-right.
+    // Paper: a flat Paper White tile with a one-point Silver edge. No sheen.
     c.saveGState()
-    c.addPath(path); c.clip()
-    if let g = CGGradient(colorsSpace: rgb, colors: [
-        CGColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1),      // Paper White
-        CGColor(red: 0.973, green: 0.973, blue: 0.973, alpha: 1), // Bone
-        CGColor(red: 0.937, green: 0.937, blue: 0.937, alpha: 1), // Linen
-    ] as CFArray, locations: [0, 0.55, 1]) {
-        c.drawLinearGradient(g, start: CGPoint(x: tile.minX, y: tile.maxY), end: CGPoint(x: tile.maxX, y: tile.minY), options: [])
-    }
-    // Sheen: a radial highlight in the top-left.
-    if let sheen = CGGradient(colorsSpace: rgb, colors: [CGColor(gray: 1, alpha: 0.85), CGColor(gray: 1, alpha: 0)] as CFArray, locations: [0, 1]) {
-        let centre = CGPoint(x: tile.minX + tile.width * 0.28, y: tile.maxY - tile.height * 0.12)
-        c.drawRadialGradient(sheen, startCenter: centre, startRadius: 0, endCenter: centre, endRadius: tile.width * 0.7, options: [])
-    }
-    // A brighter band along the top edge.
-    if let catchLight = CGGradient(colorsSpace: rgb, colors: [CGColor(gray: 1, alpha: 0.9), CGColor(gray: 1, alpha: 0)] as CFArray, locations: [0, 1]) {
-        c.drawLinearGradient(catchLight, start: CGPoint(x: 0, y: tile.maxY), end: CGPoint(x: 0, y: tile.maxY - tile.height * 0.12), options: [])
-    }
-    c.restoreGState()
-
-    // Edges: an inner light line and an outer hairline.
-    c.saveGState()
-    c.addPath(squircle(in: tile.insetBy(dx: s * 0.006, dy: s * 0.006)))
-    c.setStrokeColor(CGColor(gray: 1, alpha: 0.8)); c.setLineWidth(max(s * 0.006, 1)); c.strokePath()
+    c.addPath(path); c.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1)); c.fillPath()
     c.addPath(path)
-    c.setStrokeColor(CGColor(gray: 0, alpha: 0.10)); c.setLineWidth(max(s * 0.003, 0.5)); c.strokePath()
+    c.setStrokeColor(CGColor(red: 0.776, green: 0.776, blue: 0.776, alpha: 1)); c.setLineWidth(max(s * 0.004, 1)); c.strokePath()
     c.restoreGState()
 
     // The mark, in ink, centred, at 52 % of the tile.
