@@ -52,7 +52,7 @@ struct PopoverHeader: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            MarkGlyph(size: 26)
+            MarkGlyph(size: 26, tint: theme.ink)
             Text("Shut.").font(TunerTheme.displayFont).tracking(TunerTheme.displayTracking).foregroundStyle(theme.ink)
                 .help(model.statusLine)
             Circle().fill(statusColor).frame(width: 6, height: 6)
@@ -66,9 +66,9 @@ struct PopoverHeader: View {
                 .help(model.settings.isEnabled ? "Stop animating the lid." : "Start animating the lid.")
         }
         .padding(.horizontal, 16)
-        // Traffic lights sit in the first 64 pt of a window's header.
-        .padding(.leading, hostedInWindow ? 58 : 0)
         .frame(height: 56)
+        // In the window the traffic lights own the top strip; the header sits under it.
+        .padding(.top, hostedInWindow ? 26 : 0)
     }
 }
 
@@ -181,11 +181,19 @@ struct QuietButton: View {
 /// header and on the welcome stage.
 struct MarkGlyph: View {
     let size: CGFloat
+    /// Ink on paper; nil fills the glyph with the spectrum (the black stage).
+    var tint: Color? = nil
     var body: some View {
         if let mark = AppAssets.markCropped {
-            LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing)
-                .mask(Image(nsImage: mark).resizable().interpolation(.high).aspectRatio(contentMode: .fit))
-                .frame(width: size, height: size)
+            Group {
+                if let tint {
+                    tint
+                } else {
+                    LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing)
+                }
+            }
+            .mask(Image(nsImage: mark).resizable().interpolation(.high).aspectRatio(contentMode: .fit))
+            .frame(width: size, height: size)
         } else {
             LogoMark(size: size)
         }

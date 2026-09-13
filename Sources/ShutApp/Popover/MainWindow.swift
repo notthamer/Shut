@@ -59,6 +59,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         w.backgroundColor = .clear
         w.hasShadow = true
         w.collectionBehavior = [.fullScreenNone]
+        w.standardWindowButton(.zoomButton)?.isHidden = true
         w.delegate = self
 
         let chrome = PanelChrome(frame: NSRect(origin: .zero, size: size))

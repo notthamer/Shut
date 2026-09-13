@@ -221,7 +221,12 @@ public struct FillSliderRow: View {
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
         guard !editing else { return .ignored }
-        keyboardFocus = true
+        let result = keyAction(press)
+        if result == .handled { keyboardFocus = true }
+        return result
+    }
+
+    private func keyAction(_ press: KeyPress) -> KeyPress.Result {
         let multiplier: Double = press.modifiers.contains(.shift) ? 10 : 1
         switch press.key {
         case .rightArrow, .upArrow: nudge(by: multiplier); return .handled
