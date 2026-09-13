@@ -39,16 +39,13 @@ final class TunerHost {
 
         trigger = TunerStore(presets: presets, builtIns: [("Default", TriggerParams())])
 
+        register(FoldTransition.self, builtIns: BuiltInPresets.fold)
         register(SinkholeTransition.self, builtIns: BuiltInPresets.sinkhole)
         register(FrostTransition.self, builtIns: BuiltInPresets.frost)
-        register(FoldTransition.self, builtIns: BuiltInPresets.fold)
-        register(CurlTransition.self, builtIns: [])
         register(CreaseTransition.self, builtIns: [])
         register(RecedeTransition.self, builtIns: [])
         register(SlideTransition.self, builtIns: [])
-        register(ApertureTransition.self, builtIns: [])
         register(ShutterTransition.self, builtIns: [])
-        register(BlindsTransition.self, builtIns: [])
         register(FadeTransition.self, builtIns: [])
 
         applyTrigger(trigger.values)

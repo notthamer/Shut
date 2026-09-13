@@ -1,5 +1,6 @@
-// Panel family: Fold, Crease, Curl, Recede, Slide, and the mask styles Fade,
-// Aperture, Shutter, Blinds. Ported from Bendable (MIT, © 2026 Anti Ltd) with
+// Panel family: Fold, Crease, Recede, Slide, and the mask styles Fade and
+// Shutter (the aperture and blinds masks stay available to contributors).
+// Ported from Bendable (MIT, © 2026 Anti Ltd) with
 // the renderer's shared uniform struct; the ideas and comments are theirs.
 //
 // Unlike the full-screen styles, these draw a 48×48 mesh so the vertex stage can

@@ -5,16 +5,13 @@ import TransitionKit
 enum TransitionCatalog {
     static func make() -> [AnyTransition] {
         [
-            AnyTransition(SinkholeTransition()),
+            AnyTransition(FoldTransition()),      // the default: the hinge, made visible
+            AnyTransition(SinkholeTransition()),  // the headline
             AnyTransition(FrostTransition()),
-            AnyTransition(FoldTransition()),
-            AnyTransition(CurlTransition()),
             AnyTransition(CreaseTransition()),
             AnyTransition(RecedeTransition()),
             AnyTransition(SlideTransition()),
-            AnyTransition(ApertureTransition()),
             AnyTransition(ShutterTransition()),
-            AnyTransition(BlindsTransition()),
             AnyTransition(FadeTransition()),
         ]
     }

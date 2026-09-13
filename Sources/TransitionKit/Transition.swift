@@ -68,6 +68,8 @@ public protocol Transition: AnyObject {
     static var needsSnapshot: Bool { get }
     /// Progress at which the gallery thumbnail is rendered.
     static var thumbnailProgress: Double { get }
+    /// A short tag shown next to the name where there is room ("iPhone Duo").
+    static var badge: String? { get }
 
     var params: Params { get set }
 
@@ -86,6 +88,7 @@ public extension Transition {
     static var isTransparent: Bool { false }
     static var needsSnapshot: Bool { true }
     static var thumbnailProgress: Double { 0.35 }
+    static var badge: String? { nil }
 
     var id: String { Self.id }
     var displayName: String { Self.displayName }
@@ -108,6 +111,7 @@ public final class AnyTransition {
     public let isTransparent: Bool
     public let needsSnapshot: Bool
     public let thumbnailProgress: Double
+    public let badge: String?
     private let prepareImpl: (MTLTexture, MTLDevice, MTLCommandQueue) -> MTLTexture
     private let uniformsImpl: (Double, RenderContext) -> TransitionUniforms
     private let jsonGet: () -> Data?
@@ -126,6 +130,7 @@ public final class AnyTransition {
         isTransparent = T.isTransparent
         needsSnapshot = T.needsSnapshot
         thumbnailProgress = T.thumbnailProgress
+        badge = T.badge
         prepareImpl = { transition.prepare(snapshot: $0, device: $1, commandQueue: $2) }
         uniformsImpl = { transition.uniforms(progress: $0, context: $1) }
         jsonGet = {

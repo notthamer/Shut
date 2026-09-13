@@ -166,7 +166,7 @@ final class PanelTests: XCTestCase {
     }
 
     func testEveryStyleDeclaresConsistentFlags() {
-        for t in [AnyTransition(FoldTransition()), AnyTransition(ApertureTransition()), AnyTransition(FadeTransition()),
+        for t in [AnyTransition(FoldTransition()), AnyTransition(ShutterTransition()), AnyTransition(FadeTransition()),
                   AnyTransition(SinkholeTransition()), AnyTransition(FrostTransition())] {
             if t.isTransparent { XCTAssertFalse(t.needsSnapshot, "\(t.id): transparent styles don't need a snapshot") }
             XCTAssertFalse(t.summary.isEmpty, "\(t.id) needs a summary for the gallery")

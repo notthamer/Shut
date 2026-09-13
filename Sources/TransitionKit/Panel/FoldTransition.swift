@@ -38,7 +38,8 @@ public struct FoldParams: TunableParameters {
 public final class FoldTransition: PanelTransition {
     public static let id = "fold"
     public static let displayName = "Fold"
-    public static let summary = "The desktop stays standing where it was while the lid folds away under it."
+    public static let badge: String? = "iPhone Duo"
+    public static let summary = "The iPhone Duo close: the desktop stays standing where it was while the lid folds away under it."
     public static let thumbnailProgress = 0.32
 
     public var params = FoldParams()

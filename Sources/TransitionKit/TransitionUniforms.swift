@@ -49,7 +49,7 @@ public struct TransitionUniforms {
     public var holeGrowth: Float = 0    // how much the notch hole widens by full progress (× sinkRadius)
     public var pad2: Float = 0          // offset 140; the block below starts at 144
 
-    // MARK: Panel family (Fold, Crease, Curl, Recede, Slide, Fade, Aperture, Shutter, Blinds)
+    // MARK: Panel family (Fold, Crease, Recede, Slide, Fade, Shutter)
     // Appended after the original 144 bytes so the offsets above never move. Two
     // float2 first (8-aligned at 144/152), then scalars. Mirrors Bendable's Uniforms.
     public var meshScale: SIMD2<Float> = .one        // 144  NDC scale about the centre (Recede)

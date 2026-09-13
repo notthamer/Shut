@@ -68,7 +68,7 @@ final class OverlayWindowTests: XCTestCase {
     func testOverlayTransparentRoundTrip() throws {
         let renderer = try TransitionRenderer()
         let screen = try XCTUnwrap(BuiltInDisplay.screen ?? NSScreen.main)
-        let window = OverlayWindow(screen: screen, renderer: renderer, transition: AnyTransition(ApertureTransition()),
+        let window = OverlayWindow(screen: screen, renderer: renderer, transition: AnyTransition(ShutterTransition()),
                                    context: RenderContext(snapshotSize: SIMD2(10, 10), sinkPoint: .zero, notchSize: .zero, usesVirtualNotch: true))
         window.setTransparent(true)
         XCTAssertFalse(window.isOpaque); XCTAssertTrue(window.metalView.isTransparent)

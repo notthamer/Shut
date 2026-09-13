@@ -27,7 +27,7 @@ final class BenchmarkTests: XCTestCase {
                                     notchSize: SIMD2(360, 64), usesVirtualNotch: false, scale: 2)
 
         for transition in [AnyTransition(SinkholeTransition()), AnyTransition(FrostTransition()), AnyTransition(FoldTransition()),
-                           AnyTransition(RecedeTransition()), AnyTransition(ApertureTransition()), AnyTransition(FadeTransition())] {
+                           AnyTransition(RecedeTransition()), AnyTransition(ShutterTransition()), AnyTransition(FadeTransition())] {
             renderer.render(to: target, transition: transition, progress: 0.4, context: context)  // warm up + prepare
             let frames = 60
             let start = CACurrentMediaTime()

@@ -31,7 +31,7 @@ public final class AppSettings: ObservableObject {
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         isEnabled = defaults.object(forKey: "isEnabled") as? Bool ?? true
-        transitionID = defaults.string(forKey: "transitionID") ?? "sinkhole"
+        transitionID = defaults.string(forKey: "transitionID") ?? "fold"
         bandDegrees = defaults.object(forKey: "bandDegrees") as? Double ?? Self.defaultBandDegrees
         smoothing = defaults.object(forKey: "smoothing") as? Double ?? 0.25
         animateOpening = defaults.object(forKey: "animateOpening") as? Bool ?? true

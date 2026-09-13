@@ -121,12 +121,11 @@ extension RenderTests {
 
 extension RenderTests {
     static let imageStyles: [AnyTransition] = [
-        AnyTransition(FoldTransition()), AnyTransition(CreaseTransition()), AnyTransition(CurlTransition()),
+        AnyTransition(FoldTransition()), AnyTransition(CreaseTransition()),
         AnyTransition(RecedeTransition()), AnyTransition(SlideTransition()),
     ]
     static let maskStyles: [AnyTransition] = [
-        AnyTransition(ApertureTransition()), AnyTransition(ShutterTransition()),
-        AnyTransition(BlindsTransition()), AnyTransition(FadeTransition()),
+        AnyTransition(ShutterTransition()), AnyTransition(FadeTransition()),
     ]
 
     /// At progress 0 every snapshot style must show the snapshot untouched.
@@ -172,11 +171,11 @@ extension RenderTests {
         desc.usage = [.renderTarget, .shaderRead]; desc.storageMode = .shared
         let target = renderer.device.makeTexture(descriptor: desc)!
         let context = RenderContext(snapshotSize: SIMD2(Float(w), Float(h)), sinkPoint: .zero, notchSize: .zero, usesVirtualNotch: true)
-        renderer.render(to: target, transition: AnyTransition(ApertureTransition()), progress: 0.5, context: context)
+        renderer.render(to: target, transition: AnyTransition(ShutterTransition()), progress: 0.5, context: context)
         var bytes = [UInt8](repeating: 0, count: w * h * 4)
         target.getBytes(&bytes, bytesPerRow: w * 4, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
         let alpha = meanAlpha(bytes)
-        XCTAssertTrue((0.02...0.98).contains(alpha), "aperture without a snapshot rendered alpha \(alpha)")
+        XCTAssertTrue((0.02...0.98).contains(alpha), "shutter without a snapshot rendered alpha \(alpha)")
     }
 }
 
@@ -199,10 +198,10 @@ final class ThumbnailTests: XCTestCase {
         XCTAssertTrue(first === second, "second call is served from the cache")
         XCTAssertEqual(first.width, TransitionThumbnailRenderer.size.width)
 
-        let aperture = try XCTUnwrap(thumbnails.image(for: AnyTransition(ApertureTransition())))
-        XCTAssertEqual(aperture.alphaInfo, .premultipliedFirst)
+        let shutter = try XCTUnwrap(thumbnails.image(for: AnyTransition(ShutterTransition())))
+        XCTAssertEqual(shutter.alphaInfo, .premultipliedFirst)
         if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"] {
-            for t in [fold, AnyTransition(ApertureTransition()), AnyTransition(SinkholeTransition()), AnyTransition(BlindsTransition())] {
+            for t in [fold, AnyTransition(ShutterTransition()), AnyTransition(SinkholeTransition()), AnyTransition(FrostTransition())] {
                 if let img = thumbnails.image(for: t) {
                     try? NSBitmapImageRep(cgImage: img).representation(using: .png, properties: [:])?
                         .write(to: URL(fileURLWithPath: dir).appendingPathComponent("thumb-\(t.id).png"))

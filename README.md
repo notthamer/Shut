@@ -7,8 +7,8 @@ close the lid, driven live by the hinge, on whatever Space or full-screen app yo
 happen to be in. Pick a style, set the speed, and tune every dial until it feels
 exactly right. Open source, MIT, built in public.
 
-- **Eleven styles**: one original (Sinkhole), one classic (Frost, the iPhone Duo
-  look), nine ported from Bendable with credit.
+- **Eight styles**: Fold, the iPhone Duo close and the default; Sinkhole, original
+  to Shut; Frost; and five more ported from Bendable with credit.
 - **Follows the hinge**, not a timer. Close slowly and the effect crawls; open the
   lid halfway through and it reverses.
 - **A tuning panel** for every parameter, in the spirit of DialKit, native SwiftUI.
@@ -21,19 +21,16 @@ exactly right. Open source, MIT, built in public.
 
 | Style | Needs Screen Recording | What it does |
 | --- | --- | --- |
+| **Fold** (iPhone Duo) | Yes | The default. The desktop turns against the lid, degree for degree, so it stands still while the machine folds away under it. |
 | **Sinkhole** | Yes | The desktop swirls and drains into the notch, then pours back out when you unlock. Original to Shut. |
-| **Frost** | Yes | The iPhone Duo look: the screen frosts over from the top edge and fades to black. |
-| **Fold** | Yes | The desktop turns against the lid, degree for degree, so it stands still while the machine folds away under it. |
-| **Curl** | Yes | The top edge rolls over and away, the way a sheet of paper lifts. |
+| **Frost** | Yes | The screen frosts over from the top edge and fades to black. |
 | **Crease** | Yes | A book fold: creases across the middle and the upper half tips away. |
 | **Recede** | Yes | Drops straight back into the dark, square to you the whole way. |
 | **Slide** | Yes | Slides down out of sight behind the hinge. |
-| **Aperture** | No | Iris blades close over the screen. |
 | **Shutter** | No | Bars close in from the top and bottom. |
-| **Blinds** | No | Slats close down the screen, each shutting from its edges in. |
 | **Fade** | No | A plain dim to black. |
 
-Fold, Curl, Crease, Recede, Slide, Aperture, Shutter, Blinds and Fade are ported
+Fold, Crease, Recede, Slide, Shutter and Fade are ported
 from [Bendable](https://github.com/opensourcevillain/Bendable) (MIT, Anti Ltd) and
 credited in every file. Every style plays backwards when you open the lid, and
 after you unlock from sleep it pours back out of black.
@@ -244,7 +241,7 @@ swift run shut --export-presets presets # regenerate presets/ from the built-ins
 | Target | What it is |
 | --- | --- |
 | `LidSensor` | IOKit HID reader for the hinge, the fit/filter/calibration pipeline, capability probing, lid-event fallback. |
-| `TransitionKit` | The Metal renderer, the `Transition` protocol, all eleven styles and their shaders, thumbnails, screen capture. |
+| `TransitionKit` | The Metal renderer, the `Transition` protocol, all eight styles and their shaders, thumbnails, screen capture. |
 | `Tuner` | The reusable tuning panel: schema, store, presets, rows, editors, theme. Imports nothing from the app. |
 | `ShutApp` | The app: lid state machine, overlay window, popover and main window, welcome, menu bar, Dock, settings. |
 | `shut`, `lidangle-cli` | Executables. `Shut.xcodeproj` wraps `shut` in a signed `.app` for Xcode. |
@@ -268,7 +265,7 @@ Before a release, by hand on a real MacBook:
 1. Close the lid slowly from the Desktop, from a full-screen app, and from a second
    desktop Space. The effect plays on all three.
 2. Reopen before the screen sleeps: it reverses. Let it sleep, unlock: it pours out.
-3. Pick a mask style (Aperture) with Screen Recording denied: it plays anyway.
+3. Pick Shutter with Screen Recording denied: it plays anyway.
 4. Pick Fold with it denied: the orange card appears and the status line explains.
 5. Drag Speed to Fast: the effect happens in the last twenty degrees.
 6. With an external display, power and a keyboard attached, close the lid: the
@@ -291,7 +288,7 @@ the version.
 
 ## Credits
 
-- [Bendable](https://github.com/opensourcevillain/Bendable), MIT © 2026 Anti Ltd: nine
+- [Bendable](https://github.com/opensourcevillain/Bendable), MIT © 2026 Anti Ltd: six
   of the styles, the hinge fit/filter/calibration design, and much of the panel's
   shape. License in `THIRD_PARTY_LICENSES.md`.
 - [DialKit](https://github.com/joshpuckett/dialkit), MIT © 2026 Josh Puckett: the
@@ -302,6 +299,6 @@ the version.
 - [samhenrigold/LidAngleSensor](https://github.com/samhenrigold/LidAngleSensor) and
   [DuoBook](https://github.com/askmaddyy/DuoBook) for the sensor research. Shut's
   sensor code is written from scratch.
-- The many open-source recreations of the iPhone Duo frost, which Frost aims to match.
+- The many open-source recreations of the iPhone Duo close, which Fold and Frost draw on.
 
 MIT License.

@@ -30,7 +30,7 @@ public struct FrostParams: TunableParameters {
 public final class FrostTransition: Transition {
     public static let id = "frost"
     public static let displayName = "Frost"
-    public static let summary = "The screen frosts over from the top edge and fades to black, like the iPhone Duo."
+    public static let summary = "The screen frosts over from the top edge and fades to black."
     public static let thumbnailProgress = 0.4
     public static let fragmentFunctionName = "frostFragment"
 
