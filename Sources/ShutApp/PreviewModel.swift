@@ -201,6 +201,17 @@ public final class PreviewModel: ObservableObject {
         previewVelocity = 0
     }
 
+    /// Close, then open: the whole round, in the preview.
+    public func playRound() {
+        playClose(duration: 0.9)
+        onFinished = { [weak self] in
+            self?.onFinished = nil
+            self?.playPourOut()
+        }
+    }
+
+    private var onFinished: (() -> Void)?
+
     private func run(_ tick: @escaping (Double) -> Bool) {
         stop()
         isPlaying = true
@@ -213,7 +224,11 @@ public final class PreviewModel: ObservableObject {
                 last = now
                 let keepGoing = tick(dt)
                 self.render()
-                if !keepGoing { self.stop(); self.render() }
+                if !keepGoing {
+                    self.stop(); self.render()
+                    let next = self.onFinished
+                    next?()
+                }
             }
         }
         playTimer?.tolerance = 0.002

@@ -26,7 +26,7 @@ public final class ShutterTransition: PanelTransition {
     public static let summary = "Bars close in from the top and bottom. Needs no Screen Recording."
     public static let isTransparent = true
     public static let needsSnapshot = false
-    public static let thumbnailProgress = 0.32
+    public static let thumbnailProgress = 0.18
 
     public var params = ShutterParams()
     public init() {}

@@ -51,7 +51,8 @@ struct PopoverHeader: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 12) {
+            LogoMark(size: 30)
             Text("Shut.").font(TunerTheme.displayFont).tracking(TunerTheme.displayTracking).foregroundStyle(theme.ink)
                 .help(model.statusLine)
             Circle().fill(statusColor).frame(width: 6, height: 6)

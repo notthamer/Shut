@@ -45,7 +45,18 @@ struct PreviewColumn: View {
                 FillSliderRow("Lid", value: $preview.progress, in: 0...1, step: 0.005, decimals: 2,
                               help: "Drag to move the lid by hand.", showsValue: false, height: 28, labelWidth: 36)
                 HStack {
-                    Text("Open"); Spacer(); Text("Shut")
+                    Text("Open")
+                    Spacer()
+                    // Replays close and open here, in the preview.
+                    Button { preview.playRound() } label: {
+                        Text(preview.isPlaying ? "Playing…" : "Play")
+                            .foregroundStyle(theme.inkLabel)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressStyle())
+                    .help("Play the close and the opening in the preview.")
+                    Spacer()
+                    Text("Shut")
                 }
                 .font(TunerTheme.bodySmall)
                 .foregroundStyle(theme.inkTertiary)
@@ -75,10 +86,7 @@ struct PreviewColumn: View {
             .transition(.blurFade)
             .tunerAnimation(TunerTheme.ease, value: model.registry.current.id)
 
-            Spacer(minLength: 10)
-
-            PrimaryButton("Play on screen") { model.play() }
-                .help("Runs the effect full screen, exactly as closing the lid would.")
+            Spacer(minLength: 0)
         }
     }
 }

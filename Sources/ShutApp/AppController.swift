@@ -552,46 +552,6 @@ public final class AppController: ObservableObject {
         }
     }
 
-    // MARK: - Demo playback (popover "Play")
-
-    /// Plays the current style full screen: close over `duration`, then open.
-    public func playDemo(duration: Double = 1.2) {
-        guard state == .idle || state == .armed, settings.isEnabled else { return }
-        let transition = registry.effectiveForLid
-        let run: () -> Void = { [weak self] in
-            guard let self else { return }
-            self.beginClose(timed: true)
-            self.driver.timed(to: 1, duration: duration)
-            DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.15) { [weak self] in
-                guard let self, self.state == .closing else { return }
-                self.driver.timed(to: 0, duration: duration)
-                self.displayLink?.start()
-                DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) { [weak self] in
-                    guard let self, self.state == .closing else { return }
-                    self.teardown(reason: "demo complete")
-                }
-            }
-        }
-        if transition.needsSnapshot {
-            state = .armed
-            guard ScreenRecordingPermission.isGranted else { state = .idle; return }
-            captureTask = Task { [weak self] in
-                do {
-                    let image = try await ScreenCapturer.captureBuiltInDisplay()
-                    guard let self, self.state == .armed else { return }
-                    try self.renderer.setSnapshot(image)
-                    self.captureTask = nil
-                    run()
-                } catch { self?.teardown(reason: "demo capture failed") }
-            }
-        } else {
-            state = .armed
-            run()
-        }
-    }
-
-    // MARK: - Helpers
-
     func makeContext(screen: NSScreen) -> RenderContext {
         let geometry = NotchDetector.geometry(for: screen)
         let range = sensor.animationRange

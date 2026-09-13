@@ -107,7 +107,7 @@ Inside the panel:
 
 - **Preview** on the left plays the chosen style on a snapshot of your desktop (a
   drawn stand-in until Screen Recording is granted). Drag the Lid scrubber to move
-  the lid by hand, or **Play on screen** to run it full screen, close then open.
+  the lid by hand, or **Play** to watch the close and the opening in the preview.
 - **Style** gallery of live thumbnails, rendered by the real shaders on your desktop.
 - **Speed**: how much of the lid's travel the effect uses. Fast plays in the last
   twenty degrees; slow spreads it over the whole close.

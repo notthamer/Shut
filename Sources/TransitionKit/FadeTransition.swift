@@ -28,7 +28,7 @@ public final class FadeTransition: PanelTransition {
     public static let summary = "A plain dim to black. Needs no Screen Recording."
     public static let isTransparent = true
     public static let needsSnapshot = false
-    public static let thumbnailProgress = 0.5
+    public static let thumbnailProgress = 0.22
 
     public var params = FadeParams()
     public init() {}

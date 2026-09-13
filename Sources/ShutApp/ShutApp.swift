@@ -99,7 +99,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         thumbnails = try? TransitionThumbnailRenderer()
         popoverModel = PopoverModel(settings: settings, registry: registry, preview: previewModel, sensor: sensor, thumbnails: thumbnails)
-        popoverModel.play = { [weak self] in self?.popover.close(); self?.controller.playDemo() }
         popoverModel.openTuner = { [weak self] in self?.popover.close(); self?.tunerHost?.toggle() }
         popoverModel.allowScreenRecording = {
             ScreenRecordingPermission.request()

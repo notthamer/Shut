@@ -16,7 +16,6 @@ final class PopoverModel: ObservableObject {
     let thumbnails: TransitionThumbnailRenderer?
 
     /// Actions supplied by the app; tests pass no-ops.
-    var play: () -> Void = {}
     var openTuner: () -> Void = {}
     var openWindow: () -> Void = {}
     var quit: () -> Void = { DispatchQueue.main.async { NSApp.terminate(nil) } }
