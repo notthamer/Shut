@@ -51,8 +51,8 @@ struct PopoverHeader: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            LogoMark(size: 30)
+        HStack(alignment: .center, spacing: 10) {
+            MarkGlyph(size: 26)
             Text("Shut.").font(TunerTheme.displayFont).tracking(TunerTheme.displayTracking).foregroundStyle(theme.ink)
                 .help(model.statusLine)
             Circle().fill(statusColor).frame(width: 6, height: 6)
@@ -176,6 +176,21 @@ struct QuietButton: View {
     }
 }
 
+
+/// The bare mark, no tile: the "S" glyph filled with the spectrum. Used in the
+/// header and on the welcome stage.
+struct MarkGlyph: View {
+    let size: CGFloat
+    var body: some View {
+        if let mark = AppAssets.mark {
+            LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing)
+                .mask(Image(nsImage: mark).resizable().interpolation(.high).aspectRatio(contentMode: .fit))
+                .frame(width: size, height: size)
+        } else {
+            LogoMark(size: size)
+        }
+    }
+}
 
 /// The app's logo from the package bundle, with a symbol fallback.
 struct LogoMark: View {

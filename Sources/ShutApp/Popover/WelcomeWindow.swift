@@ -53,7 +53,7 @@ struct WelcomeView: View {
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
-            LogoMark(size: 72)
+            MarkGlyph(size: 64)
                 .modifier(Entrance(appeared: appeared, delay: 0))
             Text("Shut.")
                 .font(TunerTheme.display(40)).tracking(-1.2)
