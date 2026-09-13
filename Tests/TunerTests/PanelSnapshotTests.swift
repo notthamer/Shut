@@ -19,26 +19,34 @@ final class PanelSnapshotTests: XCTestCase {
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
                 .overlay(Text("preview slot").foregroundStyle(.secondary))
         }
-        let hosting = NSHostingView(rootView: AnyView(view))
-        hosting.frame = NSRect(x: 0, y: 0, width: 360, height: 1180)
-        let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless], backing: .buffered, defer: false)
-        window.appearance = NSAppearance(named: .darkAqua)
-        window.backgroundColor = .windowBackgroundColor
-        let container = NSView(frame: hosting.frame)
-        container.wantsLayer = true
-        container.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-        container.addSubview(hosting)
-        window.contentView = container
-        hosting.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        // Glass over a coloured backdrop, and the solid variant Reduce
+        // Transparency and Increase Contrast ask for.
+        let variants: [(String, TunerTheme?)] = [("tuner-panel", nil), ("tuner-panel-solid", TunerTheme(reduceTransparency: true, increaseContrast: true))]
+        for (name, theme) in variants {
+            var root = AnyView(view)
+            if let theme { root = AnyView(root.environment(\.tunerTheme, theme)) }
+            let frame = NSRect(x: 0, y: 0, width: 360, height: 1180)
+            let window = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
+            window.appearance = TunerTheme.appearance
+            let container = NSView(frame: frame)
+            container.wantsLayer = true
+            container.layer?.backgroundColor = NSColor(red: 0.62, green: 0.74, blue: 0.92, alpha: 1).cgColor
+            let chrome = PanelChrome(frame: frame)
+            let hosting = NSHostingView(rootView: root)
+            chrome.install(hosting)
+            container.addSubview(chrome)
+            window.contentView = container
+            hosting.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))
 
-        let rep = try XCTUnwrap(container.bitmapImageRepForCachingDisplay(in: container.bounds))
-        container.cacheDisplay(in: container.bounds, to: rep)
-        XCTAssertGreaterThan(rep.pixelsWide, 0)
+            let rep = try XCTUnwrap(container.bitmapImageRepForCachingDisplay(in: container.bounds))
+            container.cacheDisplay(in: container.bounds, to: rep)
+            XCTAssertGreaterThan(rep.pixelsWide, 0)
 
-        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"],
-           let png = rep.representation(using: .png, properties: [:]) {
-            try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("tuner-panel.png"))
+            if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"],
+               let png = rep.representation(using: .png, properties: [:]) {
+                try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("\(name).png"))
+            }
         }
     }
 }
@@ -51,6 +59,7 @@ final class PanelChromeTests: XCTestCase {
         chrome.install(content)
         XCTAssertEqual(chrome.subviews.count, 2, "blur plus content")
         XCTAssertTrue(chrome.subviews.last === content, "content sits above the blur")
+        XCTAssertEqual(chrome.appearance?.name, .aqua, "light glass, whatever the system appearance")
         XCTAssertEqual(content.frame, chrome.bounds)
     }
 }

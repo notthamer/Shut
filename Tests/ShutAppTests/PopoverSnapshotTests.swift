@@ -26,24 +26,24 @@ final class PopoverSnapshotTests: XCTestCase {
         XCTAssertEqual(model.statusLine, "Fold needs Screen Recording")
         XCTAssertTrue(model.needsPermissionCard)
 
-        // dark, light, hosted in a window, and the solid look Reduce Transparency
-        // and Increase Contrast ask for.
-        let variants: [(String, NSAppearance.Name, Bool, Bool)] = [
-            ("dark", .darkAqua, false, false), ("light", .aqua, false, false),
-            ("window", .darkAqua, true, false), ("solid", .darkAqua, false, true),
-        ]
-        for (name, appearance, inWindow, solid) in variants {
+        // Light glass over a coloured backdrop, the same hosted in a window, and
+        // the solid look Reduce Transparency and Increase Contrast ask for.
+        let variants: [(String, Bool, Bool)] = [("light", false, false), ("window", true, false), ("solid", false, true)]
+        for (name, inWindow, solid) in variants {
             var root = AnyView(PopoverView(model: model, hostedInWindow: inWindow))
             if solid {
-                root = AnyView(root.environment(\.tunerTheme, TunerTheme(colorScheme: .dark, reduceTransparency: true, increaseContrast: true)))
+                root = AnyView(root.environment(\.tunerTheme, TunerTheme(reduceTransparency: true, increaseContrast: true)))
             }
-            let hosting = NSHostingView(rootView: root)
-            hosting.frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: 640)
-            let window = NSWindow(contentRect: hosting.frame, styleMask: [.borderless], backing: .buffered, defer: false)
-            window.appearance = NSAppearance(named: appearance)
-            let container = NSView(frame: hosting.frame)
+            let frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: 640)
+            let window = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
+            window.appearance = TunerTheme.appearance
+            let container = NSView(frame: frame)
             container.wantsLayer = true
-            container.addSubview(hosting)
+            container.layer?.backgroundColor = NSColor(red: 0.62, green: 0.74, blue: 0.92, alpha: 1).cgColor
+            let chrome = PanelChrome(frame: frame)
+            let hosting = NSHostingView(rootView: root)
+            chrome.install(hosting)
+            container.addSubview(chrome)
             window.contentView = container
             hosting.layoutSubtreeIfNeeded()
             RunLoop.main.run(until: Date().addingTimeInterval(0.4))

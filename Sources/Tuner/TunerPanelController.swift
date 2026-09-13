@@ -149,6 +149,10 @@ public final class TunerPanelController {
 public final class KeyablePanel: NSPanel {
     public override var canBecomeKey: Bool { true }
     public override var canBecomeMain: Bool { false }
+    public override init(contentRect: NSRect, styleMask style: NSWindow.StyleMask, backing backingStoreType: NSWindow.BackingStoreType, defer flag: Bool) {
+        super.init(contentRect: contentRect, styleMask: style, backing: backingStoreType, defer: flag)
+        appearance = TunerTheme.appearance   // light glass, whatever the system appearance
+    }
 }
 
 /// A hosting view whose content responds to the very first click even when its
@@ -157,53 +161,90 @@ public final class FirstMouseHostingView<Content: View>: NSHostingView<Content> 
     public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
-/// Rounded panel background with a hairline border; a circle when collapsed.
-/// Public so a host can give other floating windows the same chrome.
+/// A sheet of light liquid glass: the window chrome for every Shut panel.
+/// Public so a host can give other floating windows the same material.
+///
+/// Layers, bottom to top:
+/// 1. behind-window blur (`NSVisualEffectView`, Aqua forced),
+/// 2. white tint,
+/// 3. a radial sheen in the top-left, the specular highlight of a curved pane,
+/// 4. a light catch along the top edge,
+/// 5. an inner light edge and an outer dark hairline,
+/// then the SwiftUI content. The corner radius animates between the panel's
+/// 22 pt and a full circle for the collapsed bubble, so a morph reads as one
+/// object changing shape. The window's own shadow follows the shape.
 public final class PanelChrome: NSView {
     var hosting: NSHostingView<AnyView>?
-    public var isCollapsed = false { didSet { needsDisplay = true; updateMask() } }
+    public var isCollapsed = false { didSet { animateShape() } }
     private let blur = NSVisualEffectView()
+    private let tint = CALayer()
+    private let sheen = CAGradientLayer()
     private let highlight = CAGradientLayer()
+    private let innerEdge = CAShapeLayer()
     private var accessibilityObserver: NSObjectProtocol?
 
     public override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
+        appearance = TunerTheme.appearance
         layer?.masksToBounds = true
-        // Glass: the desktop shows faintly through the panel.
+        layer?.cornerCurve = .continuous
+        layer?.borderWidth = 1
+
         blur.material = .popover
         blur.blendingMode = .behindWindow
         blur.state = .active
+        blur.appearance = TunerTheme.appearance
         blur.frame = bounds
         blur.autoresizingMask = [.width, .height]
         super.addSubview(blur)
-        // Reduce Transparency: no blur, and the SwiftUI content paints a solid
-        // panel colour (TunerTheme.panelGlass), so the surface reads as frosted
-        // solid rather than glass.
+
+        tint.zPosition = 1
+        layer?.addSublayer(tint)
+
+        sheen.type = .radial
+        sheen.colors = [NSColor.white.withAlphaComponent(0.55).cgColor, NSColor.white.withAlphaComponent(0).cgColor]
+        sheen.locations = [0, 1]
+        sheen.zPosition = 2
+        layer?.addSublayer(sheen)
+
+        highlight.colors = [NSColor.white.withAlphaComponent(0.9).cgColor, NSColor.white.withAlphaComponent(0).cgColor]
+        highlight.zPosition = 3
+        layer?.addSublayer(highlight)
+
+        innerEdge.fillColor = nil
+        innerEdge.lineWidth = 1
+        innerEdge.zPosition = 20
+        layer?.addSublayer(innerEdge)
+
         applyAccessibility()
         accessibilityObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.applyAccessibility() }
         }
-        // One point of light along the top edge.
-        highlight.colors = [NSColor.white.withAlphaComponent(0.10).cgColor, NSColor.white.withAlphaComponent(0).cgColor]
-        highlight.startPoint = CGPoint(x: 0.5, y: 0)
-        highlight.endPoint = CGPoint(x: 0.5, y: 1)
-        highlight.zPosition = 10
-        layer?.addSublayer(highlight)
-        updateMask()
+        updateShape()
     }
 
+    /// Reduce Transparency: no blur, a solid white tint, no sheen. Increase
+    /// Contrast: a defined dark edge.
     private func applyAccessibility() {
-        blur.isHidden = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
+        let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
+        let contrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+        blur.isHidden = reduce
+        tint.backgroundColor = NSColor.white.withAlphaComponent(reduce ? 0.96 : 0.58).cgColor
+        sheen.isHidden = reduce
+        layer?.borderColor = NSColor.black.withAlphaComponent(contrast ? 0.25 : 0.08).cgColor
+        innerEdge.strokeColor = NSColor.white.withAlphaComponent(contrast ? 0.9 : 0.7).cgColor
         hosting?.needsDisplay = true
     }
 
-    /// Puts the content above the blur. Use this rather than addSubview.
+    /// Puts the content above the glass layers. Use this rather than addSubview.
     public func install(_ content: NSView) {
         content.frame = bounds
         content.autoresizingMask = [.width, .height]
+        content.wantsLayer = true
+        content.layer?.zPosition = 10
         addSubview(content, positioned: .above, relativeTo: blur)
     }
 
@@ -211,17 +252,45 @@ public final class PanelChrome: NSView {
 
     public override func layout() {
         super.layout()
-        updateMask()
+        updateShape()
     }
 
-    private func updateMask() {
-        layer?.cornerRadius = isCollapsed ? bounds.width / 2 : TunerTheme.panelRadius
-        layer?.cornerCurve = .continuous
-        layer?.borderWidth = 1
-        layer?.borderColor = NSColor.labelColor.withAlphaComponent(0.12).cgColor
-        // AppKit's y goes up: the top edge is at maxY.
-        highlight.frame = CGRect(x: 0, y: bounds.height - 1.5, width: bounds.width, height: 1.5)
+    private var targetRadius: CGFloat { isCollapsed ? min(bounds.width, bounds.height) / 2 : TunerTheme.panelRadius }
+
+    private func updateShape() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        if layer?.animation(forKey: "radius") == nil { layer?.cornerRadius = targetRadius }
+        let radius = layer?.cornerRadius ?? targetRadius
+        tint.frame = bounds
+        // AppKit's y goes up: the top edge is at maxY, so gradients that should
+        // fade downward run from y = 1 to y = 0 in unit space.
+        sheen.frame = bounds
+        sheen.startPoint = CGPoint(x: 0.3, y: 1.2)
+        sheen.endPoint = CGPoint(x: 1.2, y: 1.2 - 0.9 * bounds.width / max(bounds.height, 1))
+        highlight.frame = CGRect(x: 0, y: bounds.height - 18, width: bounds.width, height: 18)
+        highlight.startPoint = CGPoint(x: 0.5, y: 1)
+        highlight.endPoint = CGPoint(x: 0.5, y: 0)
+        innerEdge.frame = bounds
+        let inner = max(radius - 1.5, 0)
+        innerEdge.path = CGPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), cornerWidth: inner, cornerHeight: inner, transform: nil)
         highlight.isHidden = isCollapsed
+        CATransaction.commit()
+    }
+
+    /// Corner radius morph for collapse/expand; the controller animates the
+    /// frame over the same duration so the two read as one change of shape.
+    private func animateShape() {
+        guard let layer else { return }
+        let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let animation = CABasicAnimation(keyPath: "cornerRadius")
+        animation.fromValue = layer.presentation()?.cornerRadius ?? layer.cornerRadius
+        animation.toValue = targetRadius
+        animation.duration = (reduce ? 0 : TunerTheme.morphDuration) * TunerTheme.motionScale
+        animation.timingFunction = CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
+        layer.cornerRadius = targetRadius
+        layer.add(animation, forKey: "radius")
+        updateShape()
     }
 }
 
@@ -233,10 +302,10 @@ struct CollapsedBubble: View {
 
     var body: some View {
         ZStack {
-            theme.panel
+            Color.clear
             Image(systemName: "slider.horizontal.3")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(theme.textRoot)
+                .foregroundStyle(theme.ink)
         }
         .scaleEffect(pressed ? 0.94 : 1)
         .tunerMotion(TunerTheme.press, value: pressed)
