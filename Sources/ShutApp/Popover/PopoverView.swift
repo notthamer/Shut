@@ -9,9 +9,9 @@ struct PopoverView: View {
     var hostedInWindow = false
     @Environment(\.tunerTheme) private var theme
 
-    static let width: CGFloat = 600
+    static let width: CGFloat = 640
     static let previewWidth: CGFloat = 290
-    static let bodyHeight: CGFloat = 500
+    static let bodyHeight: CGFloat = 560
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,16 +51,11 @@ struct PopoverHeader: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            LogoMark(size: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Shut.").font(TunerTheme.rootTitle).tracking(-0.2).foregroundStyle(theme.textRoot)
-                HStack(spacing: 5) {
-                    Circle().fill(statusColor).frame(width: 5, height: 5)
-                        .tunerAnimation(TunerTheme.easeOut(0.2), value: statusColor)
-                    Text(model.statusLine).font(.system(size: 10.5)).foregroundStyle(theme.textLabel)
-                }
-            }
-            .help(model.sensor.capability.explanation)
+            Text("Shut.").font(TunerTheme.rootTitle).tracking(-0.2).foregroundStyle(theme.textRoot)
+                .help(model.statusLine)
+            Circle().fill(statusColor).frame(width: 6, height: 6)
+                .tunerAnimation(TunerTheme.easeOut(0.2), value: statusColor)
+                .help(model.statusLine)
             Spacer(minLength: 8)
             if !hostedInWindow {
                 IconButton("macwindow", help: "Open Shut as a window you can move and minimize.", action: model.openWindow)
@@ -71,7 +66,7 @@ struct PopoverHeader: View {
         .padding(.horizontal, 14)
         // Traffic lights sit in the first 64 pt of a window's header.
         .padding(.leading, hostedInWindow ? 58 : 0)
-        .frame(height: 52)
+        .frame(height: 44)
     }
 }
 

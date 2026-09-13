@@ -9,7 +9,7 @@ struct ControlsColumn: View {
     @Environment(\.tunerTheme) private var theme
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView(showsIndicators: true) {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 8) {
                     Eyebrow("Style")
@@ -39,19 +39,12 @@ struct ControlsColumn: View {
             .tunerAnimation(TunerTheme.easeOut(0.18), value: model.registry.current.id)
             .tunerAnimation(TunerTheme.spring, value: model.needsPermissionCard)
         }
-        // A soft fade at the bottom says "there's more" without a scrollbar.
-        .mask(
-            VStack(spacing: 0) {
-                Color.black
-                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: 28)
-            }
-        )
     }
 }
 
 struct StyleGallery: View {
     @ObservedObject var model: PopoverModel
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 7), count: 3)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 7), count: 4)
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 7) {
@@ -101,7 +94,7 @@ struct StyleCard: View {
                     theme.surfaceActive
                 }
             }
-            .frame(height: 46)
+            .frame(height: 44)
             .clipped()
             .tunerAnimation(TunerTheme.easeOut(0.16), value: version)
             HStack(spacing: 4) {
@@ -112,10 +105,7 @@ struct StyleCard: View {
                     .foregroundStyle(isSelected ? theme.textRoot : theme.textLabel)
                     .lineLimit(1)
                 Spacer(minLength: 0)
-                if needsPermission {
-                    Image(systemName: "record.circle").font(.system(size: 8)).foregroundStyle(theme.textTertiary)
-                        .help("Needs Screen Recording")
-                } else if isSelected {
+                if isSelected {
                     Image(systemName: "checkmark.circle.fill").font(.system(size: 9)).foregroundStyle(theme.textRoot)
                 }
             }

@@ -34,7 +34,7 @@ final class PopoverSnapshotTests: XCTestCase {
             if solid {
                 root = AnyView(root.environment(\.tunerTheme, TunerTheme(reduceTransparency: true, increaseContrast: true)))
             }
-            let frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: 640)
+            let frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: 660)
             let window = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
             window.appearance = TunerTheme.appearance
             let container = NSView(frame: frame)
