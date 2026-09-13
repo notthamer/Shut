@@ -23,6 +23,10 @@ public struct FillSliderRow: View {
     /// False for sliders whose number means nothing to the user (Speed).
     let showsValue: Bool
     let height: CGFloat
+    /// Fixed label column, so every track in a section is the same length.
+    let labelWidth: CGFloat
+    /// Fixed value column, for the same reason.
+    static let valueWidth: CGFloat = 60
 
     @Environment(\.tunerTheme) private var theme
     @State private var hovering = false
@@ -39,7 +43,8 @@ public struct FillSliderRow: View {
 
     public init(_ label: String, value: Binding<Double>, in range: ClosedRange<Double>,
                 step: Double? = nil, decimals: Int? = nil, unit: String = "", help: String = "",
-                reset: (() -> Void)? = nil, showsValue: Bool = true, height: CGFloat = TunerTheme.rowHeight) {
+                reset: (() -> Void)? = nil, showsValue: Bool = true, height: CGFloat = TunerTheme.rowHeight,
+                labelWidth: CGFloat = 96) {
         self.label = label
         _value = value
         self.range = range
@@ -52,6 +57,7 @@ public struct FillSliderRow: View {
         self.reset = reset
         self.showsValue = showsValue
         self.height = height
+        self.labelWidth = labelWidth
     }
 
     private var fraction: CGFloat {
@@ -68,10 +74,11 @@ public struct FillSliderRow: View {
                 .font(TunerTheme.label)
                 .foregroundStyle(theme.textLabel)
                 .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
+                .truncationMode(.tail)
+                .frame(width: labelWidth, alignment: .leading)
                 .onTapGesture(count: 2) { reset?() }
             track
-            if showsValue { valueView }
+            if showsValue { valueView.frame(width: Self.valueWidth, alignment: .trailing) }
         }
         .padding(.leading, 14)
         .padding(.trailing, showsValue ? 12 : 8)
@@ -106,27 +113,41 @@ public struct FillSliderRow: View {
             ZStack(alignment: .leading) {
                 Color.clear.glassSurface(.inset, radius: trackHeight / 2)
 
-                // The gradient spans the whole track; the fill reveals it, so the
-                // colour at the knob reads the value: red low, yellow high.
-                Capsule()
-                    .fill(LinearGradient(colors: TunerTheme.warm, startPoint: .leading, endPoint: .trailing))
-                    .overlay(alignment: .top) {
-                        Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom))
-                            .frame(height: trackHeight * 0.45)
-                            .mask(Capsule().strokeBorder(lineWidth: 1))
-                    }
-                    .frame(width: width)
-                    .mask(alignment: .leading) { Rectangle().frame(width: max(fillWidth, 0)) }
-                    .tunerAnimation(TunerTheme.quick, value: dragging)
+                // Fill and ticks, clipped to the well so the blur stays inside it.
+                ZStack(alignment: .leading) {
+                    // The gradient spans the whole track; the fill reveals it, so
+                    // the colour at the knob reads the value: red low, yellow high.
+                    // Softly blurred, like light through frosted glass.
+                    Capsule()
+                        .fill(LinearGradient(colors: TunerTheme.warm, startPoint: .leading, endPoint: .trailing))
+                        .frame(width: width)
+                        .blur(radius: 2.5)
+                        .overlay(alignment: .top) {
+                            Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.7), .clear], startPoint: .top, endPoint: .bottom))
+                                .frame(height: trackHeight * 0.5)
+                        }
+                        .mask(alignment: .leading) {
+                            // The fill's leading edge is soft too.
+                            HStack(spacing: 0) {
+                                Rectangle().frame(width: max(fillWidth - 4, 0))
+                                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 8)
+                                Spacer(minLength: 0)
+                            }
+                        }
+                        .tunerAnimation(TunerTheme.quick, value: dragging)
 
-                // Ticks: light inside the fill, faint ink outside it.
-                ForEach(0..<marks, id: \.self) { i in
-                    let x = knob / 2 + travel * CGFloat(i + 1) / CGFloat(marks + 1)
-                    Rectangle()
-                        .fill(x < fillWidth ? Color.white.opacity(0.6) : TunerTheme.inkBase.opacity(0.12))
-                        .frame(width: 1.5, height: trackHeight * 0.55)
-                        .offset(x: x - 0.75)
+                    // Ticks: light inside the fill, faint ink outside it.
+                    ForEach(0..<marks, id: \.self) { i in
+                        let x = knob / 2 + travel * CGFloat(i + 1) / CGFloat(marks + 1)
+                        Rectangle()
+                            .fill(x < fillWidth ? Color.white.opacity(0.7) : TunerTheme.inkBase.opacity(0.12))
+                            .frame(width: 1.5, height: trackHeight * 0.55)
+                            .offset(x: x - 0.75)
+                    }
                 }
+                .clipShape(Capsule())
+                // A warm glow spills out of the well around the fill.
+                .shadow(color: TunerTheme.warm[1].opacity(dragging ? 0.45 : 0.3), radius: 6)
 
                 ChromeKnob(size: knob)
                     .scaleEffect(dragging ? 1.08 : (hovering ? 1.04 : 1))
@@ -158,7 +179,7 @@ public struct FillSliderRow: View {
                 .font(TunerTheme.value)
                 .foregroundStyle(theme.textPrimary)
                 .multilineTextAlignment(.trailing)
-                .frame(width: 72)
+                .frame(width: Self.valueWidth)
                 .focused($fieldFocused)
                 .onSubmit { commitDraft() }
                 .onExitCommand { editing = false }

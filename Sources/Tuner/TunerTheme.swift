@@ -63,9 +63,9 @@ public struct TunerTheme {
     /// Slider fills run warm, from red through orange to yellow, so the colour
     /// under the knob says how far along it is.
     public static let warm: [Color] = [
-        Color(red: 0.90, green: 0.22, blue: 0.12),
-        Color(red: 0.96, green: 0.54, blue: 0.12),
-        Color(red: 1.0, green: 0.83, blue: 0.29),
+        Color(red: 0.96, green: 0.42, blue: 0.30),
+        Color(red: 0.99, green: 0.66, blue: 0.36),
+        Color(red: 1.0, green: 0.88, blue: 0.52),
     ]
     /// Slider fills and selection: sky over glass (#DCEBFF).
     public var tintSky: Color { Color(red: 0.863, green: 0.922, blue: 1.0).opacity(0.7) }

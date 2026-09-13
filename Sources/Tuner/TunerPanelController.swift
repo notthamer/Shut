@@ -156,9 +156,26 @@ public final class KeyablePanel: NSPanel {
 }
 
 /// A hosting view whose content responds to the very first click even when its
-/// window isn't key yet, the way menu bar panels are expected to.
+/// window isn't key yet, the way menu bar panels are expected to. A mouse-down
+/// inside it never moves the window: with `isMovableByWindowBackground` the
+/// window would otherwise follow a slider drag. Windows that need to be moved
+/// by their body use `WindowDragHandle` behind a header instead.
 public final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
     public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    public override var mouseDownCanMoveWindow: Bool { false }
+}
+
+/// A transparent view that drags its window when pressed: the grip behind a
+/// panel's header.
+public struct WindowDragHandle: NSViewRepresentable {
+    public init() {}
+    public func makeNSView(context: Context) -> DragHandleView { DragHandleView() }
+    public func updateNSView(_ nsView: DragHandleView, context: Context) {}
+
+    public final class DragHandleView: NSView {
+        public override var mouseDownCanMoveWindow: Bool { false }
+        public override func mouseDown(with event: NSEvent) { window?.performDrag(with: event) }
+    }
 }
 
 /// A sheet of light liquid glass: the window chrome for every Shut panel.

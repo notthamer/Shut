@@ -28,7 +28,7 @@ struct PreviewColumn: View {
 
             VStack(spacing: 4) {
                 FillSliderRow("Lid", value: $preview.progress, in: 0...1, step: 0.005, decimals: 2,
-                              help: "Drag to move the lid by hand.", showsValue: false, height: 28)
+                              help: "Drag to move the lid by hand.", showsValue: false, height: 28, labelWidth: 30)
                 HStack {
                     Text("Open"); Spacer(); Text("Shut")
                 }

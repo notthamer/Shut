@@ -68,6 +68,7 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
                 }
             }
             .padding(.top, 2)
+            .background(WindowDragHandle())   // the title row is the grip
             HStack(spacing: TunerTheme.rowGap) {
                 VersionsMenu(store: store) { showFlash($0) }
                 CopyButton { copyJSON() }
