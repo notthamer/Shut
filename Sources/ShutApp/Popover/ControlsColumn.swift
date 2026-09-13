@@ -104,15 +104,12 @@ struct StyleCard: View {
                     .foregroundStyle(isSelected ? theme.ink : theme.inkLabel)
                     .lineLimit(1)
                 Spacer(minLength: 0)
-                if isSelected {
-                    Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.ink)
-                }
             }
             .padding(.horizontal, 8).padding(.vertical, 6)
         }
         // Lime wash when chosen, Paper White otherwise, Linen on hover; a
         // one-point border does the depth, no shadow, nothing scales.
-        .surface(isSelected ? .wash(theme.washLime) : .card, radius: Self.radius)
+        .surface(isSelected ? .wash(TunerTheme.wash(for: transition.id)) : .card, radius: Self.radius)
         .overlay(RoundedRectangle(cornerRadius: Self.radius, style: .continuous).fill(hover && !isSelected ? theme.linen.opacity(0.6) : .clear).allowsHitTesting(false))
         .overlay(RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
             .strokeBorder(isSelected ? theme.borderStrong : .clear, lineWidth: 1))
@@ -130,13 +127,12 @@ struct SpeedRow: View {
         VStack(spacing: 3) {
             FillSliderRow("Speed", value: Binding(get: { model.speed }, set: { model.speed = $0 }),
                           in: 0...1, step: 0.01, decimals: 2, unit: "",
-                          help: "How much of the lid's travel the effect uses. Fast plays in the last few degrees; slow spreads it over most of the close.",
-                          showsValue: false)
+                          help: "How much of the lid's travel the effect uses: the number is where the effect starts, in degrees above shut. Fast plays in the last few degrees; slow spreads it over most of the close.",
+                          valueText: { _ in String(format: "%.0f°", model.settings.bandDegrees) })
             HStack {
-                Text("Slow"); Spacer()
-                Text(String(format: "starts %.0f° above shut", model.settings.bandDegrees)).monospacedDigit(); Spacer()
-                Text("Fast")
+                Text("Slow"); Spacer(); Text("Fast")
             }
+            .padding(.trailing, FillSliderRow.valueWidth + 12)
             .font(TunerTheme.bodySmall)
             .foregroundStyle(theme.inkTertiary)
             .padding(.horizontal, 2)

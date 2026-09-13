@@ -25,8 +25,12 @@ public struct FillSliderRow: View {
     let height: CGFloat
     /// Fixed label column, so every track in a section is the same length.
     let labelWidth: CGFloat
+    /// Shows this instead of the number (Speed shows degrees). Read-only.
+    let valueText: ((Double) -> String)?
+    /// The ring shows only for keyboard focus, never because the window opened.
+    @State private var keyboardFocus = false
     /// Fixed value column, for the same reason.
-    static let valueWidth: CGFloat = 60
+    public static let valueWidth: CGFloat = 60
 
     @Environment(\.tunerTheme) private var theme
     @State private var hovering = false
@@ -42,7 +46,7 @@ public struct FillSliderRow: View {
     public init(_ label: String, value: Binding<Double>, in range: ClosedRange<Double>,
                 step: Double? = nil, decimals: Int? = nil, unit: String = "", help: String = "",
                 reset: (() -> Void)? = nil, showsValue: Bool = true, height: CGFloat = TunerTheme.rowHeight,
-                labelWidth: CGFloat = 96) {
+                labelWidth: CGFloat = 96, valueText: ((Double) -> String)? = nil) {
         self.label = label
         _value = value
         self.range = range
@@ -56,6 +60,7 @@ public struct FillSliderRow: View {
         self.showsValue = showsValue
         self.height = height
         self.labelWidth = labelWidth
+        self.valueText = valueText
     }
 
     private var fraction: CGFloat {
@@ -83,7 +88,8 @@ public struct FillSliderRow: View {
         .focused($rowFocused)
         .onKeyPress(phases: .down) { press in handleKey(press) }
         .onHover { hovering = $0; if !$0 { valueHovering = false; valueArmed = false } }
-        .tunerFocusRing(rowFocused && !editing, radius: TunerTheme.rowRadius)
+        .tunerFocusRing(rowFocused && keyboardFocus && !editing, radius: TunerTheme.rowRadius)
+        .onChange(of: rowFocused) { _, focused in if !focused { keyboardFocus = false } }
         .help(help)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
@@ -148,6 +154,11 @@ public struct FillSliderRow: View {
                 .onSubmit { commitDraft() }
                 .onExitCommand { editing = false }
                 .onChange(of: fieldFocused) { _, focused in if !focused { commitDraft() } }
+        } else if let valueText {
+            Text(valueText(value))
+                .font(TunerTheme.value)
+                .foregroundStyle(theme.ink)
+                .monospacedDigit()
         } else {
             Text(TunerFormat.string(value, decimals: decimals, unit: unit))
                 .font(TunerTheme.value)
@@ -210,6 +221,7 @@ public struct FillSliderRow: View {
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
         guard !editing else { return .ignored }
+        keyboardFocus = true
         let multiplier: Double = press.modifiers.contains(.shift) ? 10 : 1
         switch press.key {
         case .rightArrow, .upArrow: nudge(by: multiplier); return .handled

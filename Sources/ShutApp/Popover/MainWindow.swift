@@ -60,9 +60,12 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         let chrome = PanelChrome(frame: NSRect(origin: .zero, size: size))
         chrome.install(hosting)
         w.contentView = chrome
-        w.setContentSize(size)
+        // Remember where it was, never how big: the size always fits the content.
         w.setFrameAutosaveName("ShutMainWindow")
         if !w.setFrameUsingName("ShutMainWindow") { w.center() }
+        let top = w.frame.maxY
+        w.setContentSize(size)
+        w.setFrameTopLeftPoint(NSPoint(x: w.frame.minX, y: top))
         return w
     }
 

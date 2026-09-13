@@ -51,6 +51,19 @@ public struct TunerTheme {
     /// The spectrum's blue, for the "live" status dot.
     public static let spectrumBlue = Color(red: 0.012, green: 0.345, blue: 0.969)
 
+    /// A wash for a style: its own hue at Lime Wash's saturation and
+    /// brightness (#F2FCB3 is hue 68°, saturation 0.29, brightness 0.99), so
+    /// every selection is the same weight of colour, only a different note.
+    public static func wash(for id: String) -> Color {
+        let hues: [String: Double] = [
+            "fold": 68, "sinkhole": 250, "frost": 200, "crease": 30,
+            "recede": 150, "slide": 340, "shutter": 45, "fade": 0,
+        ]
+        if id == "fade" { return Color(hue: 0, saturation: 0, brightness: 0.94) }
+        let hue = hues[id] ?? Double(abs(id.hashValue % 360))
+        return Color(hue: hue / 360, saturation: 0.29, brightness: 0.99)
+    }
+
     // MARK: Roles
 
     public static let inkBase = pureBlack

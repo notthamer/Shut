@@ -20,7 +20,7 @@ struct PopoverView: View {
             SpectrumLine(height: 2)
             HStack(spacing: 0) {
                 PreviewColumn(model: model)
-                    .padding(14)
+                    .padding(16)
                     .frame(width: Self.previewWidth, height: Self.bodyHeight)
                 Rectangle().fill(theme.hairline).frame(width: 1)
                 ControlsColumn(model: model)
@@ -64,7 +64,7 @@ struct PopoverHeader: View {
             SmallPill(isOn: model.settings.isEnabled, size: .regular) { model.settings.isEnabled.toggle() }
                 .help(model.settings.isEnabled ? "Stop animating the lid." : "Start animating the lid.")
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         // Traffic lights sit in the first 64 pt of a window's header.
         .padding(.leading, hostedInWindow ? 58 : 0)
         .frame(height: 56)
