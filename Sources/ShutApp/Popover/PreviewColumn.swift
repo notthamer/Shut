@@ -22,16 +22,9 @@ struct PreviewColumn: View {
             }
             .frame(height: 164)
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(theme.border))
-            .overlay(alignment: .top) {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(LinearGradient(colors: [theme.innerHighlight, .clear], startPoint: .top, endPoint: .bottom))
-                    .frame(height: 14)
-                    .mask(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(lineWidth: 1))
-            }
-            .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
-            .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            // A well cut into the glass: the picture sits below the surface.
+            .glassSurface(.inset, radius: 14)
 
             VStack(spacing: 4) {
                 FillSliderRow("Lid", value: $preview.progress, in: 0...1, step: 0.005, decimals: 2,

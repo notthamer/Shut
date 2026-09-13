@@ -90,10 +90,20 @@ on. `TunerHost` registers each style's parameters with the Tuner in one line.
   Dock" is on, otherwise only while a window (popover, main window, Tuner, welcome)
   is open. `MainMenu` gives the window the standard shortcuts.
 - **`Tuner`** is a separate package (see its README section). `TunerPanelController`
-  hosts `TunerPanelView` in a `KeyablePanel` with `PanelChrome` (glass, hairline,
-  top highlight); the app injects the preview column and hides the panel while a
-  real transition plays. `TunerTheme` is derived from the SwiftUI color scheme so
-  light and dark both work.
+  hosts `TunerPanelView` in a `KeyablePanel` with `PanelChrome`; the app injects
+  the preview column and hides the panel while a real transition plays.
+- **Material.** `PanelChrome` is a sheet of light liquid glass, hand-built so it
+  runs on macOS 14: behind-window blur, a white tint, a radial sheen in the
+  top-left, a light catch along the top edge, an inner light edge and an outer
+  hairline, with a corner radius that animates between 22 pt and a circle for
+  the Tuner's collapsed bubble. `TunerTheme` is single-appearance (Aqua is forced
+  on every window and on `NSApp`); `glassSurface(.raised/.inset/.tinted)` builds
+  every control on the pane, `GlassBead` is the shared knob, and the popover
+  materializes (opacity, scale from the menu bar edge, and a content blur resolve
+  together) rather than fading. Reduce Transparency turns the glass solid.
+- **Icon.** `scripts/make-glass-icon.swift` recovers the "S" mark from
+  `App/mark-source.png` and sets it in ink on a glass squircle for every icon
+  size, the `.icns`, and the in-app `logo.png`.
 
 ## Spaces and full-screen apps
 

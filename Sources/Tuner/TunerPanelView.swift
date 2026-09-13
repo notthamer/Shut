@@ -39,7 +39,6 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
                 .padding(.vertical, TunerTheme.paddingV)
             }
         }
-        .background(theme.panelGlass)
         .onDrop(of: [UTType.json, UTType.fileURL, UTType.plainText], isTargeted: nil) { handleDrop($0) }
         .overlay(alignment: .top) {
             if let flash {

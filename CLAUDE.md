@@ -25,10 +25,17 @@ is described in `README.md` and `docs/ARCHITECTURE.md`.
    Apache-2.0; we credit its research and write our own implementation. Bendable is
    MIT: ported files say so in their header and `THIRD_PARTY_LICENSES.md` carries
    the license. Never use the DialKit name in code or UI.
-7. **Match the visual system.** Every surface uses `TunerTheme`: 36-pt rows, 6-pt
-   gaps, 8/14-pt radii, neutral alphas, no accent colour, springs on state changes,
-   plain-English `help` on every control. The theme is derived from the SwiftUI
-   colour scheme; never inject it from a view's own body.
+7. **Match the visual system: light liquid glass.** One appearance; every window
+   sets `TunerTheme.appearance` (Aqua) and the app sets it on `NSApp`, so the
+   glass reads the same over any wallpaper and in dark mode. `PanelChrome` is the
+   window material (blur, white tint, sheen, light catch, edges, animatable
+   corner radius). Everything on it is `glassSurface(.raised | .inset |
+   .tinted(_))`; knobs are `GlassBead`; the one strong action is the ink
+   `PrimaryButton`. Radii 22 (panel) / 16 (card) / 12 (row); rows stay 36 pt;
+   text is ink (`ink`, `inkLabel`, `inkTertiary`); the only tints are sky
+   (selection, fills) and amber (permission). Plain-English `help` on every
+   control. Reduce Transparency makes the glass solid, Increase Contrast darkens
+   ink and edges: both go through the theme, never hard-coded colours.
    **Motion rules** (from Emil Kowalski's design-engineering skills, credited in
    the README): keyboard-initiated actions never animate (⌃⌥T, Escape, arrow
    nudges); everything else is critically damped (`TunerTheme.quick`/`spring`),
@@ -90,7 +97,7 @@ is described in `README.md` and `docs/ARCHITECTURE.md`.
   Shut build` must pass before every commit.
 - Render tests draw each transition offscreen on a synthetic image. Set
   `SHUT_FRAME_DUMP=/some/dir` to get PNGs of the frames, the Tuner panel, and the
-  panel UI (dark, light, window). Look at them before changing a layout. Metal
+  panel UI (light, window, solid). Look at them before changing a layout. Metal
   layers do not rasterise into these snapshots, so the preview area is black there.
 - `TransitionUniforms` is mirrored by hand in `Common.metal`; the GPU probe test
   (`uniformsLayoutProbe`) is the only guard against layout drift. Run it after

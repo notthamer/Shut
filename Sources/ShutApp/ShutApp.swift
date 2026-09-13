@@ -34,6 +34,7 @@ public enum ShutApp {
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
+        app.appearance = TunerTheme.appearance   // light glass, whatever the system appearance
         app.setActivationPolicy(.accessory)
         app.run()
     }

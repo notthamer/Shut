@@ -15,15 +15,25 @@ final class WelcomeWindow {
             onEnable()
             self?.window?.close()
         }
-        let hosting = NSHostingController(rootView: content)
-        let w = NSWindow(contentViewController: hosting)
-        w.styleMask = [.titled, .closable, .fullSizeContentView]
+        // The card is a pane of glass; the window behind it paints a soft
+        // gradient so the glass has something to blur even over a plain desktop.
+        let windowSize = NSSize(width: 480, height: 380)
+        let margin: CGFloat = 24
+        let w = NSWindow(contentRect: NSRect(origin: .zero, size: windowSize),
+                         styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+        w.appearance = TunerTheme.appearance
         w.titlebarAppearsTransparent = true
         w.titleVisibility = .hidden
         w.isMovableByWindowBackground = true
-        w.setContentSize(NSSize(width: 420, height: 320))
-        w.center()
         w.isReleasedWhenClosed = false
+        let backdrop = GradientBackdrop(frame: NSRect(origin: .zero, size: windowSize))
+        let card = PanelChrome(frame: NSRect(x: margin, y: margin, width: windowSize.width - 2 * margin, height: windowSize.height - 2 * margin))
+        card.autoresizingMask = [.width, .height]
+        let hosting = NSHostingView(rootView: content)
+        card.install(hosting)
+        backdrop.addSubview(card)
+        w.contentView = backdrop
+        w.center()
         window = w
         NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.onVisibilityChanged?(false) }
@@ -65,11 +75,30 @@ struct WelcomeView: View {
                 .padding(.bottom, 24)
                 .modifier(Entrance(appeared: appeared, delay: 0.12))
         }
-        .frame(width: 420, height: 320)
-        .background(theme.panel)
+        .frame(width: 432, height: 332)
         .onAppear { appeared = true }
         .tunerThemed()
     }
+}
+
+/// Sky, lilac and white: the soft light the welcome glass floats in.
+final class GradientBackdrop: NSView {
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        let gradient = CAGradientLayer()
+        gradient.colors = [
+            NSColor(red: 0.80, green: 0.88, blue: 1.0, alpha: 1).cgColor,
+            NSColor(red: 0.90, green: 0.86, blue: 0.98, alpha: 1).cgColor,
+            NSColor(red: 0.99, green: 0.97, blue: 0.95, alpha: 1).cgColor,
+        ]
+        gradient.startPoint = CGPoint(x: 0, y: 1)
+        gradient.endPoint = CGPoint(x: 1, y: 0)
+        gradient.frame = bounds
+        gradient.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        layer?.addSublayer(gradient)
+    }
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 }
 
 /// Fade plus a small rise on the strong ease-out. Under Reduce Motion only the

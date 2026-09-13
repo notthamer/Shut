@@ -26,9 +26,12 @@ enum AppAssets {
             let i = (y * w + x) * 4
             let luma = 0.299 * Double(pixels[i]) + 0.587 * Double(pixels[i + 1]) + 0.114 * Double(pixels[i + 2])
             let alpha = Double(pixels[i + 3]) / 255
-            var ink = UInt8(min(max((1 - luma / 255) * alpha * 255, 0), 255))
-            // The logo bakes in a white rounded square with a soft shadow; drop
-            // everything in the outer band so only the glyph and its streaks remain.
+            // A steep ramp keeps the strokes and streaks and drops the glass
+            // tile's faint tint, so the template glyph is clean.
+            let raw = (1 - luma / 255) * alpha * 255
+            var ink = UInt8(min(max((raw - 90) * 2.2, 0), 255))
+            // The logo is the mark on a glass tile; drop everything in the outer
+            // band so only the glyph and its streaks remain.
             let border = Double(min(w, h)) * 0.2
             let inBorder = Double(x) < border || Double(x) > Double(w) - border || Double(y) < border || Double(y) > Double(h) - border
             if inBorder { ink = 0 }

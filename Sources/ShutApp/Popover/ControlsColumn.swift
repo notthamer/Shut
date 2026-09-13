@@ -77,6 +77,7 @@ struct StyleCard: View {
     let select: () -> Void
     @Environment(\.tunerTheme) private var theme
     @State private var hover = false
+    static let radius: CGFloat = 14
 
     var body: some View {
         Button(action: select) { card }
@@ -120,17 +121,12 @@ struct StyleCard: View {
             }
             .padding(.horizontal, 6).padding(.vertical, 5)
         }
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(isSelected ? theme.surfaceActive : (hover ? theme.surfaceHover : theme.surface)))
-        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(isSelected ? theme.textTertiary : theme.border, lineWidth: 1))
-        .overlay(alignment: .top) {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(LinearGradient(colors: [theme.innerHighlight, .clear], startPoint: .top, endPoint: .bottom))
-                .frame(height: 10)
-                .mask(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(lineWidth: 1))
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .shadow(color: .black.opacity(hover ? 0.18 : 0), radius: 8, y: 4)
+        .background(RoundedRectangle(cornerRadius: Self.radius, style: .continuous).fill(hover && !isSelected ? theme.raisedHover : .clear))
+        .clipShape(RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
+        .glassSurface(isSelected ? .tinted(theme.tintSky) : .raised, radius: Self.radius)
+        .overlay(RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
+            .strokeBorder(TunerTheme.inkBase.opacity(isSelected ? 0.35 : 0), lineWidth: 1.5))
+        .contentShape(RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
         .scaleEffect(hover && !isSelected ? 1.02 : 1)
         .tunerAnimation(TunerTheme.quick, value: hover)
         .tunerMotion(TunerTheme.quick, value: hover)
@@ -194,8 +190,7 @@ struct PermissionCard: View {
                 ActionRow("Restart") { model.relaunch() }
             }
         }
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(theme.border))
+        .padding(12)
+        .glassSurface(.tinted(theme.tintAmber), radius: TunerTheme.cardRadius)
     }
 }

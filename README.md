@@ -85,7 +85,10 @@ app.shut.mac` clears it.
 
 ## Interface
 
-One panel, two ways in.
+One panel, two ways in. The whole interface is light liquid glass: a frosted
+pane over your desktop with a soft sheen, controls that sit on it as raised or
+cut-in glass, and knobs that settle with a little give. It stays light in dark
+mode on purpose, and goes solid when Reduce Transparency is on.
 
 - **Menu bar.** Left click the icon for the panel as a popover. It closes when you
   click away or press Escape. Right click for a plain menu (pause, style, presets,
@@ -255,7 +258,7 @@ The full walk-through, from a sensor reading to a pixel, is in
 band, the adaptive poll rate; offscreen renders of every style (identity at open,
 monotonic darkening, see-through masks that need no snapshot); a GPU probe of the
 uniform layout; the overlay window and the clamshell rule; the Tuner panel and the
-panel UI rasterised as images in dark, light and window form. Set
+panel UI rasterised as images in light, window and solid form. Set
 `SHUT_FRAME_DUMP=dir` to get the PNGs. `swift test -c release --filter
 BenchmarkTests` prints per-style frame times at full resolution (about 0.5–2.5 ms
 on an M2 Pro).

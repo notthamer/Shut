@@ -16,25 +16,22 @@ struct PopoverView: View {
     var body: some View {
         VStack(spacing: 0) {
             PopoverHeader(model: model, hostedInWindow: hostedInWindow)
-                .background(theme.elevated)
-            Rectangle().fill(theme.border).frame(height: 1)
+            Rectangle().fill(theme.hairline).frame(height: 1)
             HStack(spacing: 0) {
                 PreviewColumn(model: model)
                     .padding(14)
                     .frame(width: Self.previewWidth, height: Self.bodyHeight)
-                Rectangle().fill(theme.border).frame(width: 1)
+                Rectangle().fill(theme.hairline).frame(width: 1)
                 ControlsColumn(model: model)
                     .frame(width: Self.width - Self.previewWidth - 1, height: Self.bodyHeight)
             }
             .opacity(model.settings.isEnabled ? 1 : 0.45)
             .allowsHitTesting(model.settings.isEnabled)
             .tunerAnimation(TunerTheme.quick, value: model.settings.isEnabled)
-            Rectangle().fill(theme.border).frame(height: 1)
+            Rectangle().fill(theme.hairline).frame(height: 1)
             PopoverFooter(model: model)
-                .background(theme.elevated)
         }
         .frame(width: Self.width)
-        .background(theme.panelGlass)
         .tunerThemed()
     }
 }
@@ -116,16 +113,23 @@ struct SmallPill: View {
     var body: some View {
         let w: CGFloat = size == .small ? 26 : 36, h: CGFloat = size == .small ? 14 : 20
         Button(action: action) {
-            Capsule().fill(isOn ? theme.textRoot : theme.surfaceActive)
+            // Ink when on, an inset glass trough when off; the knob is a glass
+            // bead that slides on the liquid spring.
+            Capsule().fill(isOn ? TunerTheme.inkBase : theme.inset)
+                .overlay(Capsule().strokeBorder(isOn ? Color.clear : theme.glassEdgeDark, lineWidth: 1))
+                .overlay(
+                    Capsule().strokeBorder(LinearGradient(colors: [theme.insetShadow, .clear], startPoint: .top, endPoint: .bottom), lineWidth: 2)
+                        .opacity(isOn ? 0 : 1)
+                )
                 .frame(width: w, height: h)
                 .overlay(alignment: isOn ? .trailing : .leading) {
-                    Circle().fill(isOn ? theme.panel : theme.textLabel).frame(width: h - 4, height: h - 4).padding(2)
+                    GlassBead(size: h - 4).padding(2)
                 }
                 .contentShape(Capsule())
         }
         .buttonStyle(PressScaleStyle(scale: 0.96))
         .tunerAnimation(TunerTheme.quick, value: isOn)
-        .tunerMotion(TunerTheme.quick, value: isOn)
+        .tunerMotion(TunerTheme.liquid, value: isOn)
         .accessibilityValue(isOn ? "On" : "Off")
     }
 }
@@ -146,7 +150,7 @@ struct IconButton: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
                 .frame(width: 26, height: 26)
-                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover ? theme.surfaceHover : .clear))
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(hover ? theme.raisedHover : .clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressScaleStyle(scale: 0.96))
@@ -167,7 +171,7 @@ struct QuietButton: View {
                 .font(TunerTheme.caption)
                 .foregroundStyle(hover ? theme.textRoot : theme.textLabel)
                 .padding(.horizontal, 8).padding(.vertical, 5)
-                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover ? theme.surfaceHover : .clear))
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(hover ? theme.raisedHover : .clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressScaleStyle(scale: 0.96))

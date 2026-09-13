@@ -75,8 +75,8 @@ struct PreviewArea: View {
             ZStack {
                 PreviewMetalView(model: model)
                     .aspectRatio(aspect, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(theme.border))
+                    .clipShape(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous))
+                    .glassSurface(.inset)
                 if !model.hasSnapshot {
                     VStack(spacing: 8) {
                         if model.isCapturing {

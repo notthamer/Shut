@@ -7,7 +7,7 @@ import CoreGraphics
 public enum PlaceholderDesktop {
     public static let defaultSize = CGSize(width: 1024, height: 640)
 
-    public static func image(size: CGSize = defaultSize, notchWidth: CGFloat = 112, dark: Bool = true) -> CGImage? {
+    public static func image(size: CGSize = defaultSize, notchWidth: CGFloat = 112, dark: Bool = false) -> CGImage? {
         let w = Int(size.width), h = Int(size.height)
         guard let context = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
                                       space: CGColorSpace(name: CGColorSpace.sRGB)!,

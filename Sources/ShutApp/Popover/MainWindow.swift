@@ -44,6 +44,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
                          styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
                          backing: .buffered, defer: false)
         w.title = "Shut"
+        w.appearance = TunerTheme.appearance
         w.titlebarAppearsTransparent = true
         w.titleVisibility = .hidden
         w.isMovableByWindowBackground = true
