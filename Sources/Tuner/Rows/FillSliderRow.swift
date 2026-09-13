@@ -30,8 +30,6 @@ public struct FillSliderRow: View {
     @State private var dragStart: CGPoint?
     /// Points of track stretch while dragging past either end (rubber band).
     @State private var stretch: CGFloat = 0
-    @State private var labelWidth: CGFloat = 0
-    @State private var valueWidth: CGFloat = 0
     @State private var valueHovering = false
     @State private var valueArmed = false
     @State private var editing = false
@@ -65,93 +63,91 @@ public struct FillSliderRow: View {
     private var isDiscrete: Bool { (range.upperBound - range.lowerBound) / step <= 10 }
 
     public var body: some View {
-        GeometryReader { geo in
-            let width = geo.size.width
-            let bead: CGFloat = 14
-            let handleX = max(min(fraction * width - bead / 2, width - bead - 2), 2)
-            // The handle ducks when it would sit on top of the label or the value.
-            let collides = handleX < labelWidth + 18 || handleX > width - valueWidth - 18 - bead
-            ZStack(alignment: .leading) {
-                // Track and fill stretch together past the ends, like a rubber band.
-                ZStack(alignment: .leading) {
-                    Color.clear
-                        .glassSurface(.inset)
-                        .opacity(hovering || dragging ? 1 : 0.85)
-                    // The fill is a pane of sky glass with its own light catch.
-                    RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                        .fill(dragging ? theme.tintSkyActive : theme.tintSky)
-                        .overlay(alignment: .top) {
-                            RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                                .fill(LinearGradient(colors: [Color.white.opacity(0.8), .clear], startPoint: .top, endPoint: .bottom))
-                                .frame(height: 10)
-                                .mask(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).strokeBorder(lineWidth: 1))
-                        }
-                        .frame(width: max(fraction * width, 0))
-                        .tunerAnimation(TunerTheme.quick, value: dragging)
-                }
-                .scaleEffect(x: 1 + abs(stretch) / max(width, 1), y: 1, anchor: stretch > 0 ? .leading : .trailing)
-                // The one bounce on the panel: a rubber band carries the drag's momentum.
-                .tunerMotion(.spring(response: 0.35, dampingFraction: 0.85), value: stretch)
-
-                // Hash marks fade in while active.
-                let marks = isDiscrete ? max(Int(((range.upperBound - range.lowerBound) / step).rounded()) - 1, 0) : 9
-                ForEach(0..<marks, id: \.self) { i in
-                    Rectangle()
-                        .fill(TunerTheme.inkBase.opacity(0.12))
-                        .frame(width: 1, height: 8)
-                        .offset(x: width * CGFloat(i + 1) / CGFloat(marks + 1))
-                        .opacity(hovering || dragging ? 1 : 0)
-                }
-                .tunerAnimation(TunerTheme.easeOut(0.16), value: hovering || dragging)
-
-                // Handle: a glass bead riding the fill's edge, shown while the
-                // pointer is on the row.
-                GlassBead(size: bead)
-                    .scaleEffect(hovering || dragging ? 1 : 0.6)
-                    .offset(x: handleX)
-                    .opacity(collides ? handleOpacity * 0.25 : handleOpacity)
-                    .tunerMotion(TunerTheme.liquid, value: hovering || dragging)
-                    .tunerAnimation(TunerTheme.quick, value: collides)
-                    .allowsHitTesting(false)
-
-                HStack(spacing: 8) {
-                    Text(label)
-                        .font(TunerTheme.label)
-                        .foregroundStyle(theme.textLabel)
-                        .lineLimit(1)
-                        .background(GeometryReader { g in Color.clear.onAppear { labelWidth = g.size.width }.onChange(of: g.size.width) { _, w in labelWidth = w } })
-                        .onTapGesture(count: 2) { reset?() }
-                    Spacer(minLength: 4)
-                    if showsValue {
-                        valueView
-                            .background(GeometryReader { g in Color.clear.onAppear { valueWidth = g.size.width }.onChange(of: g.size.width) { _, w in valueWidth = w } })
-                    }
-                }
-                .padding(.horizontal, 10)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous))
-            .gesture(dragGesture(width: width))
-            .background(ScrollWheelCatcher { delta in
-                guard hovering, !editing else { return }
-                nudge(by: delta > 0 ? -1 : 1)
-            })
+        HStack(spacing: 10) {
+            Text(label)
+                .font(TunerTheme.label)
+                .foregroundStyle(theme.textLabel)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .onTapGesture(count: 2) { reset?() }
+            track
+            if showsValue { valueView }
         }
+        .padding(.leading, 14)
+        .padding(.trailing, showsValue ? 12 : 8)
         .frame(height: height)
+        // The housing: a raised pill of soft clay.
+        .glassSurface(.raised, radius: height / 2)
         .focusable(!editing)
         .focused($rowFocused)
         .onKeyPress(phases: .down) { press in handleKey(press) }
         .onHover { hovering = $0; if !$0 { valueHovering = false; valueArmed = false } }
-        .tunerFocusRing(rowFocused && !editing)
+        .tunerFocusRing(rowFocused && !editing, radius: height / 2)
         .help(help)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .accessibilityValue(TunerFormat.string(value, decimals: decimals, unit: unit))
     }
 
-    private var handleOpacity: Double {
-        if dragging { return 0.9 }
-        if hovering { return 0.5 }
-        return 0
+    /// Knob diameter and track height scale with the row so the Lid scrubber
+    /// (28 pt) and the 36-pt rows share one look.
+    private var knob: CGFloat { height - 12 }
+    private var trackHeight: CGFloat { height - 16 }
+
+    /// The well: a warm gradient revealed by the knob's travel, thin ticks,
+    /// and the knob riding on top.
+    private var track: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            let travel = max(width - knob, 1)
+            let knobX = fraction * travel
+            let fillWidth = knobX + knob / 2
+            let marks = isDiscrete ? max(Int(((range.upperBound - range.lowerBound) / step).rounded()) - 1, 0) : 9
+            ZStack(alignment: .leading) {
+                Color.clear.glassSurface(.inset, radius: trackHeight / 2)
+
+                // The gradient spans the whole track; the fill reveals it, so the
+                // colour at the knob reads the value: red low, yellow high.
+                Capsule()
+                    .fill(LinearGradient(colors: TunerTheme.warm, startPoint: .leading, endPoint: .trailing))
+                    .overlay(alignment: .top) {
+                        Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom))
+                            .frame(height: trackHeight * 0.45)
+                            .mask(Capsule().strokeBorder(lineWidth: 1))
+                    }
+                    .frame(width: width)
+                    .mask(alignment: .leading) { Rectangle().frame(width: max(fillWidth, 0)) }
+                    .tunerAnimation(TunerTheme.quick, value: dragging)
+
+                // Ticks: light inside the fill, faint ink outside it.
+                ForEach(0..<marks, id: \.self) { i in
+                    let x = knob / 2 + travel * CGFloat(i + 1) / CGFloat(marks + 1)
+                    Rectangle()
+                        .fill(x < fillWidth ? Color.white.opacity(0.6) : TunerTheme.inkBase.opacity(0.12))
+                        .frame(width: 1.5, height: trackHeight * 0.55)
+                        .offset(x: x - 0.75)
+                }
+
+                ChromeKnob(size: knob)
+                    .scaleEffect(dragging ? 1.08 : (hovering ? 1.04 : 1))
+                    .offset(x: knobX)
+                    .tunerMotion(TunerTheme.liquid, value: dragging)
+                    .tunerMotion(TunerTheme.quick, value: hovering)
+                    .allowsHitTesting(false)
+            }
+            .frame(height: trackHeight)
+            .frame(maxHeight: .infinity, alignment: .center)
+            // The whole track stretches past its ends, like a rubber band.
+            .scaleEffect(x: 1 + abs(stretch) / max(width, 1), y: 1, anchor: stretch > 0 ? .leading : .trailing)
+            .tunerMotion(.spring(response: 0.35, dampingFraction: 0.85), value: stretch)
+            .contentShape(Rectangle())
+            .gesture(dragGesture(width: width))
+            .background(ScrollWheelCatcher { delta in
+                guard hovering, !editing else { return }
+                nudge(by: delta > 0 ? -1 : 1)
+            })
+        }
+        .frame(minWidth: 60)
     }
 
     @ViewBuilder
@@ -209,8 +205,9 @@ public struct FillSliderRow: View {
     }
 
     private func setValue(fromX x: CGFloat, width: CGFloat, snapping: Bool) {
-        guard width > 0 else { return }
-        var f = Double(min(max(x / width, 0), 1))
+        let travel = width - knob
+        guard travel > 0 else { return }
+        var f = Double(min(max((x - knob / 2) / travel, 0), 1))
         if snapping {
             if isDiscrete {
                 // fall through to step rounding below

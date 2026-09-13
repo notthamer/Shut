@@ -50,9 +50,9 @@ public struct EasingEditor: View {
                     .onSubmit(commitText)
                     .onChange(of: textFocused) { _, f in if !f { commitText() } }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 14)
             .frame(height: TunerTheme.rowHeight)
-            .glassSurface(.inset)
+            .glassSurface(.raised, radius: TunerTheme.rowHeight / 2)
         }
         .onAppear { syncText() }
         .onChange(of: curve) { _, _ in if !textFocused { syncText() } }

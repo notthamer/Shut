@@ -19,10 +19,9 @@ public struct ActionRow: View {
                 .foregroundStyle(theme.textPrimary)
                 .frame(maxWidth: .infinity)
                 .frame(height: TunerTheme.rowHeight)
-                .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                    .fill(hover ? theme.raisedHover : .clear))
-                .glassSurface(.raised)
-                .contentShape(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous))
+                .background(Capsule().fill(hover ? theme.raisedHover : .clear))
+                .glassSurface(.raised, radius: TunerTheme.rowHeight / 2)
+                .contentShape(Capsule())
         }
         .buttonStyle(PressScaleStyle())
         .onHover { hover = $0 }

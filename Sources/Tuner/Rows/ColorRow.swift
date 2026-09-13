@@ -30,10 +30,10 @@ public struct ColorRow: View {
                 .onHover { swatchHover = $0 }
                 .tunerMotion(TunerTheme.quick, value: swatchHover)
         }
-        .padding(.leading, 12)
+        .padding(.leading, 14)
         .padding(.trailing, 8)
         .frame(height: TunerTheme.rowHeight)
-        .glassSurface(.inset)
+        .glassSurface(.raised, radius: TunerTheme.rowHeight / 2)
         .help(help)
     }
 }

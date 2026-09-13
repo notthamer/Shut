@@ -28,8 +28,8 @@ final class MotionTokensTests: XCTestCase {
     func testAccessibilityFlagsChangeSurfaces() {
         let glass = TunerTheme(reduceTransparency: false, increaseContrast: false)
         let solid = TunerTheme(reduceTransparency: true, increaseContrast: true)
-        XCTAssertLessThan(NSColor(glass.glassTint).alphaComponent, 0.7, "glass lets the blur through")
-        XCTAssertGreaterThan(NSColor(solid.glassTint).alphaComponent, 0.95, "Reduce Transparency makes the panel solid")
+        XCTAssertLessThan(NSColor(glass.glassTint).alphaComponent, 1, "the cream lets a hint of the desktop through")
+        XCTAssertEqual(NSColor(solid.glassTint).alphaComponent, 1, "Reduce Transparency makes the panel solid")
         XCTAssertEqual(NSColor(solid.glassSheen).alphaComponent, 0, "no sheen on a solid panel")
         XCTAssertGreaterThan(NSColor(solid.glassEdgeDark).alphaComponent, NSColor(glass.glassEdgeDark).alphaComponent,
                              "Increase Contrast strengthens the edge")

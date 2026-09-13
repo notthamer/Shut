@@ -47,27 +47,29 @@ public struct GlassSurface: ViewModifier {
         case .raised, .tinted:
             content
                 .background(shape.fill(fill))
-                .overlay(shape.strokeBorder(theme.glassEdgeDark, lineWidth: 1))
-                .overlay(alignment: .top) { lightCatch(height: 12, alpha: 0.85) }
-                .shadow(color: theme.shadowSoft, radius: 6, y: 2)
+                .overlay(shape.strokeBorder(theme.glassEdgeDark.opacity(0.7), lineWidth: 1))
+                .overlay(alignment: .top) { lightCatch(height: 12, alpha: 0.9) }
+                // Soft clay: dark to the bottom-right, light to the top-left.
+                .shadow(color: theme.shadowSoft, radius: 9, x: 4, y: 6)
+                .shadow(color: theme.shadowLight, radius: 7, x: -4, y: -4)
         case .inset:
             content
                 .background(shape.fill(fill))
-                // Inner shadow: a soft dark band inside the top edge.
+                // Inner shadow from the top-left, the lit side of the cut.
                 .overlay(
                     shape.strokeBorder(
-                        LinearGradient(colors: [theme.insetShadow, .clear], startPoint: .top, endPoint: .bottom),
-                        lineWidth: 3)
+                        LinearGradient(colors: [theme.insetShadow, .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 4)
                     .allowsHitTesting(false)
                 )
-                // Light edge along the bottom, where the cut catches the light.
-                .overlay(alignment: .bottom) {
-                    shape.fill(LinearGradient(colors: [.clear, theme.glassEdgeLight], startPoint: .top, endPoint: .bottom))
-                        .frame(height: 10)
-                        .mask(shape.strokeBorder(lineWidth: 1))
-                        .allowsHitTesting(false)
-                }
-                .overlay(shape.strokeBorder(theme.glassEdgeDark.opacity(0.8), lineWidth: 1))
+                // Light along the bottom-right rim.
+                .overlay(
+                    shape.strokeBorder(
+                        LinearGradient(colors: [.clear, theme.glassEdgeLight], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 1.5)
+                    .allowsHitTesting(false)
+                )
+                .overlay(shape.strokeBorder(theme.glassEdgeDark.opacity(0.6), lineWidth: 1))
         }
     }
 
@@ -118,6 +120,30 @@ public struct GlassBead: View {
             .shadow(color: theme.shadowContact, radius: 1, y: 1)
             .shadow(color: theme.shadowSoft, radius: 4, y: 2)
             .frame(width: size, height: size)
+    }
+}
+
+/// A brushed-chrome knob: a cool silver gradient, a bright rim on the lit
+/// side, a small highlight, and a real shadow so it sits above the track.
+public struct ChromeKnob: View {
+    let size: CGFloat
+    public init(size: CGFloat = 24) { self.size = size }
+    public var body: some View {
+        ZStack {
+            Circle().fill(LinearGradient(colors: [
+                Color(red: 0.98, green: 0.98, blue: 0.99),
+                Color(red: 0.86, green: 0.87, blue: 0.90),
+                Color(red: 0.76, green: 0.78, blue: 0.82),
+            ], startPoint: .top, endPoint: .bottom))
+            Circle().strokeBorder(LinearGradient(colors: [Color.white, Color(red: 0.70, green: 0.72, blue: 0.76)],
+                                                 startPoint: .top, endPoint: .bottom), lineWidth: 1)
+            Circle().fill(RadialGradient(colors: [Color.white.opacity(0.9), .clear],
+                                         center: UnitPoint(x: 0.35, y: 0.28), startRadius: 0, endRadius: size * 0.45))
+            Circle().strokeBorder(TunerTheme.inkBase.opacity(0.18), lineWidth: 0.5)
+        }
+        .frame(width: size, height: size)
+        .shadow(color: TunerTheme.inkBase.opacity(0.28), radius: size * 0.25, y: size * 0.16)
+        .shadow(color: TunerTheme.inkBase.opacity(0.12), radius: 1, y: 1)
     }
 }
 

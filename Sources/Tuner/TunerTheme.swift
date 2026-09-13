@@ -38,8 +38,12 @@ public struct TunerTheme {
 
     // MARK: Glass (the panel itself; PanelChrome draws these in AppKit)
 
-    /// White tint over the behind-window blur. Solid when transparency is reduced.
-    public var glassTint: Color { Color.white.opacity(reduceTransparency ? 0.96 : 0.58) }
+    /// The panel's cream (#F8F6F2): warm white, nearly opaque, so the desktop is
+    /// only a hint behind it. Fully solid when transparency is reduced.
+    public static let cream = Color(red: 0.973, green: 0.965, blue: 0.949)
+    /// A deeper cream (#ECE8E2) for wells cut into the panel.
+    public static let creamDeep = Color(red: 0.925, green: 0.910, blue: 0.886)
+    public var glassTint: Color { reduceTransparency ? Self.cream : Self.cream.opacity(0.95) }
     /// The specular sheen, a radial highlight in the top-left.
     public var glassSheen: Color { reduceTransparency ? .clear : Color.white.opacity(0.55) }
     public var glassEdgeLight: Color { Color.white.opacity(0.7) }
@@ -48,18 +52,28 @@ public struct TunerTheme {
     // MARK: Surfaces on glass
 
     /// Buttons, cards, menus: a lighter pane that stands proud of the panel.
-    public var raised: Color { Color.white.opacity(0.55) }
-    public var raisedHover: Color { Color.white.opacity(0.72) }
+    public var raised: Color { Color.white.opacity(0.85) }
+    public var raisedHover: Color { Color.white }
     /// Slider tracks, editors, wells: a pane cut into the panel.
-    public var inset: Color { Color.white.opacity(0.35) }
-    public var insetShadow: Color { Self.inkBase.opacity(0.10) }
+    public var inset: Color { Self.creamDeep.opacity(0.9) }
+    public var insetShadow: Color { Self.inkBase.opacity(0.14) }
+    /// Soft-clay depth: a dark shadow to the bottom-right and a light one to
+    /// the top-left, the way a raised pane sits under a lamp.
+    public var shadowLight: Color { Color.white.opacity(0.9) }
+    /// Slider fills run warm, from red through orange to yellow, so the colour
+    /// under the knob says how far along it is.
+    public static let warm: [Color] = [
+        Color(red: 0.90, green: 0.22, blue: 0.12),
+        Color(red: 0.96, green: 0.54, blue: 0.12),
+        Color(red: 1.0, green: 0.83, blue: 0.29),
+    ]
     /// Slider fills and selection: sky over glass (#DCEBFF).
     public var tintSky: Color { Color(red: 0.863, green: 0.922, blue: 1.0).opacity(0.7) }
     /// A deeper sky for the fill while it is being dragged.
     public var tintSkyActive: Color { Color(red: 0.776, green: 0.867, blue: 1.0).opacity(0.85) }
     /// The permission card (#FFE9C7).
     public var tintAmber: Color { Color(red: 1.0, green: 0.914, blue: 0.78).opacity(0.8) }
-    public var shadowSoft: Color { Self.inkBase.opacity(0.08) }
+    public var shadowSoft: Color { Self.inkBase.opacity(0.10) }
     public var shadowContact: Color { Self.inkBase.opacity(0.10) }
     /// Hairline between sections of one panel.
     public var hairline: Color { Self.inkBase.opacity(increaseContrast ? 0.2 : 0.06) }
@@ -71,7 +85,7 @@ public struct TunerTheme {
     public var dropdown: Color { .white }
     public var surface: Color { inset }
     public var surfaceHover: Color { Color.white.opacity(0.5) }
-    public var surfaceActive: Color { tintSky }
+    public var surfaceActive: Color { tintAmber }
     public var surfaceSubtle: Color { hairline }
     public var border: Color { glassEdgeDark }
     public var borderHover: Color { tintSkyActive }

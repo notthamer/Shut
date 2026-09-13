@@ -113,7 +113,7 @@ struct StyleCard: View {
         }
         .background(RoundedRectangle(cornerRadius: Self.radius, style: .continuous).fill(hover && !isSelected ? theme.raisedHover : .clear))
         .clipShape(RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
-        .glassSurface(isSelected ? .tinted(theme.tintSky) : .raised, radius: Self.radius)
+        .glassSurface(isSelected ? .tinted(theme.tintAmber) : .raised, radius: Self.radius)
         .overlay(RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
             .strokeBorder(TunerTheme.inkBase.opacity(isSelected ? 0.35 : 0), lineWidth: 1.5))
         .contentShape(RoundedRectangle(cornerRadius: Self.radius, style: .continuous))

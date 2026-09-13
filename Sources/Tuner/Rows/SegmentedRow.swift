@@ -38,7 +38,7 @@ public struct SegmentedRow: View {
                             .background {
                                 if index == selection {
                                     Capsule()
-                                        .fill(theme.raisedHover)
+                                        .fill(theme.tintAmber)
                                         .overlay(Capsule().strokeBorder(theme.glassEdgeDark, lineWidth: 1))
                                         .overlay(alignment: .top) {
                                             Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.9), .clear], startPoint: .top, endPoint: .bottom))
@@ -63,10 +63,10 @@ public struct SegmentedRow: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { stretch = 1 }
             }
         }
-        .padding(.leading, 12)
+        .padding(.leading, 14)
         .padding(.trailing, 4)
         .frame(height: TunerTheme.rowHeight)
-        .glassSurface(.inset)
+        .glassSurface(.raised, radius: TunerTheme.rowHeight / 2)
         .focusable()
         .focusEffectDisabled()
         .onKeyPress(phases: .down) { press in
