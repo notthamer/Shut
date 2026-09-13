@@ -35,7 +35,11 @@ is described in `README.md` and `docs/ARCHITECTURE.md`.
    text is ink (`ink`, `inkLabel`, `inkTertiary`); the only tints are sky
    (selection, fills) and amber (permission). Plain-English `help` on every
    control. Reduce Transparency makes the glass solid, Increase Contrast darkens
-   ink and edges: both go through the theme, never hard-coded colours.
+   ink and edges: both go through the theme, never hard-coded colours. Text is
+   Apfel Grotezk via `TunerTheme.font(_:weight:)` (bundled in
+   `Sources/Tuner/Fonts/`, OFL, registered by `TunerFonts` at first use);
+   numbers use `TunerTheme.value` (system monospaced). SF Symbols keep
+   `.system` fonts, which set their weight.
    **Motion rules** (from Emil Kowalski's design-engineering skills, credited in
    the README): keyboard-initiated actions never animate (⌃⌥T, Escape, arrow
    nudges); everything else is critically damped (`TunerTheme.quick`/`spring`),

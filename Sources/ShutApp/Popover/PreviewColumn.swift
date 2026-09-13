@@ -41,7 +41,7 @@ struct PreviewColumn: View {
             VStack(alignment: .leading, spacing: 4) {
                 Eyebrow("Selected")
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(model.registry.current.displayName).font(.system(size: 14, weight: .semibold)).tracking(-0.2).foregroundStyle(theme.textRoot)
+                    Text(model.registry.current.displayName).font(TunerTheme.font(15, weight: .semibold)).tracking(-0.2).foregroundStyle(theme.textRoot)
                     if let badge = model.registry.current.badge {
                         Text(badge)
                             .font(TunerTheme.captionSmall).tracking(TunerTheme.captionSmallTracking)
@@ -50,7 +50,7 @@ struct PreviewColumn: View {
                             .background(Capsule().fill(theme.surfaceActive))
                     }
                 }
-                Text(model.registry.current.summary).font(.system(size: 11)).foregroundStyle(theme.textLabel)
+                Text(model.registry.current.summary).font(TunerTheme.font(11.5)).foregroundStyle(theme.textLabel)
                     .lineSpacing(1.5)
                     .fixedSize(horizontal: false, vertical: true)
             }

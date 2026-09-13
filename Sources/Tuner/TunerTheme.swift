@@ -97,21 +97,25 @@ public struct TunerTheme {
     public static let paddingV: CGFloat = 10
 
     // MARK: Fonts
+    //
+    // Text is Apfel Grotezk (see TunerFonts); numbers are the system monospaced
+    // face so values line up while they change.
 
-    public static let label = Font.system(size: 13, weight: .medium)
+    public static func font(_ size: CGFloat, weight: Font.Weight = .regular) -> Font { TunerFonts.font(size, weight: weight) }
+    public static var label: Font { font(13, weight: .medium) }
     public static let value = Font.system(size: 13, weight: .medium, design: .monospaced)
-    public static let rootTitle = Font.system(size: 15, weight: .semibold)
-    public static let folderTitle = Font.system(size: 13, weight: .semibold)
-    public static let caption = Font.system(size: 11, weight: .medium)
+    public static var rootTitle: Font { font(16, weight: .semibold) }
+    public static var folderTitle: Font { font(13, weight: .semibold) }
+    public static var caption: Font { font(11, weight: .medium) }
     /// The smallest text on any surface: 10 pt is the macOS floor, and small
     /// text wants a touch of positive tracking to stay legible.
-    public static let captionSmall = Font.system(size: 10, weight: .medium)
+    public static var captionSmall: Font { font(10, weight: .medium) }
     public static let captionSmallTracking: CGFloat = 0.2
     /// Names under thumbnails and similar 11-pt labels.
-    public static let cardTitle = Font.system(size: 11, weight: .medium)
+    public static var cardTitle: Font { font(11, weight: .medium) }
     public static let cardTitleTracking: CGFloat = 0.1
     /// Quiet uppercase section label.
-    public static let eyebrow = Font.system(size: 10.5, weight: .semibold)
+    public static var eyebrow: Font { font(10.5, weight: .semibold) }
     public static let eyebrowTracking: CGFloat = 0.6
 
     // MARK: Motion

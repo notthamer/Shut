@@ -88,7 +88,8 @@ app.shut.mac` clears it.
 One panel, two ways in. The whole interface is light liquid glass: a frosted
 pane over your desktop with a soft sheen, controls that sit on it as raised or
 cut-in glass, and knobs that settle with a little give. It stays light in dark
-mode on purpose, and goes solid when Reduce Transparency is on.
+mode on purpose, and goes solid when Reduce Transparency is on. Labels are set in
+Apfel Grotezk; numbers stay monospaced so they hold still while they change.
 
 - **Menu bar.** Left click the icon for the panel as a popover. It closes when you
   click away or press Escape. Right click for a plain menu (pause, style, presets,
@@ -296,6 +297,9 @@ the version.
   shape. License in `THIRD_PARTY_LICENSES.md`.
 - [DialKit](https://github.com/joshpuckett/dialkit), MIT © 2026 Josh Puckett: the
   design of the tuning panel. No code was copied; the name is not used in code.
+- [Apfel Grotezk](https://github.com/collletttivo/apfel-grotezk) by Collletttivo, SIL
+  Open Font License 1.1: the typeface every label is set in. Bundled with its
+  license in `Sources/Tuner/Fonts/`.
 - [Emil Kowalski's skills](https://github.com/emilkowalski/skills), MIT: the motion
   rules the interface follows (easing, durations, springs, press feedback, reduced
   motion), translated from the web to SwiftUI and AppKit. Guidance only, no code.

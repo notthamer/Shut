@@ -45,6 +45,7 @@ let package = Package(
         // The tuning panel. Zero dependencies on the rest of the project.
         .target(
             name: "Tuner",
+            resources: [.copy("Fonts")],
             linkerSettings: [.linkedFramework("AppKit"), .linkedFramework("SwiftUI")]
         ),
 
