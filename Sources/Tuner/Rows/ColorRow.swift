@@ -24,14 +24,16 @@ public struct ColorRow: View {
             ColorPicker("", selection: Binding(get: { Color(color) }, set: { color = TunerColor($0) }), supportsOpacity: true)
                 .labelsHidden()
                 .frame(width: 30, height: 20)
+                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(theme.glassEdgeDark, lineWidth: 1))
+                .shadow(color: theme.shadowSoft, radius: 3, y: 1)
                 .scaleEffect(swatchHover ? 1.08 : 1)
                 .onHover { swatchHover = $0 }
-                .tunerAnimation(TunerTheme.quick, value: swatchHover)
+                .tunerMotion(TunerTheme.quick, value: swatchHover)
         }
         .padding(.leading, 12)
         .padding(.trailing, 8)
         .frame(height: TunerTheme.rowHeight)
-        .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.surface))
+        .glassSurface(.inset)
         .help(help)
     }
 }

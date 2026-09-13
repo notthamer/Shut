@@ -45,9 +45,10 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
             if let flash {
                 Text(flash)
                     .font(TunerTheme.caption)
-                    .foregroundStyle(theme.panel)
+                    .foregroundStyle(Color.white)
                     .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Capsule().fill(theme.textRoot))
+                    .background(Capsule().fill(TunerTheme.inkBase))
+                    .shadow(color: TunerTheme.inkBase.opacity(0.22), radius: 6, y: 3)
                     .padding(.top, 52)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -76,8 +77,7 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
         .padding(.horizontal, TunerTheme.paddingH)
         .padding(.top, TunerTheme.paddingV)
         .padding(.bottom, TunerTheme.paddingV)
-        .background(theme.elevated)
-        .overlay(alignment: .bottom) { Rectangle().fill(theme.border).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(theme.hairline).frame(height: 1) }
     }
 
     private var footer: some View {
@@ -153,7 +153,7 @@ struct FolderHeaderStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                .fill(configuration.isPressed ? theme.surface : .clear)
+                .fill(configuration.isPressed ? theme.inset : .clear)
                 .padding(.horizontal, -6))
             .tunerAnimation(TunerTheme.press, value: configuration.isPressed)
     }
@@ -173,10 +173,15 @@ struct CopyButton: View {
             Image(systemName: copied ? "checkmark" : "doc.on.clipboard")
                 .contentTransition(.symbolEffect(.replace))
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(theme.panel)
+                .foregroundStyle(Color.white)
                 .frame(width: TunerTheme.rowHeight, height: TunerTheme.rowHeight)
-                .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.textRoot))
-                .contentShape(Rectangle())
+                .background(Circle().fill(TunerTheme.inkBase))
+                .overlay(alignment: .top) {
+                    Circle().fill(LinearGradient(colors: [Color.white.opacity(0.28), .clear], startPoint: .top, endPoint: .center))
+                        .mask(Circle().strokeBorder(lineWidth: 1.5))
+                }
+                .shadow(color: TunerTheme.inkBase.opacity(0.22), radius: 6, y: 3)
+                .contentShape(Circle())
         }
         .buttonStyle(PressScaleStyle())
         .keyboardShortcut("c", modifiers: [.command, .shift])
@@ -250,8 +255,9 @@ struct VersionsMenu<P: TunableParameters>: View {
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity)
             .frame(height: TunerTheme.rowHeight)
-            .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(hover ? theme.surfaceHover : theme.surface))
-            .contentShape(Rectangle())
+            .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(hover ? theme.raisedHover : .clear))
+            .glassSurface(.raised)
+            .contentShape(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous))
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -276,7 +282,7 @@ public struct TunerFoldersView<P: TunableParameters>: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 10) {
             ForEach(Array(P.schema.folders.enumerated()), id: \.offset) { index, folder in
                 FolderView(title: folder.name,
                            isOpen: Binding(get: { open.contains(index) },
@@ -339,8 +345,9 @@ struct FolderView<Content: View>: View {
                     .padding(.bottom, 10)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            Rectangle().fill(theme.surfaceSubtle).frame(height: 1)
         }
+        .padding(.horizontal, 10)
+        .glassSurface(.raised, radius: TunerTheme.cardRadius)
         .tunerMotion(TunerTheme.easeOut(0.22), value: isOpen)
     }
 }

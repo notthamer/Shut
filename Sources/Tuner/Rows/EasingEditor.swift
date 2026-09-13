@@ -36,6 +36,7 @@ public struct EasingEditor: View {
 
             EasingCanvas(curve: $curve)
                 .aspectRatio(256.0 / 180.0, contentMode: .fit)
+                .glassSurface(.inset)
 
             HStack(spacing: 8) {
                 Text("Ease").font(TunerTheme.label).foregroundStyle(theme.textLabel)
@@ -51,7 +52,7 @@ public struct EasingEditor: View {
             }
             .padding(.horizontal, 12)
             .frame(height: TunerTheme.rowHeight)
-            .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.surface))
+            .glassSurface(.inset)
         }
         .onAppear { syncText() }
         .onChange(of: curve) { _, _ in if !textFocused { syncText() } }
@@ -103,10 +104,10 @@ struct EasingCanvas: View {
                 ForEach(0..<2, id: \.self) { i in
                     let p = i == 0 ? fit.project(curve.x1, curve.y1) : fit.project(curve.x2, curve.y2)
                     let active = dragging == i || hoverHandle == i
-                    Circle()
-                        .strokeBorder(theme.textLabel, lineWidth: 1.5)
-                        .background(Circle().fill(active ? theme.textPrimary : theme.surface))
-                        .frame(width: 10, height: 10)
+                    GlassBead(size: 12)
+                        .overlay(Circle().fill(TunerTheme.inkBase).frame(width: 4, height: 4).opacity(active ? 1 : 0))
+                        .scaleEffect(active ? 1.15 : 1)
+                        .tunerMotion(TunerTheme.liquid, value: active)
                         .frame(width: 24, height: 24)
                         .contentShape(Circle())
                         .position(p)

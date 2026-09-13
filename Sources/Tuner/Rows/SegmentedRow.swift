@@ -10,6 +10,8 @@ public struct SegmentedRow: View {
 
     @Environment(\.tunerTheme) private var theme
     @Namespace private var pill
+    /// The pill stretches a little along its travel and settles: liquid.
+    @State private var stretch: CGFloat = 1
 
     public init(_ label: String, options: [String], selection: Binding<Int>, help: String = "") {
         self.label = label
@@ -35,8 +37,16 @@ public struct SegmentedRow: View {
                             .padding(.vertical, 6)
                             .background {
                                 if index == selection {
-                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                        .fill(theme.surfaceActive)
+                                    Capsule()
+                                        .fill(theme.raisedHover)
+                                        .overlay(Capsule().strokeBorder(theme.glassEdgeDark, lineWidth: 1))
+                                        .overlay(alignment: .top) {
+                                            Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.9), .clear], startPoint: .top, endPoint: .bottom))
+                                                .frame(height: 8)
+                                                .mask(Capsule().strokeBorder(lineWidth: 1))
+                                        }
+                                        .shadow(color: theme.shadowSoft, radius: 4, y: 2)
+                                        .scaleEffect(x: stretch, y: 1)
                                         .matchedGeometryEffect(id: "pill", in: pill)
                                 }
                             }
@@ -46,12 +56,17 @@ public struct SegmentedRow: View {
                 }
             }
             .padding(2)
-            .tunerMotion(TunerTheme.quick, value: selection)
+            .tunerMotion(TunerTheme.liquid, value: selection)
+            .tunerMotion(TunerTheme.liquid, value: stretch)
+            .onChange(of: selection) { _, _ in
+                stretch = 1.12
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { stretch = 1 }
+            }
         }
         .padding(.leading, 12)
-        .padding(.trailing, 2)
+        .padding(.trailing, 4)
         .frame(height: TunerTheme.rowHeight)
-        .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.surface))
+        .glassSurface(.inset)
         .focusable()
         .focusEffectDisabled()
         .onKeyPress(phases: .down) { press in

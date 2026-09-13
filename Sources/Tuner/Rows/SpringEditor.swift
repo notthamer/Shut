@@ -99,17 +99,17 @@ struct SpringPlot: View {
             for i in 1..<3 {
                 var v = Path(); v.move(to: CGPoint(x: size.width * CGFloat(i) / 3, y: 0)); v.addLine(to: CGPoint(x: size.width * CGFloat(i) / 3, y: size.height))
                 var h = Path(); h.move(to: CGPoint(x: 0, y: size.height * CGFloat(i) / 3)); h.addLine(to: CGPoint(x: size.width, y: size.height * CGFloat(i) / 3))
-                context.stroke(v, with: .color(theme.border), lineWidth: 1)
-                context.stroke(h, with: .color(theme.border), lineWidth: 1)
+                context.stroke(v, with: .color(theme.hairline), lineWidth: 1)
+                context.stroke(h, with: .color(theme.hairline), lineWidth: 1)
             }
             let targetY = size.height - (CGFloat((0 - lo) / max(hi - lo, 1e-6)) * size.height * 0.6 + size.height * 0.2)
             var baseline = Path(); baseline.move(to: CGPoint(x: 0, y: targetY)); baseline.addLine(to: CGPoint(x: size.width, y: targetY))
-            context.stroke(baseline, with: .color(theme.borderHover), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            context.stroke(baseline, with: .color(theme.inkTertiary), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
 
             var path = Path(); path.move(to: point(0))
             for i in 1..<samples.count { path.addLine(to: point(i)) }
-            context.stroke(path, with: .color(theme.textLabel), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            context.stroke(path, with: .color(theme.ink), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
         }
-        .background(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).fill(theme.surface))
+        .glassSurface(.inset)
     }
 }

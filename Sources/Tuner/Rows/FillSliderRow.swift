@@ -67,16 +67,25 @@ public struct FillSliderRow: View {
     public var body: some View {
         GeometryReader { geo in
             let width = geo.size.width
-            let handleX = max(min(fraction * width - 1.5, width - 4), 1)
+            let bead: CGFloat = 14
+            let handleX = max(min(fraction * width - bead / 2, width - bead - 2), 2)
             // The handle ducks when it would sit on top of the label or the value.
-            let collides = handleX < labelWidth + 18 || handleX > width - valueWidth - 18
+            let collides = handleX < labelWidth + 18 || handleX > width - valueWidth - 18 - bead
             ZStack(alignment: .leading) {
                 // Track and fill stretch together past the ends, like a rubber band.
                 ZStack(alignment: .leading) {
+                    Color.clear
+                        .glassSurface(.inset)
+                        .opacity(hovering || dragging ? 1 : 0.85)
+                    // The fill is a pane of sky glass with its own light catch.
                     RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                        .fill(hovering || dragging ? theme.surfaceHover : theme.surface)
-                    RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
-                        .fill(dragging ? theme.borderHover : theme.surfaceActive)
+                        .fill(dragging ? theme.tintSkyActive : theme.tintSky)
+                        .overlay(alignment: .top) {
+                            RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous)
+                                .fill(LinearGradient(colors: [Color.white.opacity(0.8), .clear], startPoint: .top, endPoint: .bottom))
+                                .frame(height: 10)
+                                .mask(RoundedRectangle(cornerRadius: TunerTheme.rowRadius, style: .continuous).strokeBorder(lineWidth: 1))
+                        }
                         .frame(width: max(fraction * width, 0))
                         .tunerAnimation(TunerTheme.quick, value: dragging)
                 }
@@ -88,22 +97,22 @@ public struct FillSliderRow: View {
                 let marks = isDiscrete ? max(Int(((range.upperBound - range.lowerBound) / step).rounded()) - 1, 0) : 9
                 ForEach(0..<marks, id: \.self) { i in
                     Rectangle()
-                        .fill(theme.borderHover)
+                        .fill(TunerTheme.inkBase.opacity(0.12))
                         .frame(width: 1, height: 8)
                         .offset(x: width * CGFloat(i + 1) / CGFloat(marks + 1))
                         .opacity(hovering || dragging ? 1 : 0)
                 }
                 .tunerAnimation(TunerTheme.easeOut(0.16), value: hovering || dragging)
 
-                // Handle
-                Capsule()
-                    .fill(theme.textPrimary)
-                    .frame(width: 3, height: min(20, height - 12))
-                    .scaleEffect(x: hovering || dragging ? 1 : 0.25, y: collides ? 0.75 : 1)
+                // Handle: a glass bead riding the fill's edge, shown while the
+                // pointer is on the row.
+                GlassBead(size: bead)
+                    .scaleEffect(hovering || dragging ? 1 : 0.6)
                     .offset(x: handleX)
-                    .opacity(collides ? handleOpacity * 0.2 : handleOpacity)
-                    .tunerMotion(TunerTheme.quick, value: hovering)
-                    .tunerMotion(TunerTheme.quick, value: collides)
+                    .opacity(collides ? handleOpacity * 0.25 : handleOpacity)
+                    .tunerMotion(TunerTheme.liquid, value: hovering || dragging)
+                    .tunerAnimation(TunerTheme.quick, value: collides)
+                    .allowsHitTesting(false)
 
                 HStack(spacing: 8) {
                     Text(label)
