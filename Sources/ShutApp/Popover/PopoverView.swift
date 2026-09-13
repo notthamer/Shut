@@ -182,7 +182,7 @@ struct QuietButton: View {
 struct MarkGlyph: View {
     let size: CGFloat
     var body: some View {
-        if let mark = AppAssets.mark {
+        if let mark = AppAssets.markCropped {
             LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing)
                 .mask(Image(nsImage: mark).resizable().interpolation(.high).aspectRatio(contentMode: .fit))
                 .frame(width: size, height: size)
