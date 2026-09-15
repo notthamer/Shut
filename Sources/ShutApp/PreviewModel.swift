@@ -85,7 +85,15 @@ public final class PreviewModel: ObservableObject {
     /// the drawn placeholder so the preview always shows something.
     public func capture() {
         guard !isCapturing else { return }
-        guard ScreenRecordingPermission.isGranted else {
+        capture(preferPlaceholder: false)
+    }
+
+    /// The drawn stand-in instead of a real capture. Tests use it so a machine
+    /// that happens to have Screen Recording granted renders the same picture.
+    public func capturePlaceholder() { capture(preferPlaceholder: true) }
+
+    private func capture(preferPlaceholder: Bool) {
+        if preferPlaceholder || !ScreenRecordingPermission.isGranted {
             if let placeholder = PlaceholderDesktop.image(), (try? renderer.setSnapshot(placeholder)) != nil {
                 snapshotImage = placeholder
                 backdropImage = placeholder   // already small

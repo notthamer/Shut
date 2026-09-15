@@ -22,7 +22,7 @@ final class PopoverSnapshotTests: XCTestCase {
         let thumbnails = try TransitionThumbnailRenderer()
         let model = PopoverModel(settings: settings, registry: registry, preview: preview, sensor: sensor, thumbnails: thumbnails)
         registry.captureAvailable = false   // exercise the permission card
-        preview.capture()                    // no permission in tests → placeholder desktop
+        preview.capturePlaceholder()         // the drawn desktop, whatever this machine's permission
         XCTAssertTrue(preview.hasSnapshot)
         XCTAssertTrue(preview.usesPlaceholder)
 

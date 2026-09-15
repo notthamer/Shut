@@ -129,10 +129,11 @@ final class PopoverController {
     /// Click anywhere outside, or Escape, closes the panel, like a menu.
     private func installMonitors() {
         removeMonitors()
-        if let global = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+        let global = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in
             Task { @MainActor in self?.close() }
-        } { monitors.append(global) }
-        if let local = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown]) { [weak self] event in
+        })
+        if let global { monitors.append(global) }
+        let local = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown], handler: { [weak self] event in
             guard let self, let panel = self.panel else { return event }
             if event.type == .keyDown, event.keyCode == 53 { self.close(animated: false); return nil }   // Escape
             if event.type != .keyDown, event.window !== panel {
@@ -141,7 +142,8 @@ final class PopoverController {
                 self.close()
             }
             return event
-        } { monitors.append(local) }
+        })
+        if let local { monitors.append(local) }
     }
 
     private func removeMonitors() {

@@ -86,7 +86,8 @@ final class TransitionKitTests: XCTestCase {
         XCTAssertLessThan(minimum, -0.02, "damping below 1 must overshoot past the target")
     }
 
-    func testNotchGeometryOnCurrentScreen() {
+    func testNotchGeometryOnCurrentScreen() throws {
+        try XCTSkipUnless(BuiltInDisplay.screen != nil, "No built-in display on this machine")
         let geometry = NotchDetector.geometry(for: BuiltInDisplay.screen)
         XCTAssertGreaterThan(geometry.sinkPoint.x, 0)
         XCTAssertGreaterThan(geometry.sinkPoint.y, 0)

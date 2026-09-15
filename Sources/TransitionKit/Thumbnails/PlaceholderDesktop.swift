@@ -14,7 +14,6 @@ public enum PlaceholderDesktop {
                                       bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) else {
             return nil
         }
-        let rect = CGRect(origin: .zero, size: size)
 
         // Wallpaper: a diagonal gradient with a soft highlight, like a stock macOS wallpaper.
         let colors: [CGColor] = dark
