@@ -19,7 +19,7 @@ from MacBooks we haven't tested on.
 
 ## Submitting a preset
 
-1. Open **Tune everything…**, dial in your look, choose **New version** to save it.
+1. Open the panel, dial in your look, then under **Presets** choose **Save as…** and name it.
 2. Press **Copy** (the JSON lands on the clipboard) or find the file in
    `~/Library/Application Support/Shut/Presets/<style>/`.
 3. Add it as `presets/<style>/<your-preset-name>.json`. The file looks like:
@@ -87,3 +87,40 @@ dependencies (Sparkle, for updates, is the one exception), never write screen co
 the overlay only ever touches the built-in display. Match the panel's visual system
 (`TunerTheme`): 36-pt rows, neutral alphas, no accent colour, help text on every
 control.
+
+## Testing
+
+`swift test` runs 69 tests: sensor decoding, the hinge fit, filter, calibration and
+band, the adaptive poll rate; offscreen renders of every style (identity at open,
+monotonic darkening, see-through masks that need no snapshot); a GPU probe of the
+uniform layout; the overlay window and the clamshell rule; the Tuner panel and the
+panel UI rasterised as images in light, window and solid form. Set
+`SHUT_FRAME_DUMP=dir` to get the PNGs. `swift test -c release --filter
+BenchmarkTests` prints per-style frame times at full resolution (about 0.5–2.5 ms
+on an M2 Pro).
+
+Before a release, by hand on a real MacBook:
+
+1. Close the lid slowly from the Desktop, from a full-screen app, and from a second
+   desktop Space. The effect plays on all three.
+2. Reopen before the screen sleeps: it reverses. Let it sleep, unlock: it pours out.
+3. Pick Shutter with Screen Recording denied: it plays anyway.
+4. Pick Fold with it denied: the orange card appears and the status line explains.
+5. Drag Speed to Fast: the effect happens in the last twenty degrees.
+6. With an external display, power and a keyboard attached, close the lid: the
+   style plays on the built-in panel, the external screen is never touched, and
+   the Mac keeps running. Open the lid: nothing plays, the panel simply returns.
+7. Fifty quick close/open cycles: nothing stuck, nothing black.
+
+Console.app, subsystem `app.shut`, shows every decision: capture, overlay placement
+(and the fallback if macOS put it on the wrong Space), poll rate changes, teardown
+reasons, and the safety rule. No pixels are ever logged.
+
+## Releases
+
+`App/Info.plist` holds the version. Bump `CFBundleShortVersionString`, push to
+`main`, and the Release workflow tests, builds, packages a DMG with a SHA-256, tags
+`v<version>`, and publishes a GitHub release. Pushes to other branches and pull
+requests run the Build workflow and attach the DMG as an artifact. Locally:
+`scripts/build.sh --zip` or `scripts/package-dmg.sh`; `scripts/version.sh` prints
+the version.

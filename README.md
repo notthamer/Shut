@@ -1,296 +1,67 @@
 # Shut.
 
-> **Demo video coming.** _Lid closes, the desktop swirls into the notch; lid opens, it pours back out._
+Ways to close your Mac.
 
-Ways to close your Mac. Shut plays a transition on the built-in display as you
-close the lid, driven live by the hinge, on whatever Space or full-screen app you
-happen to be in. Pick a style, set the speed, and tune every dial until it feels
-exactly right. Open source, MIT, built in public.
+Shut plays a little animation on your screen as you close the lid, and it follows
+the hinge. Close slowly and it crawls. Open halfway and it reverses. Unlock and
+the desktop pours back in.
 
-- **Eight styles**: Fold, the iPhone Duo close and the default; Sinkhole, original
-  to Shut; Frost; and five more.
-- **Follows the hinge**, not a timer. Close slowly and the effect crawls; open the
-  lid halfway through and it reverses.
-- **A tuning panel** for every parameter, native SwiftUI.
-- **Menu bar and Dock.** A quick popover under the menu bar icon, or the same panel
-  as a window you can move and minimize.
-- **Every Apple-silicon MacBook.** Sensor machines track the hinge; the rest play
-  the style on lid events.
+<!-- video -->
+
+**[Download for Mac](https://github.com/notthamer/shut/releases/latest)** · macOS 14 or later · Apple silicon MacBooks · Free, MIT
 
 ## Styles
 
-| Style | Needs Screen Recording | What it does |
-| --- | --- | --- |
-| **Fold** (iPhone Duo) | Yes | The default. The desktop turns against the lid, degree for degree, so it stands still while the machine folds away under it. |
-| **Sinkhole** | Yes | The desktop swirls and drains into the notch, then pours back out when you unlock. Original to Shut. |
-| **Frost** | Yes | The screen frosts over from the top edge and fades to black. |
-| **Crease** | Yes | A book fold: creases across the middle and the upper half tips away. |
-| **Recede** | Yes | Drops straight back into the dark, square to you the whole way. |
-| **Slide** | Yes | Slides down out of sight behind the hinge. |
-| **Shutter** | No | Bars close in from the top and bottom. |
-| **Fade** | No | A plain dim to black. |
+| | |
+| --- | --- |
+| **Fold** (iPhone Duo) | The desktop stands still while the machine folds away under it. The default. |
+| **Sinkhole** | Swirls into the notch, then pours back out when you unlock. |
+| **Frost** | Frosts over from the top edge and fades to black. |
+| **Crease** | A book fold across the middle. |
+| **Recede** | Drops straight back into the dark. |
+| **Slide** | Slides down behind the hinge. |
+| **Shutter** | Bars close in from the top and bottom. |
+| **Fade** | A plain dim to black. |
 
-Every style plays backwards when you open the lid, and after you unlock from
-sleep it pours back out of black.
+Pick one in the panel, set the speed, and adjust its dials if you like. Every
+dial for every style is right there, with presets you can name, copy, paste,
+import and export.
 
-## Supported hardware
+## How it works
 
-- Any Apple-silicon MacBook, M1 to current, all sizes, on macOS 14 or later.
-- Macs with a lid angle sensor (M2 and later, most M1s) track the hinge live. Macs
-  that only report open/closed play the style on a short timeline instead. Shut
-  checks what your Mac can do and says so at the top of the panel.
-- 13" models without a notch, including the 2020 M1 MacBook Air and Pro, use a small
-  virtual notch for Sinkhole. Every other style needs no notch at all.
-- Intel Macs are untested.
+- Click the menu bar icon for the panel, or open Shut from the Dock for the same
+  panel as a window.
+- Styles that redraw your desktop ask for **Screen Recording** once. Shut takes a
+  single still as the lid starts to move, keeps it in memory, and throws it away
+  when the animation ends. Nothing is saved, nothing is sent anywhere.
+- At rest it does nothing: the hinge is read once a second and no frame is drawn
+  until the lid moves. On a MacBook without a lid angle sensor, the style plays
+  when the lid closes instead of following it.
+- The effect only ever plays on the MacBook's own screen, never on a monitor.
 
-Check your sensor: `swift run lidangle-cli` prints the live angle.
-
-**External displays.** The effect plays on the MacBook's own screen and never on
-another one. With a monitor attached, closing the lid still plays the style on the
-built-in panel as it goes down; if the Mac then stays awake in clamshell mode, the
-overlay is cleared the instant the built-in display leaves, so nothing ever covers
-the external screen. Waking or unlocking in clamshell mode plays nothing. The status
-line says "on the built-in display" while a monitor is connected.
-
-## Install
+## Build it yourself
 
 ```bash
 git clone https://github.com/notthamer/shut
 cd shut
-scripts/build.sh            # → build/Shut.app
+scripts/build.sh
 open build/Shut.app
 ```
 
-Or open **`Shut.xcodeproj`** (not the folder or `Package.swift`) in Xcode, check
-that the scheme next to the Run button says **Shut**, and press Run. Releases come
-as a DMG from `scripts/package-dmg.sh`; see [Releases](#releases).
+Or open `Shut.xcodeproj` in Xcode and press Run. A build from source works the
+same as the download, minus automatic updates.
 
-**First launch.** One welcome screen, one **Enable** button, then the panel opens.
-Shut asks for nothing at launch.
+## More
 
-**Permissions.** Styles that redraw your desktop need **Screen Recording** for a
-single still captured as the lid starts to move, never a stream. The panel
-explains this only when you pick one of those styles, with an Allow and a Restart
-button (macOS checks the permission when the app starts). Until it is granted,
-those styles play as a plain fade and the status line says so. Snapshots live in
-GPU memory and are released as the transition ends. Nothing is written to disk.
+- [How the hinge is read, what it costs, and the safety rules](docs/HINGE.md)
+- [How Sinkhole works](docs/SINKHOLE.md)
+- [The Tuner, and using it in your own app](docs/TUNER.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Contributing, presets, testing, releases](CONTRIBUTING.md)
 
-**Keeping the permission across rebuilds.** macOS ties the grant to the app's
-signature. With plain "Sign to Run Locally" every build is a new identity. Add your
-Apple ID in Xcode (Settings → Accounts) and pick your Personal Team under Signing &
-Capabilities, or create `App/Local.xcconfig` with a stable identity. See
-`App/Signing.xcconfig`. If a stale grant sticks, `tccutil reset ScreenCapture
-app.shut.mac` clears it.
-
-## Interface
-
-One panel, two ways in. The interface is an editorial broadsheet: bone paper
-over a faint blur of your desktop, black ink, one-point borders instead of
-shadows, floating pills, a light serif for headlines, numbered chapters in mono,
-lime for selection and saffron for warnings, and the spectrum once, as a thin
-line under the header. Motion changes colour and opacity in 0.2 s and never
-position. It stays light in dark mode on purpose, and goes solid when Reduce
-Transparency is on. Headlines are Playfair Display, labels Apfel Grotezk, and
-numbers monospaced so they hold still while they change.
-
-- **Menu bar.** Left click the icon for the panel as a popover. It closes when you
-  click away or press Escape. Right click for a plain menu (pause, style, presets,
-  Tuner, permission, launch at login, quit).
-- **Dock.** Click the Dock icon, the Dock menu's **Open Shut**, or the window button
-  in the popover's header for the same panel as a window: traffic lights, drag it by
-  its background, ⌘M minimizes it to the Dock, ⌘W closes it, and it remembers where
-  it was. **In Dock** in the footer hides the Dock icon if you want Shut in the menu
-  bar only (it still appears while a window is open).
-
-Inside the panel:
-
-- **Preview** on the left plays the chosen style on a snapshot of your desktop (a
-  drawn stand-in until Screen Recording is granted). Drag the Lid scrubber to move
-  the lid by hand, or **Play** to watch the close and the opening in the preview.
-- **Style** gallery of live thumbnails, rendered by the real shaders on your desktop.
-- **Speed**: how much of the lid's travel the effect uses. Fast plays in the last
-  twenty degrees; slow spreads it over the whole close.
-- **Adjust**: the style's most important dials, and **Animate opening**.
-- **Open at login**, **In Dock**, **Tune everything…** (⌃⌥T) and **Quit** (⌘Q) in
-  the footer.
-
-The status line under the wordmark reads *Following the lid*, *Plays when the lid
-closes* (event-only Macs), *Preview only* (no lid), *Paused*, or *Fold needs Screen
-Recording* when a style is substituting.
-
-## How the hinge is read
-
-The lid angle sensor reports whole degrees and only changes about ten times a
-second, so reading it directly makes any effect pulse. Shut fits a line through
-recent readings (position and rate, no lag), passes the result through a 1€ filter
-whose cutoff follows the measured rate, and learns your hinge: the closed angle is
-the lowest reading ever seen, the open angle follows wherever the lid rests. The
-effect then runs in a band above shut, with a small share tracking the whole travel
-so something always answers. Nobody types angles.
-
-## What it costs to leave running
-
-Shut is meant to be forgotten about. At rest the sensor is read once a second,
-ten times a second for a little while after the lid last moved, and 120 times a
-second only while it is moving. The sensor's own input reports act as a doorbell
-that wakes the poller when the hinge is touched. No frame is drawn unless the
-overlay is on screen and progress changed; the display link pauses after half a
-second of stillness. The GPU is never waited on from the main thread. App Nap is
-declined so a close is never missed while you are in another app.
-
-## Safety
-
-The overlay is click-through, sits above everything, joins every Space and
-full-screen app, and is torn down when the lid reopens, when the sensor goes quiet
-for half a second, when the built-in display disappears, on sleep, and on quit.
-After unlock the fresh snapshot springs back out; if a black overlay is ever on
-screen for more than 1.5 s while the Mac is awake and unlocked, it is force-hidden
-and the event is logged.
-
-## How Sinkhole works
-
-For every pixel the shader asks: *which pixel of the frozen snapshot should be here
-right now?* With `s` the sink (bottom centre of the notch), `x` a screen pixel,
-`v = x − s`, `d` the distance to the sink as a fraction of the farthest corner, and
-`p` the overall progress:
-
-```
-q   = clamp(p·(1 + falloff) − falloff·d, 0, 1)   // near the notch leads, corners lag
-k   = 1 / (1 − q)^pull                           // contraction: blows up as q → 1
-θ   = twist · 2π · q²                            // gentle global swirl
-vf  = (v.x · (1 + stretch·q), v.y)               // funnel: squeeze toward the notch
-src = s + rotate(vf · k, θ)                      // inverse map; outside = black
-```
-
-Motion blur averages samples at slightly smaller `q`, sweeping them along an arc that
-tightens toward the notch (`vortex`), done as a smear rather than a rotation because
-the notch sits on the top edge and real spin there would pull in the void above the
-screen. Content that leaves the screen dissolves over `edge softness`; a hole shaped
-to the notch outline opens and widens; a rim glow traces it. On unlock `p` runs from 1
-back to 0 and briefly below, which makes `k < 1`: the splash. The full walk-through is
-in `Sources/TransitionKit/Shaders/Sinkhole.metal`.
-
-## Tuner
-
-The Tuner is a native SwiftUI live-tuning panel. Rows are fill sliders: drag anywhere, click to snap to tenths,
-hover a number to type it, arrow keys nudge (⇧ ×10), scroll wheel nudges, double
-click a label to reset. Springs have a Time or Physics description with a live
-curve; easing curves have draggable handles. Versions save, switch and delete;
-**Copy** (⇧⌘C) puts the JSON on the clipboard; **Paste JSON** and file drop import;
-**Reset all** returns to the defaults. The **Trigger** folder holds the raw
-starts-at angle, smoothing, glide and Animate opening. The panel hides itself while
-a real lid transition plays.
-
-Motion across the panel and the Tuner follows one set of rules: critically
-damped springs, a strong ease-out for anything entering or leaving, everything
-under 300 ms, feedback on mouse-down for every pressable, nothing animated on a
-keyboard shortcut, and Reduce Motion keeping short fades while dropping movement.
-Run Shut with `SHUT_MOTION_SCALE=4` in the environment to watch every animation
-four times slower.
-
-`Tuner` is a standalone Swift package target with no dependency on the rest of
-Shut. Describe your parameters with key paths and the panel builds itself:
-
-```swift
-import Tuner
-
-struct GlowParams: TunableParameters {
-    var radius = 12.0
-    var color = TunerColor.white
-    var curve = TunerBezier.easeOut
-    var response = 0.4, damping = 0.8
-
-    static let tunerID = "glow"
-    static let tunerDisplayName = "Glow"
-    static let defaults = GlowParams()
-    static let schema = TunerSchema<GlowParams>([
-        TunerFolder("Look", [
-            .slider(\.radius, "Radius", 0...40, unit: "pt", featured: true, help: "How far the glow spreads."),
-            .color(\.color, "Color"),
-        ]),
-        TunerFolder("Motion", [
-            .bezier(\.curve, "Easing"),
-            .spring(response: \.response, damping: \.damping, "Spring"),
-        ]),
-    ])
-}
-
-let store = TunerStore<GlowParams>(presets: PresetStore(appName: "MyApp"))
-store.onChange = { params in myView.apply(params) }
-let panel = TunerPanelController(title: "Glow", content: AnyView(TunerPanelView(store: store)))
-panel.registerHotKey()   // ⌃⌥T
-panel.show()
-```
-
-## Presets
-
-Built-in presets ship in the app and as JSON in [`presets/`](presets/). Your own
-live in `~/Library/Application Support/Shut/Presets/<style>/`. To share one, or to
-add a style, see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Command line
-
-```bash
-swift run lidangle-cli                  # live angle, rate and progress
-swift run lidangle-cli --report         # compatibility report for an issue
-swift run lidangle-cli --calibration    # learned closed/open angles after 5 s
-swift run lidangle-cli --log angles.csv # timestamp,angle per sample
-swift run lidangle-cli --debug          # raw HID report bytes
-swift run shut --export-presets presets # regenerate presets/ from the built-ins
-```
-
-## Project layout
-
-| Target | What it is |
-| --- | --- |
-| `LidSensor` | IOKit HID reader for the hinge, the fit/filter/calibration pipeline, capability probing, lid-event fallback. |
-| `TransitionKit` | The Metal renderer, the `Transition` protocol, all eight styles and their shaders, thumbnails, screen capture. |
-| `Tuner` | The reusable tuning panel: schema, store, presets, rows, editors, theme. Imports nothing from the app. |
-| `ShutApp` | The app: lid state machine, overlay window, popover and main window, welcome, menu bar, Dock, settings. |
-| `shut`, `lidangle-cli` | Executables. `Shut.xcodeproj` wraps `shut` in a signed `.app` for Xcode. |
-
-The full walk-through, from a sensor reading to a pixel, is in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-
-## Testing
-
-`swift test` runs 69 tests: sensor decoding, the hinge fit, filter, calibration and
-band, the adaptive poll rate; offscreen renders of every style (identity at open,
-monotonic darkening, see-through masks that need no snapshot); a GPU probe of the
-uniform layout; the overlay window and the clamshell rule; the Tuner panel and the
-panel UI rasterised as images in light, window and solid form. Set
-`SHUT_FRAME_DUMP=dir` to get the PNGs. `swift test -c release --filter
-BenchmarkTests` prints per-style frame times at full resolution (about 0.5–2.5 ms
-on an M2 Pro).
-
-Before a release, by hand on a real MacBook:
-
-1. Close the lid slowly from the Desktop, from a full-screen app, and from a second
-   desktop Space. The effect plays on all three.
-2. Reopen before the screen sleeps: it reverses. Let it sleep, unlock: it pours out.
-3. Pick Shutter with Screen Recording denied: it plays anyway.
-4. Pick Fold with it denied: the orange card appears and the status line explains.
-5. Drag Speed to Fast: the effect happens in the last twenty degrees.
-6. With an external display, power and a keyboard attached, close the lid: the
-   style plays on the built-in panel, the external screen is never touched, and
-   the Mac keeps running. Open the lid: nothing plays, the panel simply returns.
-7. Fifty quick close/open cycles: nothing stuck, nothing black.
-
-Console.app, subsystem `app.shut`, shows every decision: capture, overlay placement
-(and the fallback if macOS put it on the wrong Space), poll rate changes, teardown
-reasons, and the safety rule. No pixels are ever logged.
-
-## Releases
-
-`App/Info.plist` holds the version. Bump `CFBundleShortVersionString`, push to
-`main`, and the Release workflow tests, builds, packages a DMG with a SHA-256, tags
-`v<version>`, and publishes a GitHub release. Pushes to other branches and pull
-requests run the Build workflow and attach the DMG as an artifact. Locally:
-`scripts/build.sh --zip` or `scripts/package-dmg.sh`; `scripts/version.sh` prints
-the version.
+Check your lid sensor with `swift run lidangle-cli`, and `--report` formats the
+result for an issue.
 
 ## Licenses
 
-Third-party licenses are listed in `THIRD_PARTY_LICENSES.md`.
-
-MIT License.
+MIT. Third-party licenses are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

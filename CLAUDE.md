@@ -102,6 +102,6 @@ built-in display, and ships a reusable tuning panel. The design is described in
 - After changing `BuiltInPresets.swift`, run `swift run shut --export-presets presets`.
 - Never publish an `@Published` property from inside a SwiftUI view update (for
   example from `updateNSView`); it loops forever.
-- Manual lid tests are listed in `README.md` under "Testing". Spaces, full-screen
+- Manual lid tests are listed in `CONTRIBUTING.md` under "Testing". Spaces, full-screen
   apps, and external displays can't be simulated in `swift test`; check them on
   hardware and read Console (subsystem `app.shut`) for the placement lines.
