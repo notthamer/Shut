@@ -3,10 +3,11 @@ name: Release
 # Bump CFBundleShortVersionString in App/Info.plist and push to main. If no tag
 # matches the version yet, this tests, builds, packages a DMG with a checksum,
 # tags the commit and publishes a GitHub release.
+# Not on tags: publishing the draft creates the tag, and a tag-triggered run would
+# rebuild and overwrite the notarized assets with CI ones.
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
 
 permissions:
