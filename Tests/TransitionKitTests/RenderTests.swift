@@ -7,6 +7,8 @@ import Metal
 /// capture) and checks the broad shape of the output. Set SHUT_FRAME_DUMP to
 /// a directory to also write PNGs for eyeballing.
 final class RenderTests: XCTestCase {
+    /// GitHub-hosted macOS runners have no GPU. Skip, do not fail.
+    override func setUpWithError() throws { try XCTSkipUnless(MTLCreateSystemDefaultDevice() != nil, "No Metal device on this machine") }
     static let width = 756, height = 491  // 1/4 of a 14" MacBook Pro
 
     func makeSyntheticSnapshot() -> CGImage {
@@ -181,6 +183,8 @@ extension RenderTests {
 
 @MainActor
 final class ThumbnailTests: XCTestCase {
+    /// GitHub-hosted macOS runners have no GPU. Skip, do not fail.
+    override func setUpWithError() throws { try XCTSkipUnless(MTLCreateSystemDefaultDevice() != nil, "No Metal device on this machine") }
     func testPlaceholderDesktopDraws() throws {
         let image = try XCTUnwrap(PlaceholderDesktop.image())
         XCTAssertEqual(image.width, 1024); XCTAssertEqual(image.height, 640)

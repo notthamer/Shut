@@ -5,6 +5,8 @@ import Metal
 @testable import TransitionKit
 
 final class TransitionKitTests: XCTestCase {
+    /// GitHub-hosted macOS runners have no GPU. Skip, do not fail.
+    override func setUpWithError() throws { try XCTSkipUnless(MTLCreateSystemDefaultDevice() != nil, "No Metal device on this machine") }
     /// Compiles every shader from source. Catches Metal syntax errors and struct
     /// layout mismatches before anyone closes a lid.
     func testRendererCompilesShaders() throws {

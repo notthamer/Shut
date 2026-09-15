@@ -1,4 +1,5 @@
 import AppKit
+import Metal
 import XCTest
 import TransitionKit
 @testable import ShutApp
@@ -8,6 +9,8 @@ import TransitionKit
 /// at runtime.
 @MainActor
 final class OverlayWindowTests: XCTestCase {
+    /// GitHub-hosted macOS runners have no GPU. Skip, do not fail.
+    override func setUpWithError() throws { try XCTSkipUnless(MTLCreateSystemDefaultDevice() != nil, "No Metal device on this machine") }
     func testOverlayWindowConstructs() throws {
         let renderer = try TransitionRenderer()
         let screen = try XCTUnwrap(BuiltInDisplay.screen ?? NSScreen.main)

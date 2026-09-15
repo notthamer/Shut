@@ -3,6 +3,7 @@ import LidSensor
 import SwiftUI
 import TransitionKit
 import Tuner
+import Metal
 import XCTest
 @testable import ShutApp
 
@@ -10,6 +11,8 @@ import XCTest
 /// rasterises it, so the whole primary UI is checked as an image.
 @MainActor
 final class PopoverSnapshotTests: XCTestCase {
+    /// GitHub-hosted macOS runners have no GPU. Skip, do not fail.
+    override func setUpWithError() throws { try XCTSkipUnless(MTLCreateSystemDefaultDevice() != nil, "No Metal device on this machine") }
     func testPopoverRendersOffscreen() throws {
         let defaults = UserDefaults(suiteName: "PopoverSnapshot-\(UUID().uuidString)")!
         let settings = AppSettings(defaults: defaults)

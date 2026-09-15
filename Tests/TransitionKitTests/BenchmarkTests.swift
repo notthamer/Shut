@@ -5,6 +5,8 @@ import Metal
 /// Full-resolution frame cost for each transition, as the overlay would pay it on
 /// a 14" MacBook Pro. Prints the numbers; asserts only a generous ceiling.
 final class BenchmarkTests: XCTestCase {
+    /// GitHub-hosted macOS runners have no GPU. Skip, do not fail.
+    override func setUpWithError() throws { try XCTSkipUnless(MTLCreateSystemDefaultDevice() != nil, "No Metal device on this machine") }
     func testFullResolutionFrameTimes() throws {
         let w = 3024, h = 1964
         let renderer = try TransitionRenderer()
