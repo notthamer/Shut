@@ -75,6 +75,10 @@ jobs:
         with:
           tag_name: v${{ needs.decide.outputs.version }}
           name: Shut ${{ needs.decide.outputs.version }}
+          # Draft: nothing is public until Publish is pressed on the release page, so
+          # the CI DMG can be swapped for the notarized one (and the appcast regenerated
+          # for it) before anyone downloads.
+          draft: true
           # Release notes come from CHANGELOG.md, the section for this version.
           body_path: build/releases/notes.md
           files: |
