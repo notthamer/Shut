@@ -1,0 +1,286 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A100000000000000000000B1 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F1 /* main.swift */; };
+		A100000000000000000000B2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F4 /* Assets.xcassets */; };
+		A100000000000000000000B4 /* Shut.icns in Resources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F6 /* Shut.icns */; };
+		A100000000000000000000B3 /* ShutApp in Frameworks */ = {isa = PBXBuildFile; productRef = A100000000000000000000D1 /* ShutApp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A100000000000000000000F0 /* Shut.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Shut.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A100000000000000000000F1 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		A100000000000000000000F2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A100000000000000000000F3 /* Shut.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Shut.entitlements; sourceTree = "<group>"; };
+		A100000000000000000000F4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A100000000000000000000F5 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
+		A100000000000000000000F6 /* Shut.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Shut.icns; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A100000000000000000000P2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A100000000000000000000B3 /* ShutApp in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A100000000000000000000G0 = {
+			isa = PBXGroup;
+			children = (
+				A100000000000000000000G1 /* App */,
+				A100000000000000000000G2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A100000000000000000000G1 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A100000000000000000000F1 /* main.swift */,
+				A100000000000000000000F2 /* Info.plist */,
+				A100000000000000000000F3 /* Shut.entitlements */,
+				A100000000000000000000F4 /* Assets.xcassets */,
+				A100000000000000000000F5 /* Signing.xcconfig */,
+				A100000000000000000000F6 /* Shut.icns */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A100000000000000000000G2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A100000000000000000000F0 /* Shut.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A100000000000000000000T1 /* Shut */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A100000000000000000000C1 /* Build configuration list for PBXNativeTarget "Shut" */;
+			buildPhases = (
+				A100000000000000000000P1 /* Sources */,
+				A100000000000000000000P2 /* Frameworks */,
+				A100000000000000000000P3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Shut;
+			packageProductDependencies = (
+				A100000000000000000000D1 /* ShutApp */,
+			);
+			productName = Shut;
+			productReference = A100000000000000000000F0 /* Shut.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A100000000000000000000PJ /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A100000000000000000000T1 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = A100000000000000000000C0 /* Build configuration list for PBXProject "Shut" */;
+			compatibilityVersion = "Xcode 15.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A100000000000000000000G0;
+			packageReferences = (
+				A100000000000000000000L1 /* XCLocalSwiftPackageReference "." */,
+			);
+			productRefGroup = A100000000000000000000G2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A100000000000000000000T1 /* Shut */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A100000000000000000000P3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A100000000000000000000B2 /* Assets.xcassets in Resources */,
+				A100000000000000000000B4 /* Shut.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A100000000000000000000P1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A100000000000000000000B1 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A100000000000000000000X0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A100000000000000000000X1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A100000000000000000000X2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A100000000000000000000F5 /* Signing.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/Shut.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2GDVAQTV5V;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.shut.mac;
+				PRODUCT_NAME = Shut;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A100000000000000000000X3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A100000000000000000000F5 /* Signing.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/Shut.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2GDVAQTV5V;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.shut.mac;
+				PRODUCT_NAME = Shut;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A100000000000000000000C0 /* Build configuration list for PBXProject "Shut" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A100000000000000000000X0 /* Debug */,
+				A100000000000000000000X1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A100000000000000000000C1 /* Build configuration list for PBXNativeTarget "Shut" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A100000000000000000000X2 /* Debug */,
+				A100000000000000000000X3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A100000000000000000000L1 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A100000000000000000000D1 /* ShutApp */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ShutApp;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A100000000000000000000PJ /* Project object */;
+}

@@ -1,0 +1,14 @@
+{
+  "name" : "Subtle",
+  "transition" : "fold",
+  "values" : {
+    "blur" : 0.5,
+    "corners" : 1,
+    "dimming" : 1,
+    "intensity" : 0.6,
+    "perspective" : 1,
+    "tilt" : 1,
+    "variableBlur" : 0.85,
+    "washout" : 0.5
+  }
+}

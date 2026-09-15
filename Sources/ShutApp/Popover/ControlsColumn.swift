@@ -1,0 +1,219 @@
+import SwiftUI
+import TransitionKit
+import Tuner
+
+/// Right column: gallery, Speed, the style's featured dials, Animate opening,
+/// and the permission card when the chosen style can't run yet.
+struct ControlsColumn: View {
+    @ObservedObject var model: PopoverModel
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        ScrollView(showsIndicators: true) {
+            VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Eyebrow("Style", number: "01")
+                    StyleGallery(model: model)
+                }
+
+                if model.needsPermissionCard {
+                    PermissionCard(model: model)
+                        .transition(.opacity)
+                }
+
+                VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
+                    Eyebrow("Timing", number: "02").padding(.bottom, 2)
+                    SpeedRow(model: model)
+                    ToggleRow("Animate opening",
+                              isOn: Binding(get: { model.settings.animateOpening }, set: { model.settings.animateOpening = $0 }),
+                              help: "Play the style backwards when the lid opens or the Mac unlocks.")
+                }
+
+                FeelSection(model: model)
+                    .id(model.registry.current.id)
+                    .transition(.blurFade)
+
+                ShareSection(model: model)
+                    .id("share-" + model.registry.current.id)
+                    .transition(.blurFade)
+            }
+            .padding(16)
+            // A style change swaps the dials: a blur-bridged fade so the outgoing
+            // and incoming rows read as one block changing, not two overlapping.
+            .tunerAnimation(TunerTheme.ease, value: model.registry.current.id)
+            .tunerAnimation(TunerTheme.ease, value: model.needsPermissionCard)
+        }
+    }
+}
+
+struct StyleGallery: View {
+    @ObservedObject var model: PopoverModel
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 7), count: 4)
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 7) {
+            ForEach(model.registry.all, id: \.id) { transition in
+                StyleCard(transition: transition,
+                          image: model.thumbnail(for: transition),
+                          version: model.thumbnailVersion(for: transition.id),
+                          isSelected: transition.id == model.registry.current.id,
+                          needsPermission: transition.needsSnapshot && !model.registry.captureAvailable,
+                          select: { model.select(transition.id) })
+            }
+        }
+    }
+}
+
+struct StyleCard: View {
+    let transition: TransitionKit.AnyTransition
+    let image: CGImage?
+    /// Bumps when this card's thumbnail was re-rendered; the image crossfades.
+    let version: Int
+    let isSelected: Bool
+    let needsPermission: Bool
+    let select: () -> Void
+    @Environment(\.tunerTheme) private var theme
+    @State private var hover = false
+    static let radius: CGFloat = TunerTheme.cardRadius
+
+    var body: some View {
+        Button(action: select) { card }
+            .buttonStyle(PressScaleStyle(scale: 0.97))
+            .focusEffectDisabled()
+            .onHover { hover = $0 }
+            .accessibilityLabel(transition.displayName)
+            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private var card: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                if let image {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .id(version)
+                        .transition(.opacity)
+                } else {
+                    theme.surfaceActive
+                }
+            }
+            .frame(height: 44)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .padding([.horizontal, .top], 4)
+            .tunerAnimation(TunerTheme.ease, value: version)
+            HStack(spacing: 4) {
+                Text(transition.displayName)
+                    .font(isSelected ? TunerTheme.bodyMedium : TunerTheme.body)
+                    .foregroundStyle(isSelected ? theme.ink : theme.inkLabel)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8).padding(.vertical, 6)
+        }
+        // Lime wash when chosen, Paper White otherwise, Linen on hover; a
+        // one-point border does the depth, no shadow, nothing scales.
+        .surface(isSelected ? .wash(TunerTheme.wash(for: transition.id)) : .card, radius: Self.radius)
+        .overlay(RoundedRectangle(cornerRadius: Self.radius, style: .continuous).fill(hover && !isSelected ? theme.linen.opacity(0.6) : .clear).allowsHitTesting(false))
+        .overlay(RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
+            .strokeBorder(isSelected ? theme.borderStrong : .clear, lineWidth: 1))
+        .contentShape(RoundedRectangle(cornerRadius: Self.radius, style: .continuous))
+        .tunerAnimation(TunerTheme.ease, value: hover)
+        .tunerAnimation(TunerTheme.ease, value: isSelected)
+    }
+}
+
+struct SpeedRow: View {
+    @ObservedObject var model: PopoverModel
+    @Environment(\.tunerTheme) private var theme
+    /// Same as the row's label column, so the end labels sit under the track.
+    private let labelWidth: CGFloat = 96
+
+    var body: some View {
+        VStack(spacing: 0) {
+            FillSliderRow("Speed", value: Binding(get: { model.speed }, set: { model.speed = $0 }),
+                          in: 0...1, step: 0.01, decimals: 2, unit: "",
+                          help: "How much of the lid's travel the effect uses: the number is where the effect starts, in degrees above shut. Fast plays in the last few degrees; slow spreads it over most of the close.",
+                          labelWidth: labelWidth,
+                          valueText: { _ in String(format: "%.0f°", model.settings.bandDegrees) })
+            // "Slow" under the left end of the track, "Fast" under the right end,
+            // so each word reads as the end of the dial it names.
+            HStack {
+                Text("Slow"); Spacer(); Text("Fast")
+            }
+            .padding(.leading, labelWidth + 12)
+            .padding(.trailing, FillSliderRow.valueWidth + 12)
+            .font(TunerTheme.bodySmall)
+            .foregroundStyle(theme.inkTertiary)
+        }
+    }
+}
+
+/// The style's main dials, then every other dial behind "All dials", so the
+/// whole style is tunable on this page without opening anything else.
+struct FeelSection: View {
+    @ObservedObject var model: PopoverModel
+    @Environment(\.tunerTheme) private var theme
+    @State private var showAll = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
+            HStack {
+                Eyebrow("Adjust \(model.registry.current.displayName)", number: "03")
+                Spacer()
+                QuietButton(showAll ? "Main dials" : "All dials") { showAll.toggle() }
+                QuietButton("Reset") { model.resetStyle(model.registry.current.id) }
+            }
+            .padding(.bottom, 2)
+            model.featuredDials(model.registry.current.id)
+            if showAll {
+                model.moreDials(model.registry.current.id)
+                    .padding(.top, 6)
+                    .transition(.blurFade)
+            }
+        }
+        .tunerAnimation(TunerTheme.ease, value: showAll)
+    }
+}
+
+/// Presets for the style: pick one, name the current dials, copy or export the
+/// JSON, paste or import someone else's.
+struct ShareSection: View {
+    @ObservedObject var model: PopoverModel
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
+            HStack {
+                Eyebrow("Presets", number: "04")
+                Spacer()
+                QuietButton(expanded ? "Done" : "Share…") { expanded.toggle() }
+                    .help("Copy or export this preset, or paste and import one.")
+            }
+            .padding(.bottom, 2)
+            model.shareView(model.registry.current.id, $expanded)
+        }
+    }
+}
+
+struct PermissionCard: View {
+    @ObservedObject var model: PopoverModel
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Circle().fill(TunerTheme.saffron).frame(width: 7, height: 7)
+                Text("\(model.registry.current.displayName) is showing as a plain fade").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
+            }
+            Text("It needs Screen Recording to take one still of your desktop as the lid moves. Nothing is saved. macOS checks the permission when the app starts, so restart it after allowing.")
+                .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: TunerTheme.rowGap) {
+                ActionRow("Allow…") { model.allowScreenRecording() }
+                ActionRow("Restart") { model.relaunch() }
+            }
+        }
+        .padding(16)
+        .surface(.wash(theme.washSaffron), radius: TunerTheme.cardRadius)
+    }
+}

@@ -1,0 +1,39 @@
+{
+  "name" : "Default",
+  "transition" : "sinkhole",
+  "values" : {
+    "aberration" : 2,
+    "autoDetectNotch" : true,
+    "blurSamples" : 8,
+    "blurStrength" : 0.5,
+    "commitThreshold" : 1,
+    "darken" : 0.6,
+    "edgeSoftness" : 90,
+    "falloff" : 0.5,
+    "glow" : 0.5,
+    "glowColor" : {
+      "alpha" : 1,
+      "blue" : 1,
+      "green" : 1,
+      "red" : 1
+    },
+    "holeGrowth" : 2,
+    "offsetX" : 0,
+    "offsetY" : 0,
+    "overshoot" : 0.06,
+    "pourOutDamping" : 0.72,
+    "pourOutDelayMs" : 0,
+    "pourOutResponse" : 0.55,
+    "progressCurve" : {
+      "x1" : 0.45,
+      "x2" : 0.85,
+      "y1" : 0,
+      "y2" : 0.55
+    },
+    "pull" : 0.7,
+    "sinkRadius" : 40,
+    "stretch" : 0.6,
+    "twist" : 0.3,
+    "vortex" : 1
+  }
+}

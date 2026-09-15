@@ -1,0 +1,21 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+
+# Build output
+build/
+*.zip
+*.dSYM
+
+# Sensor logs (contain no screen content, but are local test data)
+*.csv
+
+# macOS
+.DS_Store
+
+# Per-machine signing override (see App/Signing.xcconfig)
+App/Local.xcconfig

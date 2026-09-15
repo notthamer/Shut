@@ -1,0 +1,15 @@
+// Signing for local development.
+//
+// Screen Recording permission is tied to the app's code signature. With ad-hoc
+// signing ("-") the identity changes on every build, so macOS forgets the grant
+// each time you press Run. To keep it, give the app a stable certificate by
+// creating App/Local.xcconfig (gitignored) containing one of:
+//
+//   CODE_SIGN_IDENTITY = Shut Dev        // a self-signed cert in your keychain
+//   DEVELOPMENT_TEAM = ABCDE12345            // or your (free) Apple Personal Team
+//   CODE_SIGN_STYLE = Automatic
+//
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+#include? "Local.xcconfig"

@@ -1,0 +1,15 @@
+{
+  "name" : "Deep Freeze",
+  "transition" : "frost",
+  "values" : {
+    "darknessStart" : 0.15,
+    "frostSpread" : 0.3,
+    "maxBlur" : 120,
+    "progressCurve" : {
+      "x1" : 0.45,
+      "x2" : 0.85,
+      "y1" : 0,
+      "y2" : 0.55
+    }
+  }
+}

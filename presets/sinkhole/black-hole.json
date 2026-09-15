@@ -1,0 +1,39 @@
+{
+  "name" : "Black Hole",
+  "transition" : "sinkhole",
+  "values" : {
+    "aberration" : 5,
+    "autoDetectNotch" : true,
+    "blurSamples" : 12,
+    "blurStrength" : 0.8,
+    "commitThreshold" : 0.6,
+    "darken" : 0.9,
+    "edgeSoftness" : 90,
+    "falloff" : 1.2,
+    "glow" : 0.7,
+    "glowColor" : {
+      "alpha" : 1,
+      "blue" : 1,
+      "green" : 0.8,
+      "red" : 0.6
+    },
+    "holeGrowth" : 3,
+    "offsetX" : 0,
+    "offsetY" : 0,
+    "overshoot" : 0.12,
+    "pourOutDamping" : 0.55,
+    "pourOutDelayMs" : 0,
+    "pourOutResponse" : 0.55,
+    "progressCurve" : {
+      "x1" : 0.45,
+      "x2" : 0.85,
+      "y1" : 0,
+      "y2" : 0.55
+    },
+    "pull" : 1.1,
+    "sinkRadius" : 60,
+    "stretch" : 1.2,
+    "twist" : 0.8,
+    "vortex" : 1.8
+  }
+}

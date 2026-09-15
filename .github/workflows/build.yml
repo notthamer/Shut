@@ -1,0 +1,29 @@
+name: Build
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+
+# Read-only token: this workflow only builds and uploads an artifact.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app || true
+      - name: Test
+        run: swift test
+      - name: Build app
+        run: scripts/build.sh
+      - name: Package DMG
+        run: scripts/package-dmg.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Shut-dmg
+          path: build/releases/*
+          retention-days: 30
