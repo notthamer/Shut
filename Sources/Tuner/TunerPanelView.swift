@@ -13,6 +13,8 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
 
     @Environment(\.tunerTheme) private var theme
     @State private var flash: String?
+    /// Non-nil while the user is typing a name for the current values.
+    @State private var presetNameDraft: String?
 
     public init(store: TunerStore<P>, title: String = P.tunerDisplayName, onCollapse: (() -> Void)? = nil,
                 @ViewBuilder preview: () -> Preview, @ViewBuilder extra: () -> Extra) {
@@ -69,8 +71,13 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
             .padding(.top, 2)
             .background(WindowDragHandle())   // the title row is the grip
             HStack(spacing: TunerTheme.rowGap) {
-                VersionsMenu(store: store) { showFlash($0) }
+                VersionsMenu(store: store, flash: { showFlash($0) }, onSaveAs: { presetNameDraft = store.nextVersionName() })
                 CopyButton { copyJSON() }
+            }
+            if presetNameDraft != nil {
+                PresetNameField(text: Binding(get: { presetNameDraft ?? "" }, set: { presetNameDraft = $0 }),
+                                onSave: { savePreset(named: $0) },
+                                onCancel: { presetNameDraft = nil })
             }
         }
         .padding(.horizontal, TunerTheme.paddingH)
@@ -86,6 +93,16 @@ public struct TunerPanelView<P: TunableParameters, Preview: View, Extra: View>: 
             ActionRow("Reset all") { store.resetAll() }
         }
         .padding(.top, 4)
+    }
+
+    // MARK: Presets
+
+    /// Saves the current values under the typed name. Built-in names are
+    /// refused; an existing name of the user's own is replaced.
+    private func savePreset(named raw: String) {
+        let outcome = store.saveVersion(named: raw)
+        if outcome == .saved || outcome == .replaced { presetNameDraft = nil }
+        showFlash(saveMessage(outcome, name: raw))
     }
 
     // MARK: Clipboard
@@ -203,12 +220,14 @@ struct PanelIconButton: View {
 }
 
 /// Full-width versions dropdown. "Default" restores the base values; saved
-/// versions can be selected; "New version" saves the current values. Backed by
-/// a system menu so it presents reliably from a borderless panel; deleting a
-/// version is in a "Delete" submenu.
+/// versions can be selected; "Save as…" asks the host for a name field so the
+/// user names the version rather than getting "Version 2". Backed by a system
+/// menu so it presents reliably from a borderless panel; deleting a version is
+/// in a "Delete" submenu.
 struct VersionsMenu<P: TunableParameters>: View {
     @ObservedObject var store: TunerStore<P>
     let flash: (String) -> Void
+    let onSaveAs: () -> Void
     @Environment(\.tunerTheme) private var theme
     @State private var hover = false
 
@@ -225,10 +244,7 @@ struct VersionsMenu<P: TunableParameters>: View {
                 }
             }
             Divider()
-            Button("New version") {
-                let name = store.nextVersionName()
-                if store.savePreset(named: name) != nil { flash("Saved \(name)") }
-            }
+            Button("Save as…") { onSaveAs() }
             let deletable = store.allPresets.filter { !$0.builtIn }
             if !deletable.isEmpty {
                 Menu("Delete") {
@@ -268,29 +284,51 @@ struct VersionsMenu<P: TunableParameters>: View {
 /// Usable on its own for a secondary store inside another panel or a host UI.
 public struct TunerFoldersView<P: TunableParameters>: View {
     @ObservedObject var store: TunerStore<P>
+    /// Leave out the featured dials: for a host that already shows them above.
+    let excludingFeatured: Bool
     @State private var open: Set<Int>
 
-    public init(store: TunerStore<P>) {
+    public init(store: TunerStore<P>, excludingFeatured: Bool = false) {
         self.store = store
+        self.excludingFeatured = excludingFeatured
         _open = State(initialValue: Set(P.schema.folders.enumerated().compactMap { $0.element.collapsed ? nil : $0.offset }))
+    }
+
+    private func controls(of folder: TunerFolder<P>) -> [TunerControl<P>] {
+        excludingFeatured ? folder.controls.filter { !$0.isFeatured } : folder.controls
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(Array(P.schema.folders.enumerated()), id: \.offset) { index, folder in
-                FolderView(title: folder.name,
-                           number: String(format: "%02d", index + 1),
-                           isOpen: Binding(get: { open.contains(index) },
-                                           set: { if $0 { open.insert(index) } else { open.remove(index) } }),
-                           onReset: { store.reset(folder: index) }) {
-                    VStack(spacing: TunerTheme.rowGap) {
-                        ForEach(Array(folder.controls.enumerated()), id: \.offset) { _, control in
-                            ControlRowView(store: store, control: control)
+                let rows = controls(of: folder)
+                if !rows.isEmpty {
+                    FolderView(title: folder.name,
+                               number: String(format: "%02d", index + 1),
+                               isOpen: Binding(get: { open.contains(index) },
+                                               set: { if $0 { open.insert(index) } else { open.remove(index) } }),
+                               onReset: { store.reset(folder: index) }) {
+                        VStack(spacing: TunerTheme.rowGap) {
+                            ForEach(Array(rows.enumerated()), id: \.offset) { _, control in
+                                ControlRowView(store: store, control: control)
+                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/// One line of feedback for a save attempt, shared by the panel and the host.
+func saveMessage<P>(_ outcome: TunerStore<P>.SaveOutcome, name raw: String) -> String {
+    let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    switch outcome {
+    case .saved: return "Saved \(name)"
+    case .replaced: return "Replaced \(name)"
+    case .emptyName: return "Give it a name"
+    case .builtInName: return "\(name) is built in; pick another name"
+    case .failed: return "Could not save"
     }
 }
 
@@ -339,5 +377,50 @@ struct FolderView<Content: View>: View {
             }
         }
         .tunerAnimation(TunerTheme.ease, value: isOpen)
+    }
+}
+
+/// One-line name entry shown under the toolbar while saving a version. Return
+/// saves, Escape cancels. The suggested name is pre-selected so typing replaces it.
+struct PresetNameField: View {
+    @Binding var text: String
+    let onSave: (String) -> Void
+    let onCancel: () -> Void
+    @Environment(\.tunerTheme) private var theme
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: TunerTheme.rowGap) {
+            TextField("Name this version", text: $text)
+                .textFieldStyle(.plain)
+                .font(TunerTheme.body)
+                .foregroundStyle(theme.ink)
+                .focused($focused)
+                .onSubmit { onSave(text) }
+                .onExitCommand { onCancel() }
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity)
+                .frame(height: TunerTheme.rowHeight)
+                .background(Capsule().fill(theme.linen))
+                .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+            Button("Save") { onSave(text) }
+                .buttonStyle(PressStyle())
+                .font(TunerTheme.body)
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, 14)
+                .frame(height: TunerTheme.rowHeight)
+                .background(Capsule().fill(theme.buttonDark))
+            Button("Cancel") { onCancel() }
+                .buttonStyle(PressStyle())
+                .font(TunerTheme.body)
+                .foregroundStyle(theme.textLabel)
+                .padding(.horizontal, 4)
+                .frame(height: TunerTheme.rowHeight)
+        }
+        .onAppear {
+            focused = true
+            // Select the suggestion so typing replaces it.
+            DispatchQueue.main.async { NSApp.keyWindow?.firstResponder.flatMap { $0 as? NSText }?.selectAll(nil) }
+        }
     }
 }

@@ -76,6 +76,7 @@ struct PopoverFooter: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
     @State private var launchAtLogin = false
+    @State private var automaticUpdates: Bool? = nil
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
@@ -88,15 +89,20 @@ struct PopoverFooter: View {
                 SmallPill(isOn: model.settings.showInDock) { model.settings.showInDock.toggle() }
                     .help("Keep Shut in the Dock. Off keeps it in the menu bar only.")
             }
+            if let on = automaticUpdates {
+                HStack(spacing: 8) {
+                    Text("Auto-update").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                    SmallPill(isOn: on) { automaticUpdates = !on; model.setAutomaticUpdates(!on) }
+                        .help("Check for a new version about once a day. Off: only when you choose Check for Updates.")
+                }
+            }
             Spacer()
-            QuietButton("Tune everything…", action: model.openTuner)
-                .keyboardShortcut("t", modifiers: [.control, .option])
             QuietButton("Quit", action: model.quit)
                 .keyboardShortcut("q", modifiers: .command)
         }
         .padding(.horizontal, 16)
         .frame(height: 48)
-        .onAppear { launchAtLogin = model.launchAtLogin() }
+        .onAppear { launchAtLogin = model.launchAtLogin(); automaticUpdates = model.automaticUpdates() }
     }
 }
 

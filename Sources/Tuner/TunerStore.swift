@@ -150,6 +150,27 @@ public final class TunerStore<P: TunableParameters>: ObservableObject {
         }
     }
 
+    /// What happened when the user asked to keep the current values under a name.
+    public enum SaveOutcome: Equatable { case saved, replaced, emptyName, builtInName, failed }
+
+    /// Saves under a typed name. Built-in names are refused; an existing name
+    /// of the user's own is replaced.
+    @discardableResult
+    public func saveVersion(named raw: String) -> SaveOutcome {
+        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return .emptyName }
+        if builtInPresets.contains(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) { return .builtInName }
+        let replacing = presets.list(tunerID: P.tunerID).contains { $0.name == name }
+        guard savePreset(named: name) != nil else { return .failed }
+        return replacing ? .replaced : .saved
+    }
+
+    /// The current values as a complete preset file (name + style + values), so
+    /// what the user copies or exports can only ever be applied to this style.
+    public var presetFileText: String {
+        Preset(name: activePresetName ?? P.tunerDisplayName, tunerID: P.tunerID, values: values, builtIn: false)?.fileText ?? json
+    }
+
     public func duplicatePreset(_ preset: Preset) {
         var name = preset.name + " copy"
         var n = 2

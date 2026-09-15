@@ -8,10 +8,10 @@ happen to be in. Pick a style, set the speed, and tune every dial until it feels
 exactly right. Open source, MIT, built in public.
 
 - **Eight styles**: Fold, the iPhone Duo close and the default; Sinkhole, original
-  to Shut; Frost; and five more ported from Bendable with credit.
+  to Shut; Frost; and five more.
 - **Follows the hinge**, not a timer. Close slowly and the effect crawls; open the
   lid halfway through and it reverses.
-- **A tuning panel** for every parameter, in the spirit of DialKit, native SwiftUI.
+- **A tuning panel** for every parameter, native SwiftUI.
 - **Menu bar and Dock.** A quick popover under the menu bar icon, or the same panel
   as a window you can move and minimize.
 - **Every Apple-silicon MacBook.** Sensor machines track the hinge; the rest play
@@ -30,10 +30,8 @@ exactly right. Open source, MIT, built in public.
 | **Shutter** | No | Bars close in from the top and bottom. |
 | **Fade** | No | A plain dim to black. |
 
-Fold, Crease, Recede, Slide, Shutter and Fade are ported
-from [Bendable](https://github.com/opensourcevillain/Bendable) (MIT, Anti Ltd) and
-credited in every file. Every style plays backwards when you open the lid, and
-after you unlock from sleep it pours back out of black.
+Every style plays backwards when you open the lid, and after you unlock from
+sleep it pours back out of black.
 
 ## Supported hardware
 
@@ -41,7 +39,8 @@ after you unlock from sleep it pours back out of black.
 - Macs with a lid angle sensor (M2 and later, most M1s) track the hinge live. Macs
   that only report open/closed play the style on a short timeline instead. Shut
   checks what your Mac can do and says so at the top of the panel.
-- 13" models without a notch use a small virtual notch for Sinkhole.
+- 13" models without a notch, including the 2020 M1 MacBook Air and Pro, use a small
+  virtual notch for Sinkhole. Every other style needs no notch at all.
 - Intel Macs are untested.
 
 Check your sensor: `swift run lidangle-cli` prints the live angle.
@@ -127,8 +126,7 @@ recent readings (position and rate, no lag), passes the result through a 1€ fi
 whose cutoff follows the measured rate, and learns your hinge: the closed angle is
 the lowest reading ever seen, the open angle follows wherever the lid rests. The
 effect then runs in a band above shut, with a small share tracking the whole travel
-so something always answers. Nobody types angles. This design comes from Bendable
-and is credited in `Sources/LidSensor/`.
+so something always answers. Nobody types angles.
 
 ## What it costs to leave running
 
@@ -174,9 +172,7 @@ in `Sources/TransitionKit/Shaders/Sinkhole.metal`.
 
 ## Tuner
 
-The panel behind **Tune everything…** is a native SwiftUI rebuild of the kind of
-live-tuning panel Josh Puckett's [DialKit](https://github.com/joshpuckett/dialkit)
-brought to the web. Rows are fill sliders: drag anywhere, click to snap to tenths,
+The Tuner is a native SwiftUI live-tuning panel. Rows are fill sliders: drag anywhere, click to snap to tenths,
 hover a number to type it, arrow keys nudge (⇧ ×10), scroll wheel nudges, double
 click a label to reset. Springs have a Time or Physics description with a live
 curve; easing curves have draggable handles. Versions save, switch and delete;
@@ -293,26 +289,8 @@ requests run the Build workflow and attach the DMG as an artifact. Locally:
 `scripts/build.sh --zip` or `scripts/package-dmg.sh`; `scripts/version.sh` prints
 the version.
 
-## Credits
+## Licenses
 
-- [Bendable](https://github.com/opensourcevillain/Bendable), MIT © 2026 Anti Ltd: six
-  of the styles, the hinge fit/filter/calibration design, and much of the panel's
-  shape. License in `THIRD_PARTY_LICENSES.md`.
-- [DialKit](https://github.com/joshpuckett/dialkit), MIT © 2026 Josh Puckett: the
-  design of the tuning panel. No code was copied; the name is not used in code.
-- [Apfel Grotezk](https://github.com/collletttivo/apfel-grotezk) by Collletttivo and
-  [Playfair Display](https://github.com/clauseggers/Playfair) by Claus Eggers
-  Sørensen, both SIL Open Font License 1.1: the label face and the display face.
-  Bundled with their licenses in `Sources/Tuner/Fonts/`.
-- [Dia](https://www.diabrowser.com) by The Browser Company: the editorial system
-  (paper, ink, borders, pills, chapter eyebrows, the spectrum line) the interface
-  is modelled on. No assets copied.
-- [Emil Kowalski's skills](https://github.com/emilkowalski/skills), MIT: the motion
-  rules the interface follows (easing, durations, springs, press feedback, reduced
-  motion), translated from the web to SwiftUI and AppKit. Guidance only, no code.
-- [samhenrigold/LidAngleSensor](https://github.com/samhenrigold/LidAngleSensor) and
-  [DuoBook](https://github.com/askmaddyy/DuoBook) for the sensor research. Shut's
-  sensor code is written from scratch.
-- The many open-source recreations of the iPhone Duo close, which Fold and Frost draw on.
+Third-party licenses are listed in `THIRD_PARTY_LICENSES.md`.
 
 MIT License.

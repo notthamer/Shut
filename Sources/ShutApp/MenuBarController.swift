@@ -24,6 +24,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     /// Wired by the app once the Tuner host exists.
     var openTuner: (() -> Void)?
+    /// "Check for Updates…", built by the app so the menu never imports Sparkle.
+    var updateItem: NSMenuItem? { didSet { if let updateItem { menu.insertItem(updateItem, at: menu.index(of: quitItem)) } } }
+    private let quitItem = NSMenuItem(title: "Quit Shut", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     var showPermissionWindow: (() -> Void)?
     var presetMenuProvider: (() -> [NSMenuItem])?
     var launchAtLoginItem: NSMenuItem?
@@ -82,8 +85,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(login)
         menu.addItem(.separator())
 
-        let quit = NSMenuItem(title: "Quit Shut", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        menu.addItem(quit)
+        menu.addItem(quitItem)
     }
 
     private func rebuildTransitionMenu() {

@@ -49,7 +49,7 @@ final class PopoverController {
         dock.retain("popover")
         installMonitors()
 
-        // Dia motion: the panel fades in over 0.2 s. Nothing moves or scales.
+        // The panel fades in over 0.2 s. Nothing moves or scales.
         panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup { ctx in
@@ -115,6 +115,15 @@ final class PopoverController {
         panel.contentView = chrome
         self.chrome = chrome
         return panel
+    }
+
+    /// Runs a modal file panel without the click-outside monitors closing the
+    /// popover; they come back afterwards if the panel is still up.
+    func holdingOpen(_ work: () -> Void) {
+        guard isShown else { work(); return }
+        removeMonitors()
+        work()
+        if isShown { installMonitors() }
     }
 
     /// Click anywhere outside, or Escape, closes the panel, like a menu.

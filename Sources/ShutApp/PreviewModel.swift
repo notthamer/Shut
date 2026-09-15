@@ -17,6 +17,11 @@ public final class PreviewModel: ObservableObject {
     /// over whatever is beneath them: on the lid that is the live desktop, in
     /// the preview it has to be the snapshot itself.
     @Published public private(set) var snapshotImage: CGImage?
+    /// `snapshotImage` shrunk to preview size, made once per capture off the
+    /// main thread. Mask styles composite over this; handing the image view the
+    /// full six-megapixel capture made every switch to Shutter or Fade stall
+    /// while it decoded and scaled on the main thread.
+    @Published public private(set) var backdropImage: CGImage?
     @Published public private(set) var isPlaying = false
     @Published public private(set) var frameTimeMs: Double = 0
     @Published public private(set) var errorText: String?
@@ -83,6 +88,7 @@ public final class PreviewModel: ObservableObject {
         guard ScreenRecordingPermission.isGranted else {
             if let placeholder = PlaceholderDesktop.image(), (try? renderer.setSnapshot(placeholder)) != nil {
                 snapshotImage = placeholder
+                backdropImage = placeholder   // already small
                 hasSnapshot = true
                 usesPlaceholder = true
                 errorText = nil
@@ -98,6 +104,7 @@ public final class PreviewModel: ObservableObject {
                 guard let self else { return }
                 try self.renderer.setSnapshot(image)
                 self.snapshotImage = image
+                self.makeBackdrop(from: image)
                 self.hasSnapshot = true
                 self.usesPlaceholder = false
                 self.isCapturing = false
@@ -106,6 +113,28 @@ public final class PreviewModel: ObservableObject {
             } catch {
                 self?.errorText = "Capture failed: \(error.localizedDescription)"
                 self?.isCapturing = false
+            }
+        }
+    }
+
+    /// Preview backdrop width in pixels: twice the widest preview (about 300 pt)
+    /// on a Retina display, and a 30× smaller image than the capture.
+    private static let backdropWidth = 800
+
+    private func makeBackdrop(from image: CGImage) {
+        let width = Self.backdropWidth
+        guard image.width > width else { backdropImage = image; return }
+        let height = max(1, Int((Double(image.height) * Double(width) / Double(image.width)).rounded()))
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) else { return }
+            ctx.interpolationQuality = .high
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            guard let small = ctx.makeImage() else { return }
+            await MainActor.run { [weak self] in
+                guard let self, self.snapshotImage === image else { return }   // a newer capture won
+                self.backdropImage = small
             }
         }
     }

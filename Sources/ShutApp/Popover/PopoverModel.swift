@@ -23,8 +23,15 @@ final class PopoverModel: ObservableObject {
     var relaunch: () -> Void = {}
     var setLaunchAtLogin: (Bool) -> Void = { _ in }
     var launchAtLogin: () -> Bool = { false }
+    /// nil when there is no updater (a build not signed for release): the switch is hidden.
+    var automaticUpdates: () -> Bool? = { nil }
+    var setAutomaticUpdates: (Bool) -> Void = { _ in }
     /// The featured dials for a style, drawn with Tuner rows.
     var featuredDials: (String) -> AnyView = { _ in AnyView(EmptyView()) }
+    /// The rest of a style's dials, grouped in folders, for "All dials".
+    var moreDials: (String) -> AnyView = { _ in AnyView(EmptyView()) }
+    /// Presets, copy, paste, import and export for a style.
+    var shareView: (String, Binding<Bool>) -> AnyView = { _, _ in AnyView(EmptyView()) }
     var resetStyle: (String) -> Void = { _ in }
 
     @Published var stateDescription = "idle"

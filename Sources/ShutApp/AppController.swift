@@ -37,6 +37,13 @@ public final class AppController: ObservableObject {
     private var hinge: HingeState?
     private var permissionCheckedAt: Date = .distantPast
     private var hasWarnedAboutPermission = false
+    /// The grant as last seen, so a change while running is noticed once.
+    private var lastKnownGrant: Bool?
+    private var permissionTimer: Timer?
+    /// Called on the main thread when Screen Recording is granted or revoked
+    /// while the app runs. The app shows its window so the user sees why the
+    /// chosen style will play as a plain fade, and what to do about it.
+    public var onPermissionChanged: ((Bool) -> Void)?
 
     // Velocity for the styles' motion blur, from the rendered progress so it is
     // meaningful in spring and timed modes too. Smoothed over ~50 ms so the
@@ -56,7 +63,7 @@ public final class AppController: ObservableObject {
     private var lastRenderedProgress: Double?
     private var napActivity: NSObjectProtocol?
 
-    /// Progress at which the overlay appears; Bendable engages at 0.3 % closure.
+    /// Progress at which the overlay appears: 0.3 % closure.
     private let showAt = 0.012
     /// Progress below which a reopened lid tears the overlay down.
     private let hideBelow = 0.004
@@ -112,7 +119,23 @@ public final class AppController: ObservableObject {
         unlock.onUnlock = { [weak self] in self?.sessionUnlocked() }
         unlock.onLock = { [weak self] in self?.blackSince = nil }
 
+        // Screen Recording can be switched off in System Settings at any time, and
+        // nothing tells the app. The hinge path checks every 2 s while samples
+        // arrive; this slow clock covers a parked sensor and Macs without one.
+        // One cheap TCC query every 10 s, with a wide tolerance, is the whole cost.
+        let timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshPermission(force: true) }
+        }
+        timer.tolerance = 5
+        permissionTimer = timer
+        NotificationCenter.default.addObserver(self, selector: #selector(appActivated),
+                                               name: NSApplication.didBecomeActiveNotification, object: nil)
     }
+
+    @objc private func appActivated() { refreshPermission(force: true) }
+
+    /// For the menu bar and popover: read the grant right now, not in 2 s.
+    public func checkPermissionNow() { refreshPermission(force: true) }
 
     /// The safety check only has work while an overlay is on screen.
     private func startSafetyTimer() {
@@ -204,15 +227,21 @@ public final class AppController: ObservableObject {
 
     // MARK: - Permission (polled, never on the sensor path)
 
-    private func refreshPermission() {
-        guard Date().timeIntervalSince(permissionCheckedAt) > 2 else { return }
+    private func refreshPermission(force: Bool = false) {
+        guard force || Date().timeIntervalSince(permissionCheckedAt) > 2 else { return }
         permissionCheckedAt = Date()
         let granted = ScreenRecordingPermission.isGranted
-        registry.captureAvailable = granted
+        if registry.captureAvailable != granted { registry.captureAvailable = granted }
         if !granted, registry.current.needsSnapshot, !hasWarnedAboutPermission {
             hasWarnedAboutPermission = true
             Log.capture.warning("Screen Recording not granted; \(self.registry.current.id, privacy: .public) plays as Fade until relaunch")
         }
+        if let last = lastKnownGrant, last != granted {
+            Log.capture.warning("Screen Recording \(granted ? "granted" : "revoked", privacy: .public) while running")
+            if !granted { teardown(reason: "permission revoked"); renderer.clearSnapshot() }
+            onPermissionChanged?(granted)
+        }
+        lastKnownGrant = granted
     }
 
     // MARK: - Transitions between states
@@ -399,6 +428,7 @@ public final class AppController: ObservableObject {
     }
 
     @objc private func didWake(_ note: Notification) {
+        refreshPermission(force: true)
         Log.app.info("wake: \(note.name.rawValue, privacy: .public)")
         // The sensor's SPU endpoint doesn't survive sleep.
         sensor.reconnect()

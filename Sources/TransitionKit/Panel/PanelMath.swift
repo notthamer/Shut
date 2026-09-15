@@ -51,7 +51,7 @@ func softLimited(_ value: Double, linearUpTo: Double, ceiling: Double) -> Double
     return linearUpTo + headroom * (1 - exp(-(value - linearUpTo) / headroom))
 }
 
-/// Bendable's "closure" in Shut's terms (our progress is already 1 = shut). A few
+/// "Closure" in Shut's terms (our progress is already 1 = shut). A few
 /// milliseconds of velocity lead keep a fast close from reading as lag.
 func panelClosure(progress: Double, velocity: Double, lead: Double = 0, maxLead: Double = 0.05) -> Double {
     clamp(progress + clamp(velocity * lead, -maxLead, maxLead), 0, 1)

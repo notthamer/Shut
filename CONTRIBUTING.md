@@ -83,7 +83,7 @@ the manual checklist in `README.md` on a real MacBook and say which steps you ra
 ## Conventions
 
 See `CLAUDE.md`: readable over clever, comments explain reasoning, no third-party
-dependencies, never write screen content to disk, Tuner never imports app code,
+dependencies (Sparkle, for updates, is the one exception), never write screen content to disk, Tuner never imports app code,
 the overlay only ever touches the built-in display. Match the panel's visual system
 (`TunerTheme`): 36-pt rows, neutral alphas, no accent colour, help text on every
 control.

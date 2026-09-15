@@ -94,12 +94,13 @@ final class MainWindowController: NSObject, NSWindowDelegate {
 /// ⌘H, ⌘Q, and Edit commands for the Tuner's text fields.
 enum MainMenu {
     @MainActor
-    static func install() {
+    static func install(updateItem: NSMenuItem? = nil) {
         let main = NSMenu()
 
         let appItem = NSMenuItem()
         let app = NSMenu()
         app.addItem(withTitle: "About Shut", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        if let updateItem { app.addItem(updateItem) }
         app.addItem(.separator())
         app.addItem(withTitle: "Hide Shut", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthers = app.addItem(withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")

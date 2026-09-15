@@ -2,7 +2,7 @@ import AppKit
 import CoreText
 import SwiftUI
 
-/// The three voices of the interface, after Dia's editorial system:
+/// The three voices of the interface:
 ///
 /// - **Display**: Playfair Display (OFL), a light serif for the wordmark, headlines
 ///   and style names. Weight 400 with tight tracking; authority through restraint.

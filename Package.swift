@@ -1,5 +1,5 @@
 // swift-tools-version: 6.0
-// Shut — lid transitions for MacBook. See docs/PRD.md.
+// Shut — lid transitions for MacBook. See README.md and docs/ARCHITECTURE.md.
 //
 // Every library here depends only on Apple frameworks. `Tuner` intentionally has no
 // dependency on `TransitionKit` or `ShutApp` so it can be extracted later.
@@ -15,6 +15,10 @@ let package = Package(
         .library(name: "ShutApp", targets: ["ShutApp"]),
         .executable(name: "lidangle-cli", targets: ["lidangle-cli"]),
         .executable(name: "shut", targets: ["shut"]),
+    ],
+    dependencies: [
+        // The one third-party dependency: in-app updates. Everything else is Apple frameworks.
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.7.0"),
     ],
     targets: [
         // Sensor access: IOKit HID, smoothing, velocity, adaptive polling.
@@ -53,7 +57,7 @@ let package = Package(
         // executable are a 3-line shim over it.
         .target(
             name: "ShutApp",
-            dependencies: ["LidSensor", "TransitionKit", "Tuner"],
+            dependencies: ["LidSensor", "TransitionKit", "Tuner", .product(name: "Sparkle", package: "Sparkle")],
             resources: [.copy("Resources")],
             linkerSettings: [
                 .linkedFramework("AppKit"),
@@ -63,7 +67,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "shut",
-            dependencies: ["ShutApp"]
+            dependencies: ["ShutApp"],
+            // Sparkle.framework is embedded in Shut.app/Contents/Frameworks by scripts/build.sh;
+            // the executable has to look for it there.
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]
         ),
 
         .testTarget(name: "LidSensorTests", dependencies: ["LidSensor"]),

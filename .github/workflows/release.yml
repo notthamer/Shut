@@ -19,7 +19,7 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       publish: ${{ steps.v.outputs.publish }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { fetch-depth: 0 }
       - id: v
         run: |
@@ -37,19 +37,47 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.4.app || true
       - name: Test
         run: swift test
       - name: Build and package
         run: scripts/package-dmg.sh
+      - name: Appcast
+        # SPARKLE_PRIVATE_KEY: the EdDSA private key from `generate_keys -x`, as a
+        # repository secret. The appcast is uploaded with the DMG and the app reads
+        # it from the stable releases/latest/download URL.
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          if [ -z "$SPARKLE_PRIVATE_KEY" ]; then
+            echo "::error::SPARKLE_PRIVATE_KEY secret is not set. The app's Check for Updates needs appcast.xml on every release; add the secret and re-run."
+            exit 1
+          fi
+          GEN=$(find .build/artifacts -type f -name generate_appcast | head -1)
+          KEYFILE=$(mktemp) && chmod 600 "$KEYFILE" && trap 'rm -f "$KEYFILE"' EXIT
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$KEYFILE"
+          "$GEN" --ed-key-file "$KEYFILE" \
+            --download-url-prefix "https://github.com/${{ github.repository }}/releases/download/v${{ needs.decide.outputs.version }}/" \
+            --link "https://github.com/${{ github.repository }}/releases" \
+            build/releases
+          ls build/releases
+      - name: Release notes
+        run: |
+          awk -v v="${{ needs.decide.outputs.version }}" '
+            $0 ~ "^## " { on = ($2 == v) ; next }
+            on { print }' CHANGELOG.md > build/releases/notes.md
+          [ -s build/releases/notes.md ] || echo "Shut ${{ needs.decide.outputs.version }}" > build/releases/notes.md
+          cat build/releases/notes.md
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: v${{ needs.decide.outputs.version }}
           name: Shut ${{ needs.decide.outputs.version }}
-          generate_release_notes: true
+          # Release notes come from CHANGELOG.md, the section for this version.
+          body_path: build/releases/notes.md
           files: |
             build/releases/*.dmg
             build/releases/*.sha256
+            build/releases/appcast.xml

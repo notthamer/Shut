@@ -2,9 +2,8 @@
 
 Shut is an open-source, MIT-licensed macOS app built in public: ways to close your
 Mac. It lives in the menu bar and the Dock, plays a lid-driven transition on the
-built-in display, and ships a reusable tuning panel. The original v1 spec (when the
-app was called Sinkhole) is kept in `docs/PRD.md` for history; the current design
-is described in `README.md` and `docs/ARCHITECTURE.md`.
+built-in display, and ships a reusable tuning panel. The design is described in
+`README.md` and `docs/ARCHITECTURE.md`.
 
 ## Rules
 
@@ -12,20 +11,19 @@ is described in `README.md` and `docs/ARCHITECTURE.md`.
    version. If a trick is needed for performance, isolate it and explain it.
 2. **Comments explain design reasoning**, not what the code literally does. The shader
    files especially should read like a walkthrough.
-3. **No third-party dependencies.** SwiftPM targets depend only on Apple frameworks.
+3. **No third-party dependencies**, with one exception: Sparkle, for in-app updates, used only by `ShutApp` through `Updater.swift`. Every other target depends only on Apple frameworks.
    Argument parsing, JSON, HID, Metal: all hand-rolled or from the SDK.
 4. **Never write screen content to disk.** Snapshots exist only as `MTLTexture`s in
    memory and are released the moment a transition ends. Logs never contain pixels.
    Never use `print` on image data, never save debug PNGs outside the test dump.
 5. **`Tuner` must never import app code or `TransitionKit`.** It is a standalone
-   SwiftUI package (a DialKit-style tuning panel) that other apps can reuse. It only
+   SwiftUI package (a live tuning panel) that other apps can reuse. It only
    imports SwiftUI, AppKit, Foundation, Combine, UniformTypeIdentifiers, and Carbon
-   (for the permission-free global hot key). Do not use the DialKit name in code.
-6. **Don't copy code from other lid-angle projects.** samhenrigold/LidAngleSensor is
-   Apache-2.0; we credit its research and write our own implementation. Bendable is
-   MIT: ported files say so in their header and `THIRD_PARTY_LICENSES.md` carries
-   the license. Never use the DialKit name in code or UI.
-7. **Match the visual system: an editorial broadsheet, after Dia.** One
+   (for the permission-free global hot key).
+6. **Ported code keeps its license.** A file that carries code from elsewhere says
+   so in a one-line header, and `THIRD_PARTY_LICENSES.md` carries the license text.
+   Nothing else in the repo discusses where code came from.
+7. **Match the visual system: an editorial broadsheet.** One
    appearance; every window sets `TunerTheme.appearance` (Aqua) and the app sets
    it on `NSApp`. **Palette** (fixed, in `TunerTheme`): Bone paper, Paper White
    cards and the primary button, Linen pills and wells, Pure Black / Carbon /

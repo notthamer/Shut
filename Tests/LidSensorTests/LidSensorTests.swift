@@ -14,7 +14,7 @@ final class LidSensorTests: XCTestCase {
 }
 
 /// The sensor reports whole degrees; everything here is about getting a usable
-/// position and rate out of a signal that coarse. Cases ported from Bendable.
+/// position and rate out of a signal that coarse.
 final class AngularFitTests: XCTestCase {
     private func sweep(_ fit: inout AngularFit, from start: Double, rate: Double, duration: TimeInterval,
                        interval: TimeInterval = 1.0 / 120, dither: Double = 0) -> [AngularFit.Estimate] {

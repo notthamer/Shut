@@ -127,30 +127,17 @@ public struct ChromeKnob: View {
     public var body: some View { Knob(size: size) }
 }
 
-/// The spectrum marquee as a thin line: the one place the gradient appears.
-/// It drifts slowly along its length; under Reduce Motion it is still.
+/// The spectrum as a thin line: the one place the gradient appears. It is
+/// static. An earlier version drifted along its length on a repeat-forever
+/// animation, which kept SwiftUI redrawing the whole panel every frame, even
+/// after the window was closed, at about a fifth of a core.
 public struct SpectrumLine: View {
     let height: CGFloat
-    @Environment(\.accessibilityReduceMotion) private var reduce
-    @State private var phase: CGFloat = 0
     public init(height: CGFloat = 2) { self.height = height }
     public var body: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            HStack(spacing: 0) {
-                LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing).frame(width: w)
-                LinearGradient(gradient: TunerTheme.spectrum, startPoint: .trailing, endPoint: .leading).frame(width: w)
-                LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing).frame(width: w)
-            }
-            .offset(x: -w * 2 * phase)
-            .onAppear {
-                guard !reduce else { return }
-                withAnimation(.linear(duration: 24 * TunerTheme.motionScale).repeatForever(autoreverses: false)) { phase = 1 }
-            }
-        }
-        .frame(height: height)
-        .clipped()
-        .allowsHitTesting(false)
+        LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing)
+            .frame(height: height)
+            .allowsHitTesting(false)
     }
 }
 

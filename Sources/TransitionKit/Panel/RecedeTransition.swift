@@ -52,7 +52,7 @@ public final class RecedeTransition: PanelTransition {
         frame.usesSnapshot = true
         frame.opacity = 1
 
-        // `depth` chooses how small it gets: 1 = Bendable's 0.42, 0 = no shrink.
+        // `depth` chooses how small it gets: 1 = scale 0.42, 0 = no shrink.
         let smallestScale = lerp(1.0, 0.42, clamp(p.depth, 0, 1))
         let travelled = Easing.easeInOutCubic(closure) * intensity
         let size = lerp(1, smallestScale, travelled)

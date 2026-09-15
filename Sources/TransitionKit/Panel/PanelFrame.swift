@@ -39,7 +39,7 @@ public struct PanelFrame: Equatable {
 
     public init() {}
 
-    /// Packs into the shared uniforms with the same clamps Bendable applies.
+    /// Packs into the shared uniforms with the usual clamps.
     public func uniforms(progress: Double) -> TransitionUniforms {
         var u = TransitionUniforms()
         u.progress = Float(progress)

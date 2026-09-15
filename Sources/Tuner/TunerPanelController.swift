@@ -107,7 +107,7 @@ public final class TunerPanelController {
                 ?? NSRect(origin: panel.frame.origin, size: Self.defaultSize)
         }
         let collapsed = isCollapsed
-        // Dia motion: the content crossfades; the frame simply changes.
+        // The content crossfades; the frame simply changes.
         let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = (reduce ? 0 : 0.1) * TunerTheme.motionScale

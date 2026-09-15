@@ -32,6 +32,10 @@ struct ControlsColumn: View {
                 FeelSection(model: model)
                     .id(model.registry.current.id)
                     .transition(.blurFade)
+
+                ShareSection(model: model)
+                    .id("share-" + model.registry.current.id)
+                    .transition(.blurFade)
             }
             .padding(16)
             // A style change swaps the dials: a blur-bridged fade so the outgoing
@@ -122,37 +126,72 @@ struct StyleCard: View {
 struct SpeedRow: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
+    /// Same as the row's label column, so the end labels sit under the track.
+    private let labelWidth: CGFloat = 96
 
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 0) {
             FillSliderRow("Speed", value: Binding(get: { model.speed }, set: { model.speed = $0 }),
                           in: 0...1, step: 0.01, decimals: 2, unit: "",
                           help: "How much of the lid's travel the effect uses: the number is where the effect starts, in degrees above shut. Fast plays in the last few degrees; slow spreads it over most of the close.",
+                          labelWidth: labelWidth,
                           valueText: { _ in String(format: "%.0f°", model.settings.bandDegrees) })
+            // "Slow" under the left end of the track, "Fast" under the right end,
+            // so each word reads as the end of the dial it names.
             HStack {
                 Text("Slow"); Spacer(); Text("Fast")
             }
+            .padding(.leading, labelWidth + 12)
             .padding(.trailing, FillSliderRow.valueWidth + 12)
             .font(TunerTheme.bodySmall)
             .foregroundStyle(theme.inkTertiary)
-            .padding(.horizontal, 2)
         }
     }
 }
 
+/// The style's main dials, then every other dial behind "All dials", so the
+/// whole style is tunable on this page without opening anything else.
 struct FeelSection: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
+    @State private var showAll = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
             HStack {
                 Eyebrow("Adjust \(model.registry.current.displayName)", number: "03")
                 Spacer()
+                QuietButton(showAll ? "Main dials" : "All dials") { showAll.toggle() }
                 QuietButton("Reset") { model.resetStyle(model.registry.current.id) }
             }
             .padding(.bottom, 2)
             model.featuredDials(model.registry.current.id)
+            if showAll {
+                model.moreDials(model.registry.current.id)
+                    .padding(.top, 6)
+                    .transition(.blurFade)
+            }
+        }
+        .tunerAnimation(TunerTheme.ease, value: showAll)
+    }
+}
+
+/// Presets for the style: pick one, name the current dials, copy or export the
+/// JSON, paste or import someone else's.
+struct ShareSection: View {
+    @ObservedObject var model: PopoverModel
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
+            HStack {
+                Eyebrow("Presets", number: "04")
+                Spacer()
+                QuietButton(expanded ? "Done" : "Share…") { expanded.toggle() }
+                    .help("Copy or export this preset, or paste and import one.")
+            }
+            .padding(.bottom, 2)
+            model.shareView(model.registry.current.id, $expanded)
         }
     }
 }

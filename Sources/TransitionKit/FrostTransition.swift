@@ -2,8 +2,8 @@ import Foundation
 import Metal
 import Tuner
 
-/// The classic iPhone Duo-style frost. Image locked in space, blur front moves
-/// from the top edge toward the hinge, then fades to black. PRD 4.3 / 4.5.
+/// Frost. Image locked in space, blur front moves from the top edge toward the
+/// hinge, then fades to black.
 public struct FrostParams: TunableParameters {
     public var maxBlur: Double = 64          // radius in px at the frostiest
     public var frostSpread: Double = 0.6     // softness of the frost front (fraction of height)

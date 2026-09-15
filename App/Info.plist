@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Shut</string>
 	<key>CFBundleExecutable</key>
 	<string>Shut</string>
 	<key>CFBundleIconFile</key>
@@ -14,8 +16,6 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>Shut</string>
-	<key>CFBundleDisplayName</key>
-	<string>Shut</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -24,13 +24,19 @@
 	<string>1</string>
 	<key>LSAppNapIsDisabled</key>
 	<true/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>MIT License</string>
+	<string>© 2026 Thamer Gahtani. MIT License.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUFeedURL</key>
+	<string>https://github.com/notthamer/shut/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>5eznk8jyRMKnx/q7d6efjAX7bD+WaozJ4JcJTgXguBs=</string>
 </dict>
 </plist>

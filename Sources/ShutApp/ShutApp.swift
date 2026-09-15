@@ -56,17 +56,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindow: MainWindowController!
     private let welcome = WelcomeWindow()
     private let dock = DockPresence()
+    private let updater = Updater()
     private var cancellables = Set<AnyCancellable>()
 
+    /// Posted by a second copy of Shut that is about to quit, so the running
+    /// copy shows its window instead: the user clicked the icon, they want Shut.
+    static let reopenNotification = Notification.Name("app.shut.reopen")
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Two copies (one from Xcode, one relaunched) would each draw an overlay
-        // and fight over the sensor. The newer one wins; the older one quits.
+        // Two copies (one from Xcode, one in /Applications, an old one after an
+        // update) would each draw an overlay and fight over the sensor. Opening
+        // Shut while it runs should feel like one app: the running copy shows its
+        // window and this one quits. Only a newer version replaces the old one.
         if let bundleID = Bundle.main.bundleIdentifier {
             let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
                 .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
-            for other in others {
-                Log.app.warning("terminating older instance pid \(other.processIdentifier)")
-                other.terminate()
+            if let other = others.first {
+                // A build launched from Xcode always wins, or Run would just quit.
+                if InstanceVersion.current.isNewer(than: InstanceVersion(of: other)) || InstanceVersion.isBeingDebugged {
+                    for o in others {
+                        Log.app.warning("replacing older version, pid \(o.processIdentifier)")
+                        o.terminate()
+                    }
+                } else {
+                    Log.app.info("already running as pid \(other.processIdentifier); handing over and quitting")
+                    DistributedNotificationCenter.default().postNotificationName(Self.reopenNotification, object: nil, userInfo: nil, deliverImmediately: true)
+                    other.activate(from: .current, options: [])
+                    NSApp.terminate(nil)
+                    return
+                }
             }
         }
 
@@ -91,6 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         tunerHost = TunerHost(registry: registry, previewModel: previewModel, controller: controller, settings: settings)
         menuBar.openTuner = { [weak self] in self?.tunerHost?.toggle() }
+        menuBar.updateItem = updater.menuItem()
         menuBar.presetMenuProvider = { [weak self] in self?.tunerHost?.presetMenuItems() ?? [] }
 
         sensor.onRateChange = { rate in Log.lid.info("poll rate \(Int(rate)) Hz") }
@@ -107,21 +126,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popoverModel.relaunch = { Relaunch.now() }
         popoverModel.setLaunchAtLogin = { on in if LaunchAtLogin.isEnabled != on { LaunchAtLogin.toggle() } }
         popoverModel.launchAtLogin = { LaunchAtLogin.isEnabled }
+        popoverModel.automaticUpdates = { [weak self] in
+            guard let self, updater.isEnabled else { return nil }
+            return updater.checksAutomatically
+        }
+        popoverModel.setAutomaticUpdates = { [weak self] on in self?.updater.checksAutomatically = on }
         popoverModel.featuredDials = { [weak self] id in self?.tunerHost?.featuredDials(for: id) ?? AnyView(EmptyView()) }
         popoverModel.resetStyle = { [weak self] id in self?.tunerHost?.resetStyle(id: id) }
+        popoverModel.moreDials = { [weak self] id in self?.tunerHost?.moreDials(for: id) ?? AnyView(EmptyView()) }
+        popoverModel.shareView = { [weak self] id, expanded in
+            self?.tunerHost?.shareView(for: id, expanded: expanded) ?? AnyView(EmptyView())
+        }
+        tunerHost?.aroundModal = { [weak self] work in
+            if let popover = self?.popover { popover.holdingOpen(work) } else { work() }
+        }
         tunerHost?.onParamsChanged = { [weak self] id in self?.popoverModel.invalidateThumbnail(id: id) }
         popover = PopoverController(model: popoverModel, dock: dock)
         mainWindow = MainWindowController(model: popoverModel, dock: dock)
         mainWindow.onShow = { [weak self] in self?.popover.close() }
         popoverModel.openWindow = { [weak self] in self?.mainWindow.show() }
-        MainMenu.install()
+        controller.onPermissionChanged = { [weak self] granted in
+            guard let self else { return }
+            // Revoked: say so where the fix is. Granted: the card's Restart button applies it.
+            if !granted, registry.current.needsSnapshot { mainWindow.show() }
+        }
+        DistributedNotificationCenter.default().addObserver(forName: Self.reopenNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.mainWindow.show() }
+        }
+        MainMenu.install(updateItem: updater.menuItem())
         dock.alwaysVisible = settings.showInDock
         settings.$showInDock.sink { [weak self] on in self?.dock.alwaysVisible = on }.store(in: &cancellables)
         tunerHost?.onPanelVisibility = { [weak self] visible in visible ? self?.dock.retain("tuner") : self?.dock.release("tuner") }
         welcome.onVisibilityChanged = { [weak self] visible in visible ? self?.dock.retain("welcome") : self?.dock.release("welcome") }
-        menuBar.togglePopover = { [weak self] button in self?.popover.toggle(relativeTo: button) }
+        // One surface at a time. While the main window exists (open or minimized),
+        // the menu bar icon brings it forward instead of opening the popover on
+        // top of it; the popover is for when there is no window.
+        menuBar.togglePopover = { [weak self] button in
+            guard let self else { return }
+            controller.checkPermissionNow()
+            if mainWindow.isShown { popover.close(); mainWindow.show() } else { popover.toggle(relativeTo: button) }
+        }
         menuBar.showPermissionWindow = { [weak self] in
-            if let button = self?.menuBar.statusButton { self?.popover.show(relativeTo: button) }
+            guard let self else { return }
+            if mainWindow.isShown { mainWindow.show() }
+            else if let button = menuBar.statusButton { popover.show(relativeTo: button) }
         }
 
         // Zero prompts at launch. Permissions are explained in the popover, only

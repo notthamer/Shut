@@ -52,7 +52,7 @@ public struct HingeSample: Sendable, Equatable {
 ///
 /// Note the convention: **progress 0 = open, 1 = shut** and velocity is positive
 /// while closing. That is the direction every Shut transition animates in, and
-/// the opposite of Bendable's "openness".
+/// the opposite of "openness".
 public struct HingeState: Sendable, Equatable {
     /// Filtered angle in degrees when a real sensor is present.
     public var angle: Double?

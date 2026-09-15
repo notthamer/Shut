@@ -95,7 +95,7 @@ on. `TunerHost` registers each style's parameters with the Tuner in one line.
 - **Material.** `PanelChrome` is a sheet of Bone paper over a behind-window blur
   with a one-point Silver border and 24-pt corners (a circle when the Tuner is
   collapsed). `TunerTheme` is single-appearance (Aqua is forced on every window
-  and on `NSApp`) and holds Dia's palette, type scale and the one 0.2 s ease;
+  and on `NSApp`) and holds the palette, type scale and the one 0.2 s ease;
   `surface(.card/.pill/.well/.wash)` builds every control with a border and no
   shadow; `Knob` is the shared slider handle; `SpectrumLine` is the gradient's
   one appearance; `Eyebrow` numbers the chapters. Panels fade in; nothing moves.

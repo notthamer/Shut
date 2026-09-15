@@ -1,8 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The visual system for every Tuner surface: an editorial broadsheet, after the
-/// way The Browser Company designs Dia.
+/// The visual system for every Tuner surface: an editorial broadsheet.
 ///
 /// Bone paper, black ink, one-point Silver borders instead of shadows, floating
 /// pills, a light serif for headlines, a humanist grotesk for copy, a mono for
@@ -121,7 +120,7 @@ public struct TunerTheme {
     public var tintSkyActive: Color { Self.saffron }
     public var tintAmber: Color { washSaffron }
 
-    // MARK: Metrics (Dia's radius set: 12, 20, 24, full)
+    // MARK: Metrics (the radius set: 12, 20, 24, full)
 
     public static let panelWidth: CGFloat = 300
     public static let previewWidth: CGFloat = 300

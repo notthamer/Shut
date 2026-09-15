@@ -51,7 +51,7 @@ public struct TransitionUniforms {
 
     // MARK: Panel family (Fold, Crease, Recede, Slide, Fade, Shutter)
     // Appended after the original 144 bytes so the offsets above never move. Two
-    // float2 first (8-aligned at 144/152), then scalars. Mirrors Bendable's Uniforms.
+    // float2 first (8-aligned at 144/152), then scalars.
     public var meshScale: SIMD2<Float> = .one        // 144  NDC scale about the centre (Recede)
     public var meshTranslate: SIMD2<Float> = .zero   // 152  NDC translation (Slide)
     public var foldAngle: Float = 0                  // 160  radians; the panel above the crease turns away

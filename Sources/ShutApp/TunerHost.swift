@@ -21,8 +21,14 @@ final class TunerHost {
         let content: (PreviewArea, TunerFoldersView<TriggerParams>) -> AnyView
         let presetItems: () -> [NSMenuItem]
         let featured: () -> AnyView
+        /// Every folder minus the featured dials, for the popover's "All dials".
+        let moreDials: () -> AnyView
+        /// Presets, copy, paste, import and export, for the popover.
+        let share: (Binding<Bool>) -> AnyView
         let reset: () -> Void
     }
+    /// Set by the app: runs a modal file panel while keeping the popover open.
+    var aroundModal: (() -> Void) -> Void = { $0() }
     /// Set by the app so thumbnails refresh as dials move.
     var onParamsChanged: ((String) -> Void)?
     /// Set by the app to keep a Dock icon while the panel is visible.
@@ -100,6 +106,11 @@ final class TunerHost {
                     }
                 })
             },
+            moreDials: { AnyView(TunerFoldersView(store: store, excludingFeatured: true)) },
+            share: { [weak self] expanded in
+                AnyView(TunerShareView(store: store, expanded: expanded,
+                                       aroundModal: { work in (self?.aroundModal ?? { $0() })(work) }))
+            },
             reset: { store.resetAll() }
         )
     }
@@ -114,6 +125,14 @@ final class TunerHost {
 
     func featuredDials(for id: String) -> AnyView {
         registrations[id]?.featured() ?? AnyView(EmptyView())
+    }
+
+    func moreDials(for id: String) -> AnyView {
+        registrations[id]?.moreDials() ?? AnyView(EmptyView())
+    }
+
+    func shareView(for id: String, expanded: Binding<Bool>) -> AnyView {
+        registrations[id]?.share(expanded) ?? AnyView(EmptyView())
     }
 
     func resetStyle(id: String) {

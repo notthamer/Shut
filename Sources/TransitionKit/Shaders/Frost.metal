@@ -1,4 +1,4 @@
-// Frost: the classic Duo-style lid transition.
+// Frost: the frosted lid transition.
 //
 // The image never moves or scales. A blur front starts at the top edge (the
 // edge nearest the hinge when the lid is closing) and sweeps down; behind the
