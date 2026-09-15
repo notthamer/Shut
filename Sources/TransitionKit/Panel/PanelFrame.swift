@@ -9,7 +9,7 @@ public enum PanelMask: Equatable {
 }
 
 /// The pure output of a panel style's math, one step before packing into
-/// uniforms. Port of Bendable's FrameDescription (MIT, © 2026 Anti Ltd).
+/// uniforms. Ported code (MIT, © 2026 Anti Ltd).
 public struct PanelFrame: Equatable {
     /// Rotation of the part above the crease, radians, away from the viewer.
     public var foldAngle = 0.0

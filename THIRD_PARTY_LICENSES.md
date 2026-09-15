@@ -1,13 +1,11 @@
 # Third-party licenses
 
-## Bendable
+## Panel styles and hinge filters
 
 Portions of `Sources/TransitionKit/Panel/`, `Sources/TransitionKit/Shaders/Panel.metal`,
 `Sources/TransitionKit/Thumbnails/PlaceholderDesktop.swift`, and `Sources/LidSensor/`
 (AngularFit, OneEuroFilter, HingeCalibration, OpenReference, HingeNormalizer,
-LidStateProvider) are ported from Bendable (its Curl, Aperture and Blinds styles
-were ported too and later removed from the gallery; the aperture and blinds masks
-remain in `Panel.metal`), https://github.com/opensourcevillain/Bendable.
+LidStateProvider) are ported from MIT-licensed work by the copyright holder below.
 
 MIT License
 

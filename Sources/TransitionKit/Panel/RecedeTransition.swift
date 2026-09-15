@@ -2,7 +2,7 @@ import Foundation
 import Tuner
 
 /// Recede: the desktop drops straight back into the dark, square to you the
-/// whole way, with no rotation at all. Ported from Bendable's RecedePreset
+/// whole way, with no rotation at all. Ported code
 /// (MIT, © 2026 Anti Ltd).
 public struct RecedeParams: TunableParameters {
     public var intensity = 1.0

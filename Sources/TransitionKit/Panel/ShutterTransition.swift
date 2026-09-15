@@ -2,7 +2,7 @@ import Foundation
 import Tuner
 
 /// Shutter: bars close in from the top and bottom over the live desktop.
-/// Ported from Bendable's ShutterPreset (MIT, © 2026 Anti Ltd).
+/// Ported code (MIT, © 2026 Anti Ltd).
 public struct ShutterParams: TunableParameters {
     public var intensity = 1.0
     public var dimming = 1.0

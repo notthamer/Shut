@@ -1,7 +1,7 @@
 import Foundation
 
-/// One Euro filter (Casiez, Roussel & Vogel, 2012), as used in Bendable (MIT,
-/// © 2026 Anti Ltd). A fixed low-pass either lags during fast movement or leaves
+/// One Euro filter (Casiez, Roussel & Vogel, 2012); ported code
+/// (MIT, © 2026 Anti Ltd). A fixed low-pass either lags during fast movement or leaves
 /// jitter at rest; this one raises its own cutoff with measured speed: rock steady
 /// when the lid is parked, transparent when it is being moved by hand.
 ///

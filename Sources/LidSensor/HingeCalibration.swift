@@ -1,6 +1,6 @@
 import Foundation
 
-/// Per-machine mapping from sensor degrees to progress. Ported from Bendable
+/// Per-machine mapping from sensor degrees to progress. Ported code
 /// (MIT, © 2026 Anti Ltd).
 ///
 /// Sensors don't agree on where "closed" sits, and the comfortable open angle

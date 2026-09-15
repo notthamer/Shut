@@ -2,7 +2,7 @@ import Foundation
 import Tuner
 
 /// Slide: the desktop slides down out of sight behind the hinge, accelerating
-/// as it goes. Ported from Bendable's SlidePreset (MIT, © 2026 Anti Ltd).
+/// as it goes. Ported code (MIT, © 2026 Anti Ltd).
 public struct SlideParams: TunableParameters {
     public var intensity = 1.0
     public var blur = 1.0

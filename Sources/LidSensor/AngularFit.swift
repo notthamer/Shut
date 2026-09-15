@@ -1,7 +1,7 @@
 import Foundation
 
 /// Fits a straight line through recent readings, giving both where the lid is and
-/// how fast it is turning. Ported from Bendable (MIT, © 2026 Anti Ltd).
+/// how fast it is turning. Ported code (MIT, © 2026 Anti Ltd).
 ///
 /// Differencing consecutive readings is the obvious way to get a rate and it is
 /// close to useless here: the sensor reports whole degrees, so every estimate is

@@ -2,8 +2,8 @@ import Foundation
 import IOKit
 import IOKit.pwr_mgt
 
-/// Fallback for Macs without a lid angle sensor. Ported from Bendable (MIT,
-/// © 2026 Anti Ltd).
+/// Fallback for Macs without a lid angle sensor. Ported code
+/// (MIT, © 2026 Anti Ltd).
 ///
 /// `IOPMrootDomain` publishes `AppleClamshellState` and posts
 /// `kIOPMMessageClamshellStateChange` as a general-interest notification on every

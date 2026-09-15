@@ -3,8 +3,8 @@ import Tuner
 
 /// Fade: a plain dim to black over the live desktop. Needs no snapshot and no
 /// Screen Recording, which also makes it the Reduce Motion fallback and the
-/// stand-in when a snapshot style has no permission. Math from Bendable's
-/// FadePreset (MIT, © 2026 Anti Ltd).
+/// stand-in when a snapshot style has no permission. Ported math
+/// (MIT, © 2026 Anti Ltd).
 public struct FadeParams: TunableParameters {
     public var intensity = 1.0
     public var dimming = 1.0

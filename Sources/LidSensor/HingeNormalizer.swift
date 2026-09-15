@@ -1,7 +1,7 @@
 import Foundation
 
 /// Turns raw samples into the smoothed, calibrated `HingeState` the app sees.
-/// Ported from Bendable (MIT, © 2026 Anti Ltd), with progress inverted to Shut's
+/// Ported code (MIT, © 2026 Anti Ltd), with progress inverted to Shut's
 /// 0 = open, 1 = shut. A plain struct with no I/O so the whole sensor → animation
 /// contract can be tested deterministically.
 public struct HingeNormalizer {

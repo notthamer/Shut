@@ -1,6 +1,6 @@
 import Foundation
 
-// Small helpers shared by the panel styles. Ported from Bendable's Math.swift
+// Small helpers shared by the panel styles. Ported code
 // (MIT, © 2026 Anti Ltd).
 
 @inlinable func clamp<T: Comparable>(_ value: T, _ lower: T, _ upper: T) -> T {

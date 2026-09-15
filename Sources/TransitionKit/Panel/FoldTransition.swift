@@ -2,8 +2,8 @@ import Foundation
 import Tuner
 
 /// Fold: the desktop turns against the lid, degree for degree, so it appears to
-/// stand still in space while the machine folds away under it. Ported from
-/// Bendable's FoldPreset (MIT, © 2026 Anti Ltd).
+/// stand still in space while the machine folds away under it. Ported code
+/// (MIT, © 2026 Anti Ltd).
 public struct FoldParams: TunableParameters {
     public var intensity = 1.0
     public var perspective = 1.0

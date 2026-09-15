@@ -3,7 +3,7 @@ import Tuner
 
 /// Crease: a book fold. The desktop creases across its middle and only the upper
 /// half rotates away, with a bowed crease and a highlight catching the bend.
-/// Ported from Bendable's CreasePreset (MIT, © 2026 Anti Ltd).
+/// Ported code (MIT, © 2026 Anti Ltd).
 public struct CreaseParams: TunableParameters {
     public var intensity = 1.0
     public var perspective = 1.0
