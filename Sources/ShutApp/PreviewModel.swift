@@ -147,9 +147,15 @@ public final class PreviewModel: ObservableObject {
         }
     }
 
-    /// Parameters changed in Tuner: redraw at the current progress.
+    /// Parameters changed in Tuner: redraw at the current progress. A preview
+    /// resting at Open would show nothing for any dial, so it glides to the frame
+    /// where the style is recognisable and stays there for the next dial.
     public func paramsChanged() {
-        render()
+        if !isPlaying, progress < 0.05, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            glide(to: registry.current.thumbnailProgress)
+        } else {
+            render()
+        }
     }
 
     public func render() {
@@ -246,7 +252,7 @@ public final class PreviewModel: ObservableObject {
 
     /// Close, then open: the whole round, in the preview.
     public func playRound() {
-        playClose(duration: 0.9)
+        playClose(duration: settings.timedCloseDuration)
         onFinished = { [weak self] in
             self?.onFinished = nil
             self?.playPourOut()

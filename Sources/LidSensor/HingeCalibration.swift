@@ -21,20 +21,34 @@ public struct HingeCalibration: Sendable, Equatable, Codable {
     /// Degrees above closed at which the effect starts, when the lid rests high
     /// enough to allow it. This is the "Speed" control: a small band is fast.
     public static let defaultBandDegrees = 45.0
-    /// The band can never take more than this share of the travel, or someone who
-    /// works with the lid barely open finds the effect already applied at rest.
-    public static let maximumBandFraction = 0.75
+    /// The band always stops this many degrees short of where the lid rests, or
+    /// someone who works with the lid barely open finds the effect already applied
+    /// at rest. Anything up to that is allowed, so "slow" can mean the whole close.
+    public static let restHeadroomDegrees = 6.0
     public static let `default` = HingeCalibration(closedAngle: 0, openAngle: 95)
     /// Angles outside this are sensor noise rather than motion.
     public static let plausibleRange: ClosedRange<Double> = 0...180
-    /// Share of the effect that tracks the whole travel rather than only the band,
-    /// so the screen answers immediately to any movement instead of sitting inert.
-    public static let fullTravelShare = 0.18
+    /// Share of the effect that tracks the whole travel rather than only the band.
+    /// Kept tiny on purpose: it exists so the app can arm and capture as soon as
+    /// the lid moves, not so anything shows. What the user sees starts at the
+    /// band, which is what the Speed dial promises.
+    public static let fullTravelShare = 0.03
+
+    /// The cap lands on a multiple of this, so the dial stops at a round number
+    /// rather than at whatever the lid happens to rest at today minus six.
+    public static let capStepDegrees = 5.0
+
+    /// The widest band this lid allows: headroom under the rest angle, rounded
+    /// down to a round number.
+    public var maximumBandDegrees: Double {
+        let travel = max(openAngle - closedAngle, 1)
+        let ceiling = travel - Self.restHeadroomDegrees
+        return max((ceiling / Self.capStepDegrees).rounded(.down) * Self.capStepDegrees, 5)
+    }
 
     /// Where the effect actually runs, given a requested band.
     public func animationRange(bandDegrees: Double) -> ClosedRange<Double> {
-        let travel = max(openAngle - closedAngle, 1)
-        let band = min(max(bandDegrees, 5), travel * Self.maximumBandFraction)
+        let band = min(max(bandDegrees, 5), maximumBandDegrees)
         return closedAngle...(closedAngle + band)
     }
 

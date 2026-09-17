@@ -27,6 +27,8 @@ public struct FillSliderRow: View {
     let labelWidth: CGFloat
     /// Shows this instead of the number (Speed shows degrees). Read-only.
     let valueText: ((Double) -> String)?
+    /// Runs once when a drag or click on the track ends, with the value settled.
+    let onEditingEnded: (() -> Void)?
     /// The ring shows only for keyboard focus, never because the window opened.
     @State private var keyboardFocus = false
     /// Fixed value column, for the same reason.
@@ -46,7 +48,8 @@ public struct FillSliderRow: View {
     public init(_ label: String, value: Binding<Double>, in range: ClosedRange<Double>,
                 step: Double? = nil, decimals: Int? = nil, unit: String = "", help: String = "",
                 reset: (() -> Void)? = nil, showsValue: Bool = true, height: CGFloat = TunerTheme.rowHeight,
-                labelWidth: CGFloat = 96, valueText: ((Double) -> String)? = nil) {
+                labelWidth: CGFloat = 96, valueText: ((Double) -> String)? = nil,
+                onEditingEnded: (() -> Void)? = nil) {
         self.label = label
         _value = value
         self.range = range
@@ -61,6 +64,7 @@ public struct FillSliderRow: View {
         self.height = height
         self.labelWidth = labelWidth
         self.valueText = valueText
+        self.onEditingEnded = onEditingEnded
     }
 
     private var fraction: CGFloat {
@@ -191,6 +195,7 @@ public struct FillSliderRow: View {
                 defer { dragging = false; dragStart = nil }
                 guard !editing else { return }
                 if !dragging { setValue(fromX: g.location.x, width: width, snapping: true) }
+                onEditingEnded?()
             }
     }
 

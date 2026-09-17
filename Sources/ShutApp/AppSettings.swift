@@ -19,8 +19,10 @@ public final class AppSettings: ObservableObject {
     @Published public var showInDock: Bool { didSet { defaults.set(showInDock, forKey: "showInDock") } }
     @Published public var hasCompletedFirstRun: Bool { didSet { defaults.set(hasCompletedFirstRun, forKey: "hasCompletedFirstRun") } }
 
-    public static let defaultBandDegrees = 45.0
-    public static let bandRange: ClosedRange<Double> = 20...100
+    public static let defaultBandDegrees = 60.0
+    /// The top end is beyond any lid's travel on purpose: the calibration clamps it
+    /// to the user's own rest angle, so "slow" means the whole close on every Mac.
+    public static let bandRange: ClosedRange<Double> = 20...130
 
     /// Seconds a timed close takes on Macs without a sensor, from the Speed band.
     public var timedCloseDuration: Double {

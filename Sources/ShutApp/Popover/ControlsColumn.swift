@@ -133,9 +133,10 @@ struct SpeedRow: View {
         VStack(spacing: 0) {
             FillSliderRow("Speed", value: Binding(get: { model.speed }, set: { model.speed = $0 }),
                           in: 0...1, step: 0.01, decimals: 2, unit: "",
-                          help: "How much of the lid's travel the effect uses: the number is where the effect starts, in degrees above shut. Fast plays in the last few degrees; slow spreads it over most of the close.",
+                          help: "How much of the lid's travel the effect uses: the number is where the effect starts, in degrees above shut. Fast plays in the last few degrees; slow spreads it over the whole close. The number stops a few degrees under wherever your lid rests.",
                           labelWidth: labelWidth,
-                          valueText: { _ in String(format: "%.0f°", model.settings.bandDegrees) })
+                          valueText: { _ in String(format: "%.0f°", model.effectiveStartDegrees) },
+                          onEditingEnded: { model.preview.playRound() })
             // "Slow" under the left end of the track, "Fast" under the right end,
             // so each word reads as the end of the dial it names.
             HStack {

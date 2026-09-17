@@ -152,8 +152,19 @@ final class BandTests: XCTestCase {
 
     func testAShallowRestingAngleNarrowsTheBandRatherThanSwallowingIt() {
         let shallow = HingeCalibration(closedAngle: 0, openAngle: 50)
-        XCTAssertEqual(shallow.animationRange(bandDegrees: 45).upperBound, 37.5, accuracy: 0.001)
+        XCTAssertEqual(shallow.animationRange(bandDegrees: 45).upperBound, 40, accuracy: 0.001, "50 − 6 headroom, rounded down to 5s")
         XCTAssertEqual(shallow.openness(for: 50, bandDegrees: 45), 1, accuracy: 0.001)
+    }
+
+    func testAboveTheBandNothingVisibleHappens() {
+        // The Speed dial promises the effect starts at the band. Whatever moves
+        // above it is for arming only and must stay under the overlay's show
+        // threshold everywhere above the band, whatever the dial says.
+        let wide = HingeCalibration(closedAngle: 0, openAngle: 120)
+        for band in [20.0, 45.0, 60.0, 100.0] {
+            let above = 1 - wide.openness(for: band + 1, bandDegrees: band)
+            XCTAssertLessThan(above, 0.03, "band \(band)° shows \(above) just above its start")
+        }
     }
 
     func testAWiderBandStartsTheEffectSooner() {

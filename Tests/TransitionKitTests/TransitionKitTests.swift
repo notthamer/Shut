@@ -176,3 +176,16 @@ final class PanelTests: XCTestCase {
         }
     }
 }
+
+final class FoldParamsCompatibilityTests: XCTestCase {
+    /// A preset saved before "Blur onset" existed still loads, with the new dial
+    /// at its default rather than the whole preset failing to decode.
+    func testPresetWithoutBlurOnsetStillDecodes() throws {
+        let json = #"{"blur":0.5,"intensity":0.6,"washout":0.5}"#.data(using: .utf8)!
+        let params = try JSONDecoder().decode(FoldParams.self, from: json)
+        XCTAssertEqual(params.blur, 0.5)
+        XCTAssertEqual(params.intensity, 0.6)
+        XCTAssertEqual(params.blurOnset, FoldParams.defaults.blurOnset)
+        XCTAssertEqual(params.tilt, FoldParams.defaults.tilt)
+    }
+}

@@ -103,20 +103,26 @@ static float panelMaskCoverage(constant TransitionUniforms &u, float2 uv) {
 }
 
 // Defocus by mip level alone is cheap but shows the mip grid once the level is high.
-// Five taps spread across one texel of the selected level dissolve that structure into
-// the smooth fields a real defocus produces, still in a single pass.
+// Nine taps in two rotated rings across the selected level dissolve that structure
+// into the smooth fields a real defocus produces, still in a single pass. The outer
+// ring is what keeps a heavy blur reading as glass rather than as blocks.
 static float3 panelDefocusSample(texture2d<float> source, sampler samp, float2 uv, float lod) {
     if (lod < 0.01) {
         return source.sample(samp, uv, level(0.0)).rgb;
     }
     float2 texel = exp2(lod) / float2(source.get_width(), source.get_height());
-    float3 sum = source.sample(samp, uv, level(lod)).rgb * 0.32;
-    const float2 offsets[4] = {
+    float3 sum = source.sample(samp, uv, level(lod)).rgb * 0.24;
+    const float2 inner[4] = {
         float2( 0.92,  0.39), float2(-0.39,  0.92),
         float2(-0.92, -0.39), float2( 0.39, -0.92),
     };
+    const float2 outer[4] = {
+        float2( 1.35,  1.35), float2(-1.35,  1.35),
+        float2(-1.35, -1.35), float2( 1.35, -1.35),
+    };
     for (uint i = 0; i < 4; ++i) {
-        sum += source.sample(samp, uv + offsets[i] * texel, level(lod)).rgb * 0.17;
+        sum += source.sample(samp, uv + inner[i] * texel, level(lod)).rgb * 0.12;
+        sum += source.sample(samp, uv + outer[i] * texel, level(lod)).rgb * 0.07;
     }
     return sum;
 }

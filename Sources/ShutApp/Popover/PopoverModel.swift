@@ -82,10 +82,17 @@ final class PopoverModel: ObservableObject {
         registry.current.needsSnapshot && !registry.captureAvailable
     }
 
-    /// Speed: 0 = slow (100°), 1 = fast (20°).
+    /// Speed: 0 = slow (the whole close), 1 = fast (the last 20°).
     var speed: Double {
         get { 1 - (settings.bandDegrees - AppSettings.bandRange.lowerBound) / (AppSettings.bandRange.upperBound - AppSettings.bandRange.lowerBound) }
         set { settings.bandDegrees = AppSettings.bandRange.upperBound - newValue * (AppSettings.bandRange.upperBound - AppSettings.bandRange.lowerBound) }
+    }
+
+    /// Where the effect really starts, in degrees above shut: the requested band
+    /// after the calibration caps it under this lid's rest angle.
+    var effectiveStartDegrees: Double {
+        let range = sensor.calibration.animationRange(bandDegrees: settings.bandDegrees)
+        return range.upperBound - range.lowerBound
     }
 
     func select(_ id: String) {
@@ -96,14 +103,13 @@ final class PopoverModel: ObservableObject {
         registry.select(id: id)
         settings.transitionID = id
         Log.app.info("style selected: \(id, privacy: .public)")
-        // Every style is the untouched desktop at Open, so a pick made with the
-        // scrubber resting there would look like nothing happened. Glide to the
-        // point where the style is recognisable; a scrubber already mid-way just
-        // re-renders in place.
-        if preview.progress < 0.05, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+        // Every style is the untouched desktop at Open, so a pick would look like
+        // nothing happened. Play the whole round, close and open, as if Play had
+        // been pressed. Under Reduce Motion, glide to the recognisable frame instead.
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             preview.glide(to: transition.thumbnailProgress)
         } else {
-            preview.render()
+            preview.playRound()
         }
     }
 

@@ -9,12 +9,30 @@ public struct FoldParams: TunableParameters {
     public var perspective = 1.0
     public var tilt = 1.0
     public var blur = 1.0
+    /// Where in the close the picture starts going out of focus. 0 is the first degree.
+    public var blurOnset = 0.1
     public var variableBlur = 0.85
     public var washout = 1.0
     public var corners = 1.0
     public var dimming = 1.0
 
     public init() {}
+
+    /// Saved values and presets from before a dial existed still load: any key
+    /// that is missing keeps its default instead of failing the whole struct.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = FoldParams()
+        intensity = try c.decodeIfPresent(Double.self, forKey: .intensity) ?? d.intensity
+        perspective = try c.decodeIfPresent(Double.self, forKey: .perspective) ?? d.perspective
+        tilt = try c.decodeIfPresent(Double.self, forKey: .tilt) ?? d.tilt
+        blur = try c.decodeIfPresent(Double.self, forKey: .blur) ?? d.blur
+        blurOnset = try c.decodeIfPresent(Double.self, forKey: .blurOnset) ?? d.blurOnset
+        variableBlur = try c.decodeIfPresent(Double.self, forKey: .variableBlur) ?? d.variableBlur
+        washout = try c.decodeIfPresent(Double.self, forKey: .washout) ?? d.washout
+        corners = try c.decodeIfPresent(Double.self, forKey: .corners) ?? d.corners
+        dimming = try c.decodeIfPresent(Double.self, forKey: .dimming) ?? d.dimming
+    }
 
     public static let tunerID = "fold"
     public static let tunerDisplayName = "Fold"
@@ -26,7 +44,8 @@ public struct FoldParams: TunableParameters {
         TunerFolder("Look", [
             .slider(\.perspective, "Perspective", 0...1, featured: true, help: "How much the screen appears to recede as it tips back."),
             .slider(\.tilt, "Tilt", 0...1, featured: true, help: "How far the screen turns away for a given lid angle."),
-            .slider(\.blur, "Blur", 0...1, help: "How far out of focus the screen drifts."),
+            .slider(\.blur, "Blur", 0...1, featured: true, help: "How far out of focus the screen drifts."),
+            .slider(\.blurOnset, "Blur onset", 0...1, help: "How soon the picture softens. Left: from the first degree, like a Duo folding. Right: only near the end."),
             .slider(\.variableBlur, "Variable blur", 0...1, help: "Keeps the hinge edge sharper than the far edge. At zero, blur and washout apply evenly."),
             .slider(\.washout, "Washout", 0...1, help: "How much colour drains out."),
             .slider(\.corners, "Corner rounding", 0...1, help: "How rounded the corners are."),
@@ -66,9 +85,12 @@ public final class FoldTransition: PanelTransition {
         frame.foldAngle = softLimited(swept, linearUpTo: linearTiltLimit, ceiling: maximumTilt) * .pi / 180
         frame.perspective = lerp(0.55, 1.0, intensity) * p.perspective
 
-        let defocus = Easing.easeOutQuad(normalize(closure, in: 0.30...0.88))
+        // The Duo look: focus goes as soon as the panel starts to turn, so the
+        // softening reads as depth rather than as a fade tacked on at the end.
+        let onset = lerp(0.0, 0.6, clamp(p.blurOnset, 0, 1))
+        let defocus = Easing.easeOutQuad(normalize(closure, in: onset...(onset + 0.5)))
         let motionBlur = clamp(abs(velocity) * 0.22, 0, 0.45)
-        frame.blur = clamp((defocus * 0.85 + motionBlur) * intensity * p.blur, 0, 1)
+        frame.blur = clamp((defocus * 0.95 + motionBlur) * intensity * p.blur, 0, 1)
         frame.blurGradient = clamp(
             lerp(1.0, 0.5, Easing.smoothstep(normalize(closure, in: 0.55...0.95))) * intensity * p.variableBlur, 0, 1)
         frame.wash = Easing.easeOutQuad(normalize(closure, in: 0.30...0.88)) * intensity * p.washout

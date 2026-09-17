@@ -92,7 +92,7 @@ final class PopoverSnapshotTests: XCTestCase {
         model.speed = 1
         XCTAssertEqual(settings.bandDegrees, 20, accuracy: 0.001, "fast = last 20°")
         model.speed = 0
-        XCTAssertEqual(settings.bandDegrees, 100, accuracy: 0.001, "slow = 100° of travel")
+        XCTAssertEqual(settings.bandDegrees, 130, accuracy: 0.001, "slow = the whole close (clamped to the lid later)")
         XCTAssertEqual(settings.timedCloseDuration, 1.6, accuracy: 0.001)
     }
 }

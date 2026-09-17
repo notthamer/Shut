@@ -63,7 +63,10 @@ public final class AppController: ObservableObject {
     private var lastRenderedProgress: Double?
     private var napActivity: NSObjectProtocol?
 
-    /// Progress at which the overlay appears: 0.3 % closure.
+    /// Progress at which the overlay appears, and never before the lid is inside
+    /// the band the Speed dial set: above it the only progress is the sliver that
+    /// tracks the whole travel, and showing a frozen desktop there would read as
+    /// the effect starting early.
     private let showAt = 0.012
     /// Progress below which a reopened lid tears the overlay down.
     private let hideBelow = 0.004
@@ -167,7 +170,7 @@ public final class AppController: ObservableObject {
         case .armed:
             if p <= hideBelow / 2 && hinge.direction != .closing {
                 disarm()
-            } else if p >= showAt {
+            } else if p >= showAt, hinge.angle.map({ $0 <= sensor.animationRange.upperBound }) ?? true {
                 // The picture has to be what is on screen *now*. A lid that rests a
                 // hair below open keeps the app armed, and the user may well switch
                 // Spaces in the meantime; an old snapshot would play the wrong desktop.

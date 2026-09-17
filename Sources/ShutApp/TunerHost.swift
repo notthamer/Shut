@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import Tuner
 import TransitionKit
@@ -14,6 +15,7 @@ final class TunerHost {
     private let presets = PresetStore(appName: "Shut")
     private var panel: TunerPanelController?
     private var cancellable: Any?
+    private var speedCancellable: AnyCancellable?
 
     /// Everything the host needs per style, type-erased so eleven styles don't
     /// become an eleven-way switch.
@@ -56,6 +58,13 @@ final class TunerHost {
 
         applyTrigger(trigger.values)
         trigger.onChange = { [weak self] values in self?.applyTrigger(values) }
+        // The popover's Speed slider writes the band to settings; route it back
+        // through the trigger store so the sensor and the Tuner dial both follow.
+        // applyTrigger writes the same value back, which the guard drops.
+        speedCancellable = settings.$bandDegrees.removeDuplicates().sink { [weak self] band in
+            guard let self, abs(self.trigger.values.startAngle - band) > 0.001 else { return }
+            self.trigger.values.startAngle = band
+        }
 
         controller.onTransitionVisibilityChanged = { [weak self] playing in
             self?.panel?.setHiddenForTransition(playing)
@@ -64,11 +73,11 @@ final class TunerHost {
     }
 
     private func applyTrigger(_ t: TriggerParams) {
-        settings.bandDegrees = t.startAngle
-        settings.smoothing = t.smoothing
-        settings.animateOpening = t.animateOpening
-        controller.sensor.bandDegrees = t.startAngle
-        controller.sensor.smoothing = t.smoothing
+        if settings.bandDegrees != t.startAngle { settings.bandDegrees = t.startAngle }
+        if settings.smoothing != t.smoothing { settings.smoothing = t.smoothing }
+        if settings.animateOpening != t.animateOpening { settings.animateOpening = t.animateOpening }
+        if controller.sensor.bandDegrees != t.startAngle { controller.sensor.bandDegrees = t.startAngle }
+        if controller.sensor.smoothing != t.smoothing { controller.sensor.smoothing = t.smoothing }
         controller.followLag = t.glide
     }
 
