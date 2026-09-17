@@ -9,6 +9,18 @@
 //   DEVELOPMENT_TEAM = ABCDE12345            // or your (free) Apple Personal Team
 //   CODE_SIGN_STYLE = Automatic
 //
+// If you also run a Developer ID build of Shut (the released app), sign debug
+// builds with the same Developer ID instead. macOS keeps one Screen Recording
+// grant per bundle ID, bound to the signer, so two signers for app.shut.mac
+// keep knocking each other's grant out:
+//
+//   CODE_SIGN_STYLE = Manual
+//   CODE_SIGN_IDENTITY = Developer ID Application
+//   DEVELOPMENT_TEAM = ABCDE12345
+//
+// Don't set signing in the Xcode target itself: target settings override this
+// file, and Xcode's Signing tab writes there.
+//
 CODE_SIGN_STYLE = Manual
 CODE_SIGN_IDENTITY = -
 DEVELOPMENT_TEAM =
