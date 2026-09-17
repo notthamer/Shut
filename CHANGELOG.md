@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Speed runs from 20° to 130°, so an effect can begin the moment the lid starts to move. The number is where it really starts on your Mac.
+- Above the start angle nothing happens any more: the desktop stays live until the lid reaches it.
+- Fold goes out of focus from the first degrees, the way a folding phone does. A new Blur onset dial sets how soon; heavy blur is smoother.
+- Picking a style plays it in the preview. Moving a dial shows the change straight away. Letting go of Speed replays a close at that speed.
+- Fixed: the Speed slider in the main window did not change the real close, only the Tuner's dial did.
+- Fixed: Fold presets from an earlier version load, with any new dial at its default.
+
 ## 0.1.0
 
 First release.
