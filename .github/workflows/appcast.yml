@@ -1,0 +1,58 @@
+name: Appcast
+
+# Signs the DMG attached to a release with the Sparkle key and uploads
+# appcast.xml next to it. Run it after swapping the CI DMG on a draft release for
+# the notarized one: the signature and length in the appcast must match the bytes
+# people download, and the private key lives only in the SPARKLE_PRIVATE_KEY
+# secret. Publish the release once this has run.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version whose DMG to sign (blank: App/Info.plist)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  appcast:
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Version
+        id: v
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          [ -n "$VERSION" ] || VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' App/Info.plist)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Download the release DMG
+        run: |
+          mkdir -p build/releases
+          gh release download "v${{ steps.v.outputs.version }}" --pattern '*.dmg' --dir build/releases --repo "${{ github.repository }}"
+          ls -la build/releases
+      - name: Sparkle tools
+        # The same Sparkle version the app embeds, from Package.resolved.
+        run: |
+          SPARKLE=$(python3 -c "import json; print([p for p in json.load(open('Package.resolved'))['pins'] if p['identity'] == 'sparkle'][0]['state']['version'])")
+          curl -sSL -o sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE/Sparkle-$SPARKLE.tar.xz"
+          mkdir -p sparkle && tar -xf sparkle.tar.xz -C sparkle
+          echo "GEN=$PWD/sparkle/bin/generate_appcast" >> "$GITHUB_ENV"
+      - name: Sign
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          [ -n "$SPARKLE_PRIVATE_KEY" ] || { echo "::error::SPARKLE_PRIVATE_KEY secret is not set"; exit 1; }
+          KEYFILE=$(mktemp) && chmod 600 "$KEYFILE" && trap 'rm -f "$KEYFILE"' EXIT
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$KEYFILE"
+          "$GEN" --ed-key-file "$KEYFILE" \
+            --download-url-prefix "https://github.com/${{ github.repository }}/releases/download/v${{ steps.v.outputs.version }}/" \
+            --link "https://github.com/${{ github.repository }}/releases" \
+            build/releases
+          cat build/releases/appcast.xml
+      - name: Upload
+        run: gh release upload "v${{ steps.v.outputs.version }}" build/releases/appcast.xml --clobber --repo "${{ github.repository }}"

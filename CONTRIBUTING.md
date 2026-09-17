@@ -118,9 +118,24 @@ reasons, and the safety rule. No pixels are ever logged.
 
 ## Releases
 
-`App/Info.plist` holds the version. Bump `CFBundleShortVersionString`, push to
-`main`, and the Release workflow tests, builds, packages a DMG with a SHA-256, tags
-`v<version>`, and publishes a GitHub release. Pushes to other branches and pull
-requests run the Build workflow and attach the DMG as an artifact. Locally:
-`scripts/build.sh --zip` or `scripts/package-dmg.sh`; `scripts/version.sh` prints
-the version.
+`App/Info.plist` holds the version. Bump `CFBundleShortVersionString` and
+`CFBundleVersion` (Sparkle compares the latter), add a section to `CHANGELOG.md`,
+and push to `main`. The Release workflow tests, builds, packages a DMG with a
+SHA-256 and opens a *draft* release named `v<version>`. Its DMG is ad-hoc signed
+and cannot be notarized, so the rest happens on a Mac with the Developer ID:
+
+1. `SHUT_SIGN_IDENTITY="Developer ID Application: …" scripts/notarize.sh` builds,
+   notarizes and staples the app and the DMG into `build/releases/`.
+2. On the draft release, replace the CI DMG and `.sha256` with those two files.
+   Do this after the Release workflow has finished, and do not push to `main`
+   again before publishing: every push re-runs it and overwrites the assets.
+3. Run the Appcast workflow (Actions → Appcast → Run workflow). It signs the DMG
+   now on the release with the Sparkle private key, which exists only as the
+   `SPARKLE_PRIVATE_KEY` secret, and replaces `appcast.xml`. An appcast made
+   locally with a different key is rejected by every installed copy.
+4. Publish the release. Installed copies see the update within a day; the site
+   pins the download URL in its `src/site.ts`, so bump that too.
+
+Pushes to other branches and pull requests run the Build workflow and attach the
+DMG as an artifact. Locally: `scripts/build.sh --zip` or `scripts/package-dmg.sh`;
+`scripts/version.sh` prints the version.
