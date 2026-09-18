@@ -1,0 +1,199 @@
+import AppKit
+import IOKit.pwr_mgt
+
+/// An app Shut has seen asking macOS to stay awake. The user decides which of
+/// these may hold the lid; new tools show up here by themselves, so Shut never
+/// needs a list of agents.
+public struct SeenApp: Codable, Equatable, Identifiable, Sendable {
+    public var id: String { bundleID }
+    public let bundleID: String
+    public var name: String
+    public var allowed: Bool
+    public var lastSeen: Date
+}
+
+/// One process in the chain from "whoever took the assertion" up to an app.
+public struct ProcessNode: Equatable, Sendable {
+    public struct App: Equatable, Sendable {
+        public let bundleID: String
+        public let name: String
+        public let isDeveloperTool: Bool
+        public init(bundleID: String, name: String, isDeveloperTool: Bool) {
+            self.bundleID = bundleID; self.name = name; self.isDeveloperTool = isDeveloperTool
+        }
+    }
+    public let name: String
+    public let parent: pid_t
+    /// Set when this process is a regular app (Dock icon, windows).
+    public let app: App?
+    public init(name: String, parent: pid_t, app: App?) { self.name = name; self.parent = parent; self.app = app }
+}
+
+/// A power assertion as macOS lists it, reduced to what attribution needs.
+public struct RawAssertion: Equatable, Sendable {
+    public let pid: pid_t
+    public let type: String
+    public let name: String
+    /// Daemons such as coreaudiod assert on behalf of the app that is playing.
+    public let onBehalfOf: pid_t?
+    public init(pid: pid_t, type: String, name: String, onBehalfOf: pid_t? = nil) {
+        self.pid = pid; self.type = type; self.name = name; self.onBehalfOf = onBehalfOf
+    }
+}
+
+/// Pure attribution: which app is behind each assertion. `caffeinate` started by
+/// an agent in a terminal inside an editor belongs to the editor:
+/// caffeinate <- claude <- zsh <- Cursor Helper <- Cursor.
+public enum AssertionAttribution {
+    /// Assertion types that mean "do not let the system sleep". Display-only
+    /// assertions (a video on screen) say nothing about work with the lid shut.
+    public static let systemSleepTypes: Set<String> = ["PreventUserIdleSystemSleep", "PreventSystemSleep", "NoIdleSleepAssertion"]
+
+    public struct Owner: Equatable, Sendable {
+        public let app: ProcessNode.App
+        /// True when the assertion came from a command-line tool running inside the
+        /// app rather than from the app itself. That is work by nature (a build, an
+        /// agent, a download in a terminal), so it is allowed by default.
+        public let viaCommandLine: Bool
+        public let assertionName: String
+    }
+
+    public static func owners(of assertions: [RawAssertion], ownPID: pid_t,
+                              lookup: (pid_t) -> ProcessNode?) -> [Owner] {
+        var result: [Owner] = []
+        for assertion in assertions where systemSleepTypes.contains(assertion.type) {
+            let start = assertion.onBehalfOf ?? assertion.pid
+            guard start != ownPID else { continue }
+            var pid = start, hops = 0
+            while pid > 1, hops < 16, let node = lookup(pid) {
+                if let app = node.app {
+                    result.append(Owner(app: app, viaCommandLine: hops > 0 && assertion.onBehalfOf == nil,
+                                        assertionName: assertion.name))
+                    break
+                }
+                pid = node.parent
+                hops += 1
+            }
+        }
+        return result
+    }
+}
+
+/// "Something is working": mirrors the stay-awake requests of allowed apps.
+///
+/// macOS posts no notification when one app's assertion comes or goes (the public
+/// key fires only when the system-wide total changes), so this is read when it
+/// matters: as the lid starts to close, while Shut's window is open, and on the
+/// arbiter's slow timer. One IOKit dictionary call each time.
+@MainActor
+public final class AssertionMirror: HoldSource {
+    public private(set) var reasons: [HoldReason] = []
+    public private(set) var seenApps: [SeenApp]
+    public var onChange: (() -> Void)?
+
+    private let defaults: UserDefaults?
+    private static let key = "stayAwake.seenApps"
+    private var started = false
+
+    public init(defaults: UserDefaults? = .standard) {
+        self.defaults = defaults
+        seenApps = defaults?.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([SeenApp].self, from: $0) } ?? []
+    }
+
+    public func start() { started = true; refresh() }
+
+    public func stop() {
+        started = false
+        if !reasons.isEmpty { reasons = []; onChange?() }
+    }
+
+    public func setAllowed(_ bundleID: String, _ allowed: Bool) {
+        guard let index = seenApps.firstIndex(where: { $0.bundleID == bundleID }), seenApps[index].allowed != allowed else { return }
+        seenApps[index].allowed = allowed
+        save()
+        refresh(force: true)
+    }
+
+    /// Reads the system's assertions once. Also used with the feature off, to learn
+    /// what was working when a lid closed (the discovery card).
+    @discardableResult
+    public func refresh(force: Bool = false, now: Date = Date()) -> [AssertionAttribution.Owner] {
+        let owners = AssertionAttribution.owners(of: Self.readAssertions(), ownPID: ProcessInfo.processInfo.processIdentifier,
+                                                 lookup: Self.lookup)
+        var changed = force
+        for owner in owners {
+            if let index = seenApps.firstIndex(where: { $0.bundleID == owner.app.bundleID }) {
+                // Once a minute is plenty for "recently"; avoids a defaults write per read.
+                if now.timeIntervalSince(seenApps[index].lastSeen) > 60 { seenApps[index].lastSeen = now; save() }
+            } else {
+                seenApps.append(SeenApp(bundleID: owner.app.bundleID, name: owner.app.name,
+                                        allowed: owner.viaCommandLine || owner.app.isDeveloperTool, lastSeen: now))
+                seenApps.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+                save()
+                changed = true
+            }
+        }
+        guard started else { if changed { onChange?() }; return owners }
+
+        let allowed = Set(seenApps.filter(\.allowed).map(\.bundleID))
+        let existing = Dictionary(reasons.map { ($0.id, $0.since) }, uniquingKeysWith: { a, _ in a })
+        var seen = Set<String>()
+        let next: [HoldReason] = owners.compactMap { owner in
+            guard allowed.contains(owner.app.bundleID), seen.insert(owner.app.bundleID).inserted else { return nil }
+            let id = "working:\(owner.app.bundleID)"
+            return HoldReason(id: id, kind: .working, title: owner.app.name,
+                              detail: owner.viaCommandLine ? nil : owner.assertionName, since: existing[id] ?? now)
+        }.sorted { $0.title < $1.title }
+        if next != reasons { reasons = next; changed = true }
+        if changed { onChange?() }
+        return owners
+    }
+
+    private func save() {
+        guard let defaults, let data = try? JSONEncoder().encode(seenApps) else { return }
+        defaults.set(data, forKey: Self.key)
+    }
+
+    // MARK: System reads
+
+    nonisolated static func readAssertions() -> [RawAssertion] {
+        var reference: Unmanaged<CFDictionary>?
+        guard IOPMCopyAssertionsByProcess(&reference) == kIOReturnSuccess,
+              let byProcess = reference?.takeRetainedValue() as NSDictionary? else { return [] }
+        var result: [RawAssertion] = []
+        for (key, value) in byProcess {
+            guard let pid = (key as? NSNumber)?.int32Value, let list = value as? [[String: Any]] else { continue }
+            for entry in list {
+                let details = entry[kIOPMAssertionDetailsKey] as? String
+                let behalf = (entry["AssertionOnBehalfOfPID"] as? NSNumber)?.int32Value ?? details.flatMap(Self.createdForPID)
+                result.append(RawAssertion(pid: pid, type: entry[kIOPMAssertionTypeKey] as? String ?? "",
+                                           name: entry[kIOPMAssertionNameKey] as? String ?? "", onBehalfOf: behalf))
+            }
+        }
+        return result
+    }
+
+    /// coreaudiod writes "… Created for PID: 1234." into the details.
+    nonisolated static func createdForPID(_ details: String) -> pid_t? {
+        guard let range = details.range(of: "Created for PID: ") else { return nil }
+        return pid_t(details[range.upperBound...].prefix { $0.isNumber })
+    }
+
+    nonisolated static func lookup(_ pid: pid_t) -> ProcessNode? {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+        guard sysctl(&mib, UInt32(mib.count), &info, &size, nil, 0) == 0, size > 0 else { return nil }
+        let name = withUnsafePointer(to: &info.kp_proc.p_comm) {
+            String(cString: UnsafeRawPointer($0).assumingMemoryBound(to: CChar.self))
+        }
+        var app: ProcessNode.App?
+        if let running = NSRunningApplication(processIdentifier: pid), running.activationPolicy == .regular,
+           let bundleID = running.bundleIdentifier {
+            let category = running.bundleURL.flatMap { Bundle(url: $0)?.infoDictionary?["LSApplicationCategoryType"] as? String }
+            app = .init(bundleID: bundleID, name: running.localizedName ?? name,
+                        isDeveloperTool: category == "public.app-category.developer-tools")
+        }
+        return ProcessNode(name: name, parent: info.kp_eproc.e_ppid, app: app)
+    }
+}
