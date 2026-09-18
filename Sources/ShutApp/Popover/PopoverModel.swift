@@ -35,6 +35,11 @@ final class PopoverModel: ObservableObject {
     var shareView: (String, Binding<Bool>) -> AnyView = { _, _ in AnyView(EmptyView()) }
     var resetStyle: (String) -> Void = { _ in }
 
+    /// The panel has two pages of the same size: the lid styles, and Stay awake.
+    enum Page { case styles, awake }
+    @Published var page: Page = .styles
+    @Published var showingAwakeConsent = false
+
     @Published var stateDescription = "idle"
     @Published var thumbnailGeneration = 0
     /// Per-style counters so a changed dial re-draws one card, not the grid.
@@ -66,6 +71,21 @@ final class PopoverModel: ObservableObject {
         sensor.$capability.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+    }
+
+    /// The Awake bar's button. The first switch-on opens the page and explains itself.
+    func performAwake(_ action: AwakeText.Action) {
+        if action == .turnOn, stayAwake.needsConsent {
+            page = .awake
+            showingAwakeConsent = true
+        } else {
+            stayAwake.perform(action)
+        }
+    }
+
+    func toggleAwake() {
+        if stayAwake.needsConsent { showingAwakeConsent = true }
+        else { stayAwake.settings.isOn.toggle() }
     }
 
     var statusLine: String {

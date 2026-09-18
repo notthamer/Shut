@@ -11,24 +11,39 @@ struct PopoverView: View {
 
     static let width: CGFloat = 640
     static let previewWidth: CGFloat = 290
-    static let bodyHeight: CGFloat = 560
+    /// 560 before the Awake bar; the bar and its hairline came out of the body so the panel kept its size.
+    static let bodyHeight: CGFloat = 560 - AwakeBar.height - 1
 
     var body: some View {
         VStack(spacing: 0) {
             PopoverHeader(model: model, hostedInWindow: hostedInWindow)
             // The one place the spectrum appears: a thin line under the header.
             SpectrumLine(height: 2)
-            HStack(spacing: 0) {
-                PreviewColumn(model: model)
-                    .padding(16)
-                    .frame(width: Self.previewWidth, height: Self.bodyHeight)
-                Rectangle().fill(theme.hairline).frame(width: 1)
-                ControlsColumn(model: model)
-                    .frame(width: Self.width - Self.previewWidth - 1, height: Self.bodyHeight)
+            // Stay awake does not depend on the lid animation, so its bar sits above
+            // the part that dims when the animation is paused.
+            AwakeBar(model: model)
+            Rectangle().fill(theme.hairline).frame(height: 1)
+            ZStack {
+                switch model.page {
+                case .styles:
+                    HStack(spacing: 0) {
+                        PreviewColumn(model: model)
+                            .padding(16)
+                            .frame(width: Self.previewWidth, height: Self.bodyHeight)
+                        Rectangle().fill(theme.hairline).frame(width: 1)
+                        ControlsColumn(model: model)
+                            .frame(width: Self.width - Self.previewWidth - 1, height: Self.bodyHeight)
+                    }
+                    .opacity(model.settings.isEnabled ? 1 : 0.45)
+                    .allowsHitTesting(model.settings.isEnabled)
+                    .tunerAnimation(TunerTheme.quick, value: model.settings.isEnabled)
+                    .transition(.blurFade)
+                case .awake:
+                    AwakePage(model: model).transition(.blurFade)
+                }
             }
-            .opacity(model.settings.isEnabled ? 1 : 0.45)
-            .allowsHitTesting(model.settings.isEnabled)
-            .tunerAnimation(TunerTheme.quick, value: model.settings.isEnabled)
+            .frame(width: Self.width, height: Self.bodyHeight)
+            .tunerAnimation(TunerTheme.ease, value: model.page)
             Rectangle().fill(theme.hairline).frame(height: 1)
             PopoverFooter(model: model)
         }

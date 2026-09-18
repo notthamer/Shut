@@ -65,11 +65,13 @@ public final class StayAwakeController: ObservableObject {
     private func applySettings() {
         var limits = settings.limits
         if !sessionActive { limits.isOn = false }
-        arbiter.limits = limits
+        // Which reasons count comes first: switching the feature on starts every
+        // enabled source, and a source the user switched off must never get a look.
         arbiter.setEnabled(.working, settings.whenWorking)
         arbiter.setEnabled(.display, settings.whenDisplayConnected)
         arbiter.setEnabled(.appOpen, settings.whenAppsOpen)
         arbiter.apps.bundleIDs = Set(settings.pickedApps)
+        arbiter.limits = limits
         watchLidEdges(limits.isOn)
         objectWillChange.send()
     }

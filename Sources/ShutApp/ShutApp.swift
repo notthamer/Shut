@@ -113,6 +113,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         stayAwake.onLockedWhileShut = { [weak self] in self?.controller.holdBlackUntilUnlock() }
         stayAwake.start()
         menuBar = MenuBarController(controller: controller, settings: settings, registry: registry)
+        menuBar.stayAwake = stayAwake
+        // The cards count minutes and show what is working right now; only worth
+        // reading while one of Shut's windows is open.
+        dock.onSurfacesChanged = { [weak self] open in self?.stayAwake.arbiter.setLiveUpdates(open) }
 
         tunerHost = TunerHost(registry: registry, previewModel: previewModel, controller: controller, settings: settings)
         menuBar.openTuner = { [weak self] in self?.tunerHost?.toggle() }
@@ -173,6 +177,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             controller.checkPermissionNow()
             if mainWindow.isShown { popover.close(); mainWindow.show() } else { popover.toggle(relativeTo: button) }
+        }
+        menuBar.showAwakePage = { [weak self] in
+            guard let self else { return }
+            popoverModel.page = .awake
+            popoverModel.showingAwakeConsent = stayAwake.needsConsent
+            mainWindow.show()
         }
         menuBar.showPermissionWindow = { [weak self] in
             guard let self else { return }

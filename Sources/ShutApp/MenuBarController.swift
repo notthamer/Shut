@@ -20,6 +20,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let transitionMenu = NSMenu()
     private let presetMenu = NSMenu()
     private let presetItem = NSMenuItem(title: "Preset", action: nil, keyEquivalent: "")
+    private let awakeStatusItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let letItSleepItem = NSMenuItem(title: "Let It Sleep Now", action: #selector(letItSleep), keyEquivalent: "")
+    private let stayAwakeItem = NSMenuItem(title: "Stay Awake with the Lid Shut", action: #selector(toggleStayAwake), keyEquivalent: "")
     private let permissionItem = NSMenuItem(title: "Grant Screen Recording…", action: #selector(openPermission), keyEquivalent: "")
 
     /// Wired by the app once the Tuner host exists.
@@ -32,6 +35,35 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     var launchAtLoginItem: NSMenuItem?
     /// Left click on the icon. The menu stays on right click for keyboard users.
     var togglePopover: ((NSStatusBarButton) -> Void)?
+    /// The first switch-on needs the consent sheet, which lives in the panel.
+    var showAwakePage: (() -> Void)?
+
+    /// Set once by the app. The mark gains a dot while the lid is being held; that
+    /// follows the arbiter's state as an event, never a timer.
+    var stayAwake: StayAwakeController? {
+        didSet {
+            guard let stayAwake else { return }
+            stayAwake.arbiter.$state
+                .map(\.holdsLid)
+                .removeDuplicates()
+                .sink { [weak self] holding in self?.showHoldingDot(holding) }
+                .store(in: &cancellables)
+        }
+    }
+
+    private func showHoldingDot(_ holding: Bool) {
+        guard let button = statusItem.button, let mark = AppAssets.menuBarIcon else { return }
+        guard holding else { button.image = mark; return }
+        let image = NSImage(size: mark.size, flipped: false) { rect in
+            mark.draw(in: rect)
+            NSColor.black.setFill()
+            NSBezierPath(ovalIn: NSRect(x: rect.maxX - 6, y: rect.maxY - 6, width: 5.5, height: 5.5)).fill()
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "Shut, keeping the Mac awake"
+        button.image = image
+    }
 
     init(controller: AppController, settings: AppSettings, registry: TransitionRegistry) {
         self.controller = controller
@@ -60,6 +92,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(enableItem)
         angleItem.isEnabled = false
         menu.addItem(angleItem)
+        menu.addItem(.separator())
+
+        awakeStatusItem.isEnabled = false
+        menu.addItem(awakeStatusItem)
+        letItSleepItem.target = self
+        menu.addItem(letItSleepItem)
+        stayAwakeItem.target = self
+        menu.addItem(stayAwakeItem)
         menu.addItem(.separator())
 
         let transitionItem = NSMenuItem(title: "Transition", action: nil, keyEquivalent: "")
@@ -117,6 +157,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         permissionItem.isHidden = ScreenRecordingPermission.isGranted
         launchAtLoginItem?.state = LaunchAtLogin.isEnabled ? .on : .off
+        if let stayAwake {
+            let status = stayAwake.status
+            let on = stayAwake.settings.isOn && stayAwake.settings.hasConsented
+            awakeStatusItem.title = status.sentence
+            awakeStatusItem.isHidden = !on
+            letItSleepItem.isHidden = status.action != .letItSleep
+            stayAwakeItem.state = on ? .on : .off
+        }
         presetMenu.removeAllItems()
         let items = presetMenuProvider?() ?? []
         presetItem.isHidden = items.isEmpty
@@ -164,4 +212,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         settings.transitionID = id
     }
     @objc private func toggleLaunchAtLogin() { LaunchAtLogin.toggle() }
+    @objc private func letItSleep() { stayAwake?.perform(.letItSleep) }
+    @objc private func toggleStayAwake() {
+        guard let stayAwake else { return }
+        if stayAwake.needsConsent { showAwakePage?() } else { stayAwake.settings.isOn.toggle() }
+    }
 }
