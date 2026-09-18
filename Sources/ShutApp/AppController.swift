@@ -80,6 +80,10 @@ public final class AppController: ObservableObject {
         renderer.snapshot != nil && Date().timeIntervalSince(lastCaptureDate) < snapshotMaxAge
     }
 
+    /// Stay awake listens here: the lid has started to come down, which is the
+    /// moment to take a fresh reading of what is working.
+    var onLidStartedClosing: (() -> Void)?
+
     /// Set by the Tuner host so the panel can hide while a real transition plays.
     public var onTransitionVisibilityChanged: ((Bool) -> Void)?
     public var followLag: Double = 0.03
@@ -253,6 +257,7 @@ public final class AppController: ObservableObject {
         state = .armed
         armedAt = Date()
         sensor.keepAwake = true
+        onLidStartedClosing?()
         if registry.effectiveForLid.needsSnapshot { capture() }
     }
 
@@ -470,6 +475,15 @@ public final class AppController: ObservableObject {
         state = .drained
         startSafetyTimer()
         Log.overlay.info("drained: black overlay in place")
+    }
+
+    /// Stay awake held the Mac through a lid close and locked the screen. No sleep
+    /// will come to put the black overlay up, so do it now: the opening then waits
+    /// for the unlock exactly as it does after a real sleep.
+    func holdBlackUntilUnlock() {
+        guard state == .closing || state == .armed else { return }
+        unlock.refresh()
+        enterDrained()
     }
 
     /// External displays. The effect belongs to the lid's own panel and never

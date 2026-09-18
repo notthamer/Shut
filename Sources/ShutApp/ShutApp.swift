@@ -47,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var registry: TransitionRegistry!
     private var renderer: TransitionRenderer!
     private var controller: AppController!
+    private var stayAwake: StayAwakeController!
     private var menuBar: MenuBarController!
     private var previewModel: PreviewModel!
     private var tunerHost: TunerHost?
@@ -105,6 +106,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         controller = AppController(settings: settings, sensor: sensor, registry: registry, renderer: renderer)
+        // Stay awake starts by undoing anything a crashed run left behind, so it
+        // comes up before the lid can move.
+        stayAwake = StayAwakeController()
+        controller.onLidStartedClosing = { [weak self] in self?.stayAwake.lidStartedClosing() }
+        stayAwake.onLockedWhileShut = { [weak self] in self?.controller.holdBlackUntilUnlock() }
+        stayAwake.start()
         menuBar = MenuBarController(controller: controller, settings: settings, registry: registry)
 
         tunerHost = TunerHost(registry: registry, previewModel: previewModel, controller: controller, settings: settings)
@@ -117,7 +124,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.lid.info("hinge capability: \(capability.rawValue, privacy: .public)")
 
         thumbnails = try? TransitionThumbnailRenderer()
-        popoverModel = PopoverModel(settings: settings, registry: registry, preview: previewModel, sensor: sensor, thumbnails: thumbnails)
+        popoverModel = PopoverModel(settings: settings, registry: registry, preview: previewModel, sensor: sensor,
+                                    thumbnails: thumbnails, stayAwake: stayAwake)
         popoverModel.openTuner = { [weak self] in self?.popover.close(); self?.tunerHost?.toggle() }
         popoverModel.allowScreenRecording = {
             ScreenRecordingPermission.request()
@@ -208,6 +216,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // Quit, an update relaunch, a newer copy taking over: the lid goes back to normal.
+        stayAwake?.shutDown()
         controller?.teardown(reason: "quit")
         sensor?.stop()
     }

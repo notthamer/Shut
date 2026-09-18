@@ -7,4 +7,5 @@ enum Log {
     static let overlay = Logger(subsystem: "app.shut", category: "overlay")
     static let capture = Logger(subsystem: "app.shut", category: "capture")
     static let unlock = Logger(subsystem: "app.shut", category: "unlock")
+    static let awake = Logger(subsystem: "app.shut", category: "awake")
 }

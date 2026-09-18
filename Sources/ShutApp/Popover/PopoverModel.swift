@@ -14,6 +14,7 @@ final class PopoverModel: ObservableObject {
     let preview: PreviewModel
     let sensor: LidSensorMonitor
     let thumbnails: TransitionThumbnailRenderer?
+    let stayAwake: StayAwakeController
 
     /// Actions supplied by the app; tests pass no-ops.
     var openTuner: () -> Void = {}
@@ -40,8 +41,11 @@ final class PopoverModel: ObservableObject {
     @Published private(set) var thumbnailVersions: [String: Int] = [:]
     private var cancellables = Set<AnyCancellable>()
 
+    /// Tests pass no `stayAwake` and get one on throwaway defaults that is never started.
     init(settings: AppSettings, registry: TransitionRegistry, preview: PreviewModel, sensor: LidSensorMonitor,
-         thumbnails: TransitionThumbnailRenderer?) {
+         thumbnails: TransitionThumbnailRenderer?, stayAwake: StayAwakeController? = nil) {
+        self.stayAwake = stayAwake ?? StayAwakeController(
+            settings: StayAwakeSettings(defaults: UserDefaults(suiteName: "StayAwake-\(UUID().uuidString)") ?? .standard))
         self.settings = settings
         self.registry = registry
         self.preview = preview
@@ -58,6 +62,7 @@ final class PopoverModel: ObservableObject {
             }
         }
         settings.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        self.stayAwake.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         sensor.$capability.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
