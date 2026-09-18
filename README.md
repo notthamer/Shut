@@ -27,6 +27,14 @@ Pick one in the panel, set the speed, and adjust its dials if you like. Every
 dial for every style is right there, with presets you can name, copy, paste,
 import and export.
 
+## Stay awake
+
+Close the lid while something is still working (a coding agent, a render, an
+external display) and your Mac stays awake, locks, and goes to sleep by itself
+when the work is done. The closing screen tells you which it will be. No timers
+to set, no password, off until you turn it on; a battery floor and a heat cut-off
+always win. [How it works, and its limits](docs/AWAKE.md).
+
 ## How it works
 
 - Click the menu bar icon for the panel, or open Shut from the Dock for the same
@@ -55,6 +63,7 @@ same as the download, minus automatic updates.
 
 - [How the hinge is read, what it costs, and the safety rules](docs/HINGE.md)
 - [How Sinkhole works](docs/SINKHOLE.md)
+- [Stay awake: reasons, limits, and how the lid is held](docs/AWAKE.md)
 - [The Tuner, and using it in your own app](docs/TUNER.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Contributing, presets, testing, releases](CONTRIBUTING.md)

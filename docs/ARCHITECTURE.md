@@ -74,6 +74,33 @@ on. `TunerHost` registers each style's parameters with the Tuner in one line.
 - The app opts out of App Nap (`LSAppNapIsDisabled` plus a `beginActivity`) so a
   close is never missed while the app is in the background on another Space.
 
+## Stay awake
+
+`StayAwake` is a library with no dependency on the rest of the project, like
+`LidSensor`. `HoldSource`s report reasons (an allowed app asking macOS to stay
+awake, an external display, picked apps, a manual hold, `shut hold`);
+`HoldStateMachine` is a value type that turns reasons, limits and the machine's
+condition into one `HoldState`; `HoldArbiter` feeds it and applies the answer
+through `LidHolding`, whose real implementation makes the one kernel call
+(`IOPMrootDomain` selector 12) and holds an idle-sleep assertion. The safety
+table is one pure function, `StayAwakePolicy.blocker`. `docs/AWAKE.md` has the
+mechanism and its three awkward properties.
+
+In the app, `StayAwakeController` joins the settings, the arbiter and the lid.
+While the Mac is held through a lid close macOS sends no sleep or screen-sleep
+notification (measured), the overlay rests on its last frame, and reopening
+plays the style backwards, so `AppController` needs only three hooks: the lid
+started to close (take a fresh reading), the overlay is about to appear (read
+the Option key, supply the caption), and the lid shut on a locked session (hold
+black until unlock, as after a real sleep). `AwakeText` holds every sentence the
+feature says; `HoldJournal` keeps the receipt.
+
+Timers, and why each exists: a one-shot at the next deadline; a 30 s tolerant
+read of power assertions while the feature is on (3 s while a Shut window is
+open), because macOS sends no event when one app's request ends; a 10 s tolerant
+re-apply only while holding with the lid shut, because `powerd` can clear the
+shared kernel bit. With the feature off none of them run.
+
 ## UI
 
 - **`PopoverView`** is the whole panel: header, `PreviewColumn`, `ControlsColumn`,

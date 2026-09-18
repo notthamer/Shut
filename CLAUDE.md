@@ -64,7 +64,7 @@ built-in display, and ships a reusable tuning panel. The design is described in
 ## Layout
 
 - `Package.swift` is the source of truth for all library and executable targets:
-  `LidSensor`, `TransitionKit`, `Tuner`, `ShutApp`, and the executables `shut` and
+  `LidSensor`, `StayAwake`, `TransitionKit`, `Tuner`, `ShutApp`, and the executables `shut` and
   `lidangle-cli`.
 - `Shut.xcodeproj` contains a single app target that is a 3-line shim over the
   `ShutApp` library product, so Xcode builds a real signed `.app` for testing.
