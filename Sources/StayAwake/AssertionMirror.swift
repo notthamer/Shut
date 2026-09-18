@@ -26,7 +26,11 @@ public struct ProcessNode: Equatable, Sendable {
     public let parent: pid_t
     /// Set when this process is a regular app (Dock icon, windows).
     public let app: App?
-    public init(name: String, parent: pid_t, app: App?) { self.name = name; self.parent = parent; self.app = app }
+    /// The executable's path, for naming a command-line tool.
+    public let path: String?
+    public init(name: String, parent: pid_t, app: App?, path: String? = nil) {
+        self.name = name; self.parent = parent; self.app = app; self.path = path
+    }
 }
 
 /// A power assertion as macOS lists it, reduced to what attribution needs.
@@ -56,6 +60,32 @@ public enum AssertionAttribution {
         /// agent, a download in a terminal), so it is allowed by default.
         public let viaCommandLine: Bool
         public let assertionName: String
+        /// The command-line tool that wanted the Mac awake: "Claude Code", "npm".
+        public let tool: String?
+    }
+
+    /// Processes that are plumbing, not the tool the user would name.
+    static let plumbing: Set<String> = ["caffeinate", "zsh", "bash", "sh", "fish", "login", "tmux", "screen", "env", "sudo"]
+
+    /// Friendlier names for a few common tools. Purely cosmetic: anything else shows
+    /// under its own name, and nothing depends on this list being complete.
+    static let friendlyNames: [String: String] = [
+        "claude": "Claude Code", "codex": "Codex", "gemini": "Gemini CLI", "aider": "Aider",
+        "opencode": "OpenCode", "cursor-agent": "Cursor Agent", "goose": "Goose", "amp": "Amp",
+    ]
+
+    /// A tool's name from its process. Some tools name their binary after their
+    /// version (`~/.local/share/claude/versions/2.1.275`), so a name that looks like
+    /// a version is replaced by the nearest meaningful folder in the path.
+    static func toolName(processName: String, path: String?) -> String {
+        var name = processName
+        let looksLikeVersion = name.first?.isNumber == true && name.contains(".")
+        if looksLikeVersion, let path {
+            let skip: Set<String> = ["versions", "bin", "libexec", "current"]
+            name = path.split(separator: "/").dropLast().reversed()
+                .first { !skip.contains($0.lowercased()) && !($0.first?.isNumber ?? true) }.map(String.init) ?? name
+        }
+        return friendlyNames[name.lowercased()] ?? name
     }
 
     public static func owners(of assertions: [RawAssertion], ownPID: pid_t,
@@ -65,11 +95,18 @@ public enum AssertionAttribution {
             let start = assertion.onBehalfOf ?? assertion.pid
             guard start != ownPID else { continue }
             var pid = start, hops = 0
+            var tool: String?
             while pid > 1, hops < 16, let node = lookup(pid) {
                 if let app = node.app {
-                    result.append(Owner(app: app, viaCommandLine: hops > 0 && assertion.onBehalfOf == nil,
-                                        assertionName: assertion.name))
+                    let viaCommandLine = hops > 0 && assertion.onBehalfOf == nil
+                    result.append(Owner(app: app, viaCommandLine: viaCommandLine, assertionName: assertion.name,
+                                        tool: viaCommandLine ? tool : nil))
                     break
+                }
+                // The first process on the way up that is not plumbing is the tool:
+                // caffeinate <- claude <- zsh <- Cursor names "claude".
+                if tool == nil, !plumbing.contains(node.name), !node.name.hasSuffix("Helper") {
+                    tool = toolName(processName: node.name, path: node.path)
                 }
                 pid = node.parent
                 hops += 1
@@ -142,7 +179,8 @@ public final class AssertionMirror: HoldSource {
             guard allowed.contains(owner.app.bundleID), seen.insert(owner.app.bundleID).inserted else { return nil }
             let id = "working:\(owner.app.bundleID)"
             return HoldReason(id: id, kind: .working, title: owner.app.name,
-                              detail: owner.viaCommandLine ? nil : owner.assertionName, since: existing[id] ?? now)
+                              detail: owner.viaCommandLine ? nil : owner.assertionName, tool: owner.tool,
+                              bundleID: owner.app.bundleID, since: existing[id] ?? now)
         }.sorted { $0.title < $1.title }
         if next != reasons { reasons = next; changed = true }
         if changed { onChange?() }
@@ -194,6 +232,8 @@ public final class AssertionMirror: HoldSource {
             app = .init(bundleID: bundleID, name: running.localizedName ?? name,
                         isDeveloperTool: category == "public.app-category.developer-tools")
         }
-        return ProcessNode(name: name, parent: info.kp_eproc.e_ppid, app: app)
+        var pathBuffer = [CChar](repeating: 0, count: 4096)
+        let path = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count)) > 0 ? String(cString: pathBuffer) : nil
+        return ProcessNode(name: name, parent: info.kp_eproc.e_ppid, app: app, path: path)
     }
 }

@@ -18,35 +18,49 @@ struct AwakeBar: View {
         // while the panel is on screen and costs nothing when it is not.
         TimelineView(.periodic(from: .now, by: 30)) { _ in
             let status = model.stayAwake.status
+            let onPage = model.page == .awake
             HStack(spacing: 10) {
-                AwakeDot(dot: status.dot)
-                Text("AWAKE").font(TunerTheme.eyebrow).tracking(TunerTheme.eyebrowTracking).foregroundStyle(theme.inkTertiary)
-                Text(status.sentence)
-                    .font(TunerTheme.body)
-                    .foregroundStyle(status.dot == .idle ? theme.inkLabel : theme.ink)
-                    .lineLimit(1)
-                    .id(status.sentence)
-                    .transition(.opacity)
-                Spacer(minLength: 8)
-                if let action = status.action {
-                    CapsuleButton(action.title) { model.performAwake(action) }
+                if onPage {
+                    // On the Awake page the bar is the page's header: the way back, and the switch.
+                    Image(systemName: "chevron.left").font(.system(size: 10, weight: .semibold)).foregroundStyle(theme.inkTertiary)
+                    Text("Styles").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
+                    Spacer(minLength: 8)
+                    Text("Stay awake").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+                    SmallPill(isOn: model.stayAwake.settings.isOn && model.stayAwake.settings.hasConsented, size: .regular) { model.toggleAwake() }
+                        .help("Keep the Mac awake with the lid shut while something is working.")
+                } else {
+                    AwakeDot(dot: status.dot)
+                    Text("AWAKE").font(TunerTheme.eyebrow).tracking(TunerTheme.eyebrowTracking).foregroundStyle(theme.inkTertiary)
+                    if status.dot == .holding, model.stayAwake.arbiter.reasons.count == 1, let reason = model.stayAwake.arbiter.reasons.first {
+                        AppIconView(bundleID: AppIcons.bundleID(for: reason), size: 16)
+                    }
+                    Text(status.sentence)
+                        .font(TunerTheme.body)
+                        .foregroundStyle(status.dot == .idle ? theme.inkLabel : theme.ink)
+                        .lineLimit(1)
+                        .id(status.sentence)
+                        .transition(.opacity)
+                    Spacer(minLength: 8)
+                    if let action = status.action {
+                        CapsuleButton(action.title) { model.performAwake(action) }
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(theme.inkTertiary)
                 }
-                Image(systemName: model.page == .awake ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(theme.inkTertiary)
             }
             .padding(.horizontal, 16)
             .frame(height: Self.height)
             .background(hover ? theme.linen.opacity(0.6) : .clear)
             .contentShape(Rectangle())
-            .onTapGesture { model.page = model.page == .awake ? .styles : .awake }
+            .onTapGesture { model.page = onPage ? .styles : .awake }
             .onHover { hover = $0 }
             .tunerAnimation(TunerTheme.ease, value: hover)
             .tunerAnimation(TunerTheme.ease, value: status)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Stay awake. \(status.sentence)")
-            .accessibilityAddTraits(.isButton)
-            .help("What is keeping your Mac awake with the lid shut. Click for details.")
+            .tunerAnimation(TunerTheme.ease, value: onPage)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(onPage ? "Back to styles" : "Stay awake. \(status.sentence)")
+            .help(onPage ? "Back to the lid styles." : "What is keeping your Mac awake with the lid shut. Click for details.")
         }
     }
 }

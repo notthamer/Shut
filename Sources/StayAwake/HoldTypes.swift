@@ -21,17 +21,25 @@ public struct HoldReason: Equatable, Identifiable, Sendable {
     public let kind: Kind
     /// What the card, the bar and the closing caption call it: "Cursor", "Studio Display".
     public let title: String
-    /// One short clause for the card's second line: "runs claude", "playing audio".
+    /// One short clause for the card's second line: "Playing audio".
     public let detail: String?
+    /// The command-line tool behind the request, when there is one: "Claude Code"
+    /// for a `claude` running in Cursor's terminal. Cosmetic; nil is always fine.
+    public let tool: String?
+    /// The app's bundle identifier, so the interface can show its icon.
+    public let bundleID: String?
     public let since: Date
     /// Manual and command holds can end by themselves.
     public let until: Date?
 
-    public init(id: String, kind: Kind, title: String, detail: String? = nil, since: Date, until: Date? = nil) {
+    public init(id: String, kind: Kind, title: String, detail: String? = nil, tool: String? = nil,
+                bundleID: String? = nil, since: Date, until: Date? = nil) {
         self.id = id
         self.kind = kind
         self.title = title
         self.detail = detail
+        self.tool = tool
+        self.bundleID = bundleID
         self.since = since
         self.until = until
     }

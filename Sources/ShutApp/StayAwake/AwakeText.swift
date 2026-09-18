@@ -51,13 +51,62 @@ enum AwakeText {
         }
     }
 
+    /// Who is working: the tool when it is known ("Claude Code"), else the app ("Cursor").
+    static func subject(_ reason: HoldReason) -> String { reason.tool ?? reason.title }
+
+    struct Hero: Equatable {
+        let headline: String
+        let detail: String
+        /// A warning needs its card even when there is only one reason.
+        let showsCards: Bool
+    }
+
+    /// The Awake page in two sentences: what is happening, and what the lid will do.
+    static func hero(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits, now: Date) -> Hero {
+        let floor = conditions.batteryPercent == nil ? "" : ", or at \(limits.batteryFloor) % battery"
+        switch state {
+        case .off:
+            return Hero(headline: "Off.", detail: "The lid sleeps your Mac as usual.", showsCards: false)
+        case .ready:
+            return Hero(headline: "Nothing is working.", detail: "Close the lid and your Mac sleeps, as it always has.", showsCards: false)
+        case .grace(let until):
+            return Hero(headline: "Finished.",
+                        detail: "Your Mac sleeps in \(duration(until.timeIntervalSince(now))) unless the work starts again.", showsCards: false)
+        case .stopped(let reason):
+            return Hero(headline: reason == .userLetItSleep ? "Letting it sleep." : "Not holding the lid.",
+                        detail: reason == .userLetItSleep ? "Close the lid and your Mac sleeps, although something is working."
+                                                          : stopped(reason, conditions: conditions) + ".", showsCards: false)
+        case .holding:
+            let low = !conditions.onCharger && (conditions.batteryPercent.map { $0 <= limits.batteryFloor + 5 } ?? false)
+            guard let first = reasons.first else {
+                return Hero(headline: "Staying awake.", detail: "Close the lid and your Mac stays awake.", showsCards: low)
+            }
+            let headline: String
+            if reasons.count > 1 {
+                headline = "\(reasons.count) things are keeping your Mac awake."
+            } else {
+                switch first.kind {
+                case .working: headline = "\(subject(first)) is working\(first.tool == nil ? "" : " in \(first.title)")."
+                case .display: headline = "\(first.title) is connected."
+                case .appOpen: headline = "\(first.title) is open."
+                case .command: headline = "\(first.title) is running."
+                case .manual: headline = first.until.map { "Awake until \(clock($0))." } ?? "Kept awake by you."
+                }
+            }
+            let ends = reasons.count == 1 && first.kind == .manual
+                ? (first.until == nil ? "until you let it sleep" : "until then")
+                : "and sleeps by itself when \(reasons.count > 1 ? "they end" : "that ends")"
+            return Hero(headline: headline, detail: "Close the lid: your Mac stays awake \(ends)\(floor).", showsCards: low)
+        }
+    }
+
     /// "Cursor is working · 47 min"
     static func holding(_ reasons: [HoldReason], now: Date) -> String {
         guard let first = reasons.first else { return "Staying awake" }
         if reasons.count == 1 {
             let since = duration(now.timeIntervalSince(first.since))
             switch first.kind {
-            case .working: return "\(first.title) is working · \(since)"
+            case .working: return "\(subject(first)) is working · \(since)"
             case .display: return "\(first.title) is connected"
             case .appOpen: return "\(first.title) is open"
             case .command: return "\(first.title) is running · \(since)"
@@ -77,7 +126,7 @@ enum AwakeText {
                 return "Staying awake · " + (reasons.allSatisfy { $0.kind == .working } ? "\(reasons.count) apps are working" : "\(reasons.count) reasons")
             }
             switch first.kind {
-            case .working: return "Staying awake · \(first.title) is working"
+            case .working: return "Staying awake · \(subject(first)) is working"
             case .display: return "Staying awake · \(first.title) is connected"
             case .appOpen: return "Staying awake · \(first.title) is open"
             case .command: return "Staying awake · \(first.title) is running"

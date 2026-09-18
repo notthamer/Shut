@@ -160,7 +160,8 @@ final class AssertionAttributionTests: XCTestCase {
         [500: ProcessNode(name: "Cursor", parent: 1, app: cursor),
          510: ProcessNode(name: "Cursor Helper", parent: 500, app: nil),
          520: ProcessNode(name: "zsh", parent: 510, app: nil),
-         530: ProcessNode(name: "2.1.275", parent: 520, app: nil),   // claude names its process after its version
+         530: ProcessNode(name: "2.1.275", parent: 520, app: nil,    // claude names its process after its version
+                          path: "/Users/someone/.local/share/claude/versions/2.1.275"),
          540: ProcessNode(name: "caffeinate", parent: 530, app: nil),
          600: ProcessNode(name: "Resolve", parent: 1, app: resolve),
          700: ProcessNode(name: "Music", parent: 1, app: music),
@@ -177,6 +178,14 @@ final class AssertionAttributionTests: XCTestCase {
         let result = owners([RawAssertion(pid: 540, type: "PreventUserIdleSystemSleep", name: "caffeinate command-line tool")])
         XCTAssertEqual(result.map(\.app.name), ["Cursor"])
         XCTAssertTrue(result[0].viaCommandLine)
+        XCTAssertEqual(result[0].tool, "Claude Code", "named from the path, since the process is called 2.1.275")
+    }
+
+    func testToolNames() {
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "npm", path: "/opt/homebrew/bin/npm"), "npm")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "codex", path: nil), "Codex")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "3.2.0", path: "/opt/tools/rendr/bin/3.2.0"), "rendr")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "1.0.0", path: nil), "1.0.0", "no path: leave it alone")
     }
 
     func testAnAppAssertingForItselfIsNotCommandLineWork() {

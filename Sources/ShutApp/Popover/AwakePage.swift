@@ -11,18 +11,14 @@ struct AwakePage: View {
     @Environment(\.tunerTheme) private var theme
 
     var body: some View {
-        VStack(spacing: 0) {
-            AwakePageHead(model: model)
-            Rectangle().fill(theme.hairline).frame(height: 1)
-            HStack(spacing: 0) {
-                AwakeStage(model: model)
-                    .padding(16)
-                    .frame(width: PopoverView.previewWidth)
-                    .frame(maxHeight: .infinity, alignment: .top)
-                Rectangle().fill(theme.hairline).frame(width: 1)
-                AwakeControls(model: model)
-                    .frame(width: PopoverView.width - PopoverView.previewWidth - 1)
-            }
+        HStack(spacing: 0) {
+            AwakeStage(model: model)
+                .padding(16)
+                .frame(width: PopoverView.previewWidth)
+                .frame(maxHeight: .infinity, alignment: .top)
+            Rectangle().fill(theme.hairline).frame(width: 1)
+            AwakeControls(model: model)
+                .frame(width: PopoverView.width - PopoverView.previewWidth - 1)
         }
         .overlay {
             if model.showingAwakeConsent {
@@ -30,27 +26,6 @@ struct AwakePage: View {
             }
         }
         .tunerAnimation(TunerTheme.ease, value: model.showingAwakeConsent)
-    }
-}
-
-private struct AwakePageHead: View {
-    @ObservedObject var model: PopoverModel
-    @Environment(\.tunerTheme) private var theme
-
-    var body: some View {
-        let settings = model.stayAwake.settings
-        ZStack {
-            Eyebrow("Stay awake")
-            HStack {
-                QuietButton("‹ Styles") { model.page = .styles }
-                    .help("Back to the lid styles.")
-                Spacer()
-                SmallPill(isOn: settings.isOn && settings.hasConsented, size: .regular) { model.toggleAwake() }
-                    .help(settings.isOn ? "Stop keeping the Mac awake with the lid shut." : "Keep the Mac awake with the lid shut while something is working.")
-            }
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 44)
     }
 }
 
@@ -68,38 +43,24 @@ private struct AwakeStage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Eyebrow("How the close will look").padding(.bottom, 10)
             PreviewWindow(preview: preview, caption: model.stayAwake.caption ?? sampleCaption)
-            VStack(spacing: 4) {
-                FillSliderRow("Lid", value: $preview.progress, in: 0...1, step: 0.005, decimals: 2,
-                              help: "Drag to move the lid by hand.", showsValue: false, height: 28, labelWidth: 36)
-                HStack {
-                    Text("Open")
-                    Spacer()
-                    Button { preview.playRound() } label: {
-                        Text(preview.isPlaying ? "Playing…" : "Play").foregroundStyle(theme.inkLabel).contentShape(Rectangle())
-                    }
-                    .buttonStyle(PressStyle())
-                    .help("Play the close with its caption.")
-                    Spacer()
-                    Text("Shut")
+            HStack {
+                Text(model.stayAwake.caption == nil ? "What closing looks like when something is working" : "What closing will look like")
+                    .foregroundStyle(theme.inkTertiary)
+                Spacer()
+                Button { preview.playRound() } label: {
+                    Text(preview.isPlaying ? "Playing…" : "Play").foregroundStyle(theme.inkLabel).contentShape(Rectangle())
                 }
-                .font(TunerTheme.bodySmall)
-                .foregroundStyle(theme.inkTertiary)
-                .padding(.horizontal, 2)
+                .buttonStyle(PressStyle())
+                .help("Play the close with its caption.")
             }
-            .padding(.top, 16)
-
-            Text(model.stayAwake.caption == nil
-                 ? "An example. With nothing working there is no caption, and the lid sleeps your Mac as it always has."
-                 : "As the lid comes down, the screen tells you what will happen.")
-                .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 14)
+            .font(TunerTheme.bodySmall)
+            .padding(.top, 14)
+            .padding(.horizontal, 2)
 
             if let receipt = model.stayAwake.journal.last {
                 VStack(alignment: .leading, spacing: 6) {
-                    Eyebrow("Last time the lid was shut")
+                    Eyebrow("Last time")
                     ForEach(AwakeText.receipt(receipt), id: \.self) { line in
                         Text(line).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
@@ -110,6 +71,8 @@ private struct AwakeStage: View {
             }
             Spacer(minLength: 0)
         }
+        // Show, don't explain: the close plays once as the page opens.
+        .onAppear { if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { preview.playRound() } }
     }
 
     private var sampleCaption: String { "Staying awake · Cursor is working" }
@@ -122,56 +85,107 @@ private struct AwakeControls: View {
     @Environment(\.tunerTheme) private var theme
     @State private var showApps = false
     @State private var showPicker = false
-    @State private var showLimits = false
+    @State private var showOptions = false
 
     private var awake: StayAwakeController { model.stayAwake }
     private var settings: StayAwakeSettings { awake.settings }
 
+    private var isOn: Bool { settings.isOn && settings.hasConsented }
+
     var body: some View {
         ScrollView(showsIndicators: true) {
             VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
-                if settings.isOn && settings.hasConsented { nowSection } else { pitch }
-                reasonsSection
-                limitsSection
+                if isOn { hero } else { pitch }
+                options
             }
-            .padding(16)
+            .padding(.horizontal, 16).padding(.top, 22).padding(.bottom, 16)
+            .tunerAnimation(TunerTheme.ease, value: showOptions)
             .tunerAnimation(TunerTheme.ease, value: showApps)
             .tunerAnimation(TunerTheme.ease, value: showPicker)
-            .tunerAnimation(TunerTheme.ease, value: showLimits)
         }
     }
 
     private var pitch: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Keep working with the lid shut.")
-                .font(TunerTheme.heading).tracking(TunerTheme.headingTracking).foregroundStyle(theme.ink)
-            Text("Shut holds your Mac awake only while something is working, a display is connected, or you say so. When that ends, your Mac goes to sleep by itself.")
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Keep working\nwith the lid shut.")
+                .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
+            Text("Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done.")
                 .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
             PrimaryButton("Turn on…") { model.toggleAwake() }
-                .padding(.top, 4)
+                .padding(.top, 6)
         }
     }
 
-    private var nowSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Eyebrow("Now")
-            TimelineView(.periodic(from: .now, by: 30)) { context in
-                let arbiter = awake.arbiter
-                VStack(alignment: .leading, spacing: 10) {
+    /// One headline, one sentence about the lid, one button. Cards only when there
+    /// is more than one thing to list, or a warning to show.
+    private var hero: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            let arbiter = awake.arbiter
+            let copy = AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
+                                      limits: arbiter.limits, now: context.date)
+            let status = awake.status
+            VStack(alignment: .leading, spacing: 12) {
+                if arbiter.state.holdsLid, arbiter.reasons.count == 1, let reason = arbiter.reasons.first {
+                    AppIconView(bundleID: AppIcons.bundleID(for: reason), size: 40).padding(.bottom, 2)
+                }
+                Text(copy.headline)
+                    .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(copy.detail)
+                    .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                if arbiter.reasons.count > 1 || copy.showsCards {
                     AwakeCards(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
                                limits: arbiter.limits, now: context.date)
-                    Text(AwakeText.ending(reasons: arbiter.reasons, conditions: arbiter.conditions, limits: arbiter.limits))
-                        .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+                }
+                switch status.action {
+                case .letItSleep, .undo, .keepAwake:
+                    PrimaryButton(status.action!.title) { model.performAwake(status.action!) }.padding(.top, 6)
+                default:
+                    if arbiter.state == .ready {
+                        PrimaryButton("Keep awake for an hour") { awake.setManualHold(.oneHour) }.padding(.top, 6)
+                    }
                 }
             }
         }
     }
 
+    private var options: some View {
+        VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
+            Button { showOptions.toggle() } label: {
+                HStack(spacing: 8) {
+                    Eyebrow("Options")
+                    Image(systemName: showOptions ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.inkTertiary)
+                    Spacer()
+                    if !showOptions {
+                        Text(optionsSummary).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressStyle())
+            .help("What keeps your Mac awake, and the limits that always win.")
+
+            if showOptions {
+                reasonsSection.transition(.blurFade)
+                VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
+                    Eyebrow("Limits").padding(.bottom, 2)
+                    AwakeLimits(model: model)
+                }
+                .transition(.blurFade)
+            }
+        }
+    }
+
+    private var optionsSummary: String {
+        "Sleeps at \(settings.batteryFloor) % battery" + (settings.lockWhenShut ? " · locks when shut" : "")
+    }
+
     private var reasonsSection: some View {
         VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
             Eyebrow("Stay awake when").padding(.bottom, 2)
-
             ReasonRow("Something is working", detail: allowedSummary, isOn: bind(\.whenWorking), expanded: $showApps,
                       help: "Hold the lid while an app you allow is asking macOS to stay awake: a coding agent in a terminal, a render, a download.")
             if showApps { AllowedApps(model: model).transition(.blurFade) }
@@ -205,34 +219,9 @@ private struct AwakeControls: View {
         }
     }
 
-    private var limitsSection: some View {
-        VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
-            HStack {
-                Eyebrow("Limits")
-                Spacer()
-                QuietButton(showLimits ? "Done" : "Change…") { showLimits.toggle() }
-            }
-            .padding(.bottom, 2)
-            if showLimits {
-                AwakeLimits(model: model).transition(.blurFade)
-            } else {
-                Text(limitsSummary)
-                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
     private var allowedSummary: String {
         let count = awake.arbiter.mirror.seenApps.filter(\.allowed).count
         return count == 1 ? "1 app" : "\(count) apps"
-    }
-
-    private var limitsSummary: String {
-        var parts = ["Lets your Mac sleep at \(settings.batteryFloor) % battery, when it gets hot, and after 8 hours on battery."]
-        if settings.chargerOnly { parts.append("Holds on the charger only.") }
-        parts.append(settings.lockWhenShut ? "Locks when the lid shuts." : "Does not lock when the lid shuts.")
-        return parts.joined(separator: " ")
     }
 
     private func bind(_ keyPath: ReferenceWritableKeyPath<StayAwakeSettings, Bool>) -> Binding<Bool> {
@@ -289,7 +278,12 @@ struct AwakeCards: View {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(row.glyph).font(.system(size: 11)).foregroundStyle(row.warning ? theme.ink : theme.inkLabel)
+                    if row.iconBundleID != nil {
+                        AppIconView(bundleID: row.iconBundleID, size: 20).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 5 }
+                    } else {
+                        Text(row.glyph).font(.system(size: 11)).foregroundStyle(row.warning ? theme.ink : theme.inkLabel)
+                            .frame(width: 20)
+                    }
                     VStack(alignment: .leading, spacing: 3) {
                         Text(row.title).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink).lineLimit(1)
                         Text(row.subtitle).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
@@ -307,19 +301,26 @@ struct AwakeCards: View {
         .tunerAnimation(TunerTheme.ease, value: rows)
     }
 
-    struct Row: Equatable { let glyph, title, subtitle, trailing: String; let warning: Bool }
+    struct Row: Equatable {
+        let glyph, title, subtitle, trailing: String
+        let warning: Bool
+        var iconBundleID: String? = nil
+    }
 
     var rows: [Row] {
         var result: [Row] = reasons.map { reason in
             switch reason.kind {
             case .working:
-                return Row(glyph: "◆", title: reason.title, subtitle: reason.detail.map { "working · \($0)" } ?? "working",
-                           trailing: AwakeText.duration(now.timeIntervalSince(reason.since)), warning: false)
+                return Row(glyph: "◆", title: AwakeText.subject(reason),
+                           subtitle: reason.tool != nil ? "working in \(reason.title)" : (reason.detail.map { "working · \($0)" } ?? "working"),
+                           trailing: AwakeText.duration(now.timeIntervalSince(reason.since)), warning: false,
+                           iconBundleID: AppIcons.bundleID(for: reason))
             case .display:
                 return Row(glyph: "▭", title: reason.title, subtitle: "while it is plugged in",
                            trailing: "since \(AwakeText.clock(reason.since))", warning: false)
             case .appOpen:
-                return Row(glyph: "▣", title: reason.title, subtitle: "while it is open", trailing: "", warning: false)
+                return Row(glyph: "▣", title: reason.title, subtitle: "while it is open", trailing: "", warning: false,
+                           iconBundleID: reason.bundleID)
             case .command:
                 return Row(glyph: "›", title: reason.title, subtitle: "running from the command line",
                            trailing: AwakeText.duration(now.timeIntervalSince(reason.since)), warning: false)
@@ -369,7 +370,8 @@ private struct AllowedApps: View {
             }
             ForEach(mirror.seenApps) { app in
                 Rectangle().fill(theme.hairline).frame(height: 1)
-                HStack {
+                HStack(spacing: 8) {
+                    AppIconView(bundleID: app.bundleID, size: 18)
                     Text(app.name).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
                     Spacer()
                     SmallPill(isOn: app.allowed) { mirror.setAllowed(app.bundleID, !app.allowed); model.objectWillChange.send() }
@@ -409,7 +411,8 @@ private struct AppPicker: View {
                 .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).padding(12)
             ForEach(candidates) { app in
                 Rectangle().fill(theme.hairline).frame(height: 1)
-                HStack {
+                HStack(spacing: 8) {
+                    AppIconView(bundleID: app.id, size: 18)
                     Text(app.name).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
                     Spacer()
                     SmallPill(isOn: settings.pickedApps.contains(app.id)) {

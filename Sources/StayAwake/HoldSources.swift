@@ -128,7 +128,7 @@ public final class AppsOpen: HoldSource {
         let next: [HoldReason] = running.compactMap { app in
             guard let id = app.bundleIdentifier, seen.insert(id).inserted else { return nil }
             let key = "app:\(id)"
-            return HoldReason(id: key, kind: .appOpen, title: app.localizedName ?? id,
+            return HoldReason(id: key, kind: .appOpen, title: app.localizedName ?? id, bundleID: id,
                               since: existing[key] ?? app.launchDate ?? Date())
         }.sorted { $0.title < $1.title }
         guard next != reasons else { return }

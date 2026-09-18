@@ -81,21 +81,27 @@ final class AwakeSnapshotTests: XCTestCase {
 
         let started = Date().addingTimeInterval(-47 * 60)
         let (holding, awake) = try makeModel(on: true, reasons: [
-            HoldReason(id: "working:cursor", kind: .working, title: "Cursor", since: started)])
+            HoldReason(id: "working:cursor", kind: .working, title: "Cursor", tool: "Claude Code",
+                       bundleID: "com.todesktop.230313mzl4w4u92", since: started)])
         XCTAssertEqual(awake.arbiter.state, .holding)
-        XCTAssertEqual(awake.status.sentence, "Cursor is working · 47 min")
+        XCTAssertEqual(awake.status.sentence, "Claude Code is working · 47 min")
         try render(holding, name: "bar-holding")
         awake.shutDown()
     }
 
     func testPageInItsStates() throws {
         let started = Date().addingTimeInterval(-47 * 60)
+        let cursor = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", tool: "Claude Code",
+                                bundleID: "com.todesktop.230313mzl4w4u92", since: started)
+        let (one, oneAwake) = try makeModel(on: true, reasons: [cursor])
+        one.page = .awake
+        try render(one, name: "page-holding")
+        oneAwake.shutDown()
+
         let (holding, awake) = try makeModel(on: true, reasons: [
-            HoldReason(id: "working:cursor", kind: .working, title: "Cursor", since: started),
-            HoldReason(id: "display:studio", kind: .display, title: "Studio Display", since: started)])
+            cursor, HoldReason(id: "display:studio", kind: .display, title: "Studio Display", since: started)])
         holding.page = .awake
-        holding.preview.progress = 0.55
-        try render(holding, name: "page-holding")
+        try render(holding, name: "page-two")
         awake.shutDown()
 
         let (ready, readyAwake) = try makeModel(on: true, reasons: [])
