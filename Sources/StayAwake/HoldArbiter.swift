@@ -174,7 +174,7 @@ public final class HoldArbiter: ObservableObject {
 
     private func evaluate() {
         let moment = now()
-        manual.prune(now: moment)
+        allSources.forEach { $0.prune(now: moment) }
         let collected = allSources.flatMap(\.reasons)
         if collected != reasons { reasons = collected }
 

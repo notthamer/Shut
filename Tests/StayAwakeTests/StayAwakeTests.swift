@@ -292,3 +292,67 @@ final class HoldArbiterTests: XCTestCase {
         XCTAssertFalse(marker.exists)
     }
 }
+
+/// `shut hold`: the protocol, and one real round trip over a socket.
+@MainActor
+final class CommandHoldTests: XCTestCase {
+    func testStartStopAndStatus() {
+        let hold = CommandHold(path: "/unused")
+        hold.statusLine = { "holding" }
+        var changes = 0
+        hold.onChange = { changes += 1 }
+
+        XCTAssertEqual(hold.handle("START\trender\t0\t7200\tFinal render", now: t0), "ok holding")
+        XCTAssertEqual(hold.reasons.map(\.id), ["command:render"])
+        XCTAssertEqual(hold.reasons.first?.title, "Final render")
+        XCTAssertEqual(hold.reasons.first?.until, at(7200))
+        XCTAssertEqual(hold.handle("START\trender\t0\t0\tFinal render", now: t0), "ok holding", "the same id replaces, never doubles")
+        XCTAssertEqual(hold.reasons.count, 1)
+        XCTAssertEqual(hold.handle("STATUS"), "holding")
+        XCTAssertEqual(hold.handle("STOP\trender"), "ok holding")
+        XCTAssertTrue(hold.reasons.isEmpty)
+        XCTAssertEqual(changes, 3)
+        XCTAssertTrue(hold.handle("nonsense").hasPrefix("error"))
+    }
+
+    func testTimedHoldsArePrunedAndDeadProcessesNeverHold() {
+        let hold = CommandHold(path: "/unused")
+        _ = hold.handle("START\ta\t0\t60\ta", now: t0)
+        hold.prune(now: at(59))
+        XCTAssertEqual(hold.reasons.count, 1)
+        hold.prune(now: at(60))
+        XCTAssertTrue(hold.reasons.isEmpty)
+
+        _ = hold.handle("START\tghost\t2147483000\t0\tghost", now: t0)
+        XCTAssertTrue(hold.reasons.isEmpty, "a pid that does not exist is not a reason")
+    }
+
+    func testControlCharactersAreStrippedAndDurationsParse() {
+        XCTAssertEqual(CommandHold.clean("build\u{07}\n\u{1B}[31m", limit: 40), "build[31m")
+        XCTAssertEqual(CommandHold.clean(String(repeating: "x", count: 100), limit: 40).count, 40)
+        XCTAssertEqual(HoldCommand.seconds("90s"), 90)
+        XCTAssertEqual(HoldCommand.seconds("30m"), 1800)
+        XCTAssertEqual(HoldCommand.seconds("2h"), 7200)
+        XCTAssertEqual(HoldCommand.seconds("45"), 45)
+        XCTAssertNil(HoldCommand.seconds("soon"))
+    }
+
+    func testARealRoundTripOverTheSocket() {
+        let path = NSTemporaryDirectory() + "shut-\(UUID().uuidString.prefix(8)).sock"
+        let hold = CommandHold(path: path)
+        hold.statusLine = { "ready" }
+        hold.start()
+        defer { hold.stop() }
+
+        var answer: String?
+        let done = expectation(description: "answered")
+        DispatchQueue.global().async {
+            answer = HoldSocket.request("START\tbuild\t0\t0\tBuild", path: path)
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 5)
+        XCTAssertEqual(answer, "ok ready")
+        XCTAssertEqual(hold.reasons.map(\.title), ["Build"])
+        XCTAssertNil(HoldSocket.request("STATUS", path: path + ".nobody"), "nobody listening is nil, not a hang")
+    }
+}

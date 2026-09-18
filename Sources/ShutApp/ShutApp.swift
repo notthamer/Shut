@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import LidSensor
+import StayAwake
 import SwiftUI
 import TransitionKit
 import Tuner
@@ -8,6 +9,14 @@ import Tuner
 /// Entry point shared by the Xcode app target and the SwiftPM `shut`
 /// executable. Both call `ShutApp.run()` and nothing else.
 public enum ShutApp {
+    /// `shut hold …` is a command, not a launch. Handled before the app starts, so it
+    /// never meets the single-instance handover; returns only when there was no command.
+    public static func runCommandIfAny() {
+        let arguments = CommandLine.arguments
+        guard arguments.count >= 2, arguments[1] == "hold" else { return }
+        exit(HoldCommand.run(Array(arguments.dropFirst(2))))
+    }
+
     /// Writes every built-in preset to `dir/<transition>/<name>.json`, the same
     /// format Tuner saves and the repo's presets/ folder uses.
     public static func exportBuiltInPresets(to dir: URL) throws -> [URL] {

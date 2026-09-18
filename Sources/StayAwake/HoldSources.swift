@@ -9,6 +9,12 @@ public protocol HoldSource: AnyObject {
     var onChange: (() -> Void)? { get set }
     func start()
     func stop()
+    /// Drop reasons whose time is up. Most sources have none.
+    func prune(now: Date)
+}
+
+public extension HoldSource {
+    func prune(now: Date) {}
 }
 
 /// "I say so": for an hour, four, or until stopped.
@@ -67,9 +73,11 @@ public final class DisplayConnected: HoldSource {
     }
 
     private func refresh() {
-        let names = Self.externalDisplayNames()
+        // Two identical monitors share a name; one reason covers both.
+        var seen = Set<String>()
+        let names = Self.externalDisplayNames().filter { seen.insert($0).inserted }
         guard names != reasons.map(\.title) else { return }
-        let existing = Dictionary(uniqueKeysWithValues: reasons.map { ($0.title, $0.since) })
+        let existing = Dictionary(reasons.map { ($0.title, $0.since) }, uniquingKeysWith: { first, _ in first })
         reasons = names.map { HoldReason(id: "display:\($0)", kind: .display, title: $0, since: existing[$0] ?? Date()) }
         onChange?()
     }

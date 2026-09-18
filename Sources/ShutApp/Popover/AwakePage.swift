@@ -190,6 +190,18 @@ private struct AwakeControls: View {
                          help: "Keep the Mac awake with the lid shut for an hour, four hours, or until you switch this off.")
                 .disabled(!(settings.isOn && settings.hasConsented))
                 .opacity(settings.isOn && settings.hasConsented ? 1 : 0.45)
+
+            HStack(spacing: 8) {
+                Text("A command says so").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
+                Spacer(minLength: 4)
+                if awake.commandLineInstalled {
+                    Text("shut hold -- <command>").font(TunerTheme.value).foregroundStyle(theme.inkTertiary)
+                } else {
+                    QuietButton("Install shut…") { awake.installCommandLineTool() }
+                }
+            }
+            .frame(height: TunerTheme.rowHeight)
+            .help("For anything Shut cannot see by itself. In a terminal: shut hold -- npm run build holds the lid while that command runs. Install puts a link to Shut in ~/.local/bin.")
         }
     }
 
