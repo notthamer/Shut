@@ -17,13 +17,14 @@ enum AwakeText {
     }
 
     enum Action: Equatable {
-        case turnOn, letItSleep, keepAwake, undo
+        case turnOn, letItSleep, keepAwake, undo, ok
         var title: String {
             switch self {
             case .turnOn: return "Turn on…"
             case .letItSleep: return "Let it sleep"
             case .keepAwake: return "Keep awake"
             case .undo: return "Undo"
+            case .ok: return "OK"
             }
         }
     }

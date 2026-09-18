@@ -110,6 +110,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // comes up before the lid can move.
         stayAwake = StayAwakeController()
         controller.onLidStartedClosing = { [weak self] in self?.stayAwake.lidStartedClosing() }
+        controller.onCloseBeginning = { [weak self] in self?.stayAwake.closeBeginning() }
+        controller.closingCaption = { [weak self] in self?.stayAwake.caption }
         stayAwake.onLockedWhileShut = { [weak self] in self?.controller.holdBlackUntilUnlock() }
         stayAwake.start()
         menuBar = MenuBarController(controller: controller, settings: settings, registry: registry)

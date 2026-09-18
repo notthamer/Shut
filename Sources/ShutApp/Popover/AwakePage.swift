@@ -96,6 +96,18 @@ private struct AwakeStage: View {
                 .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 14)
+
+            if let receipt = model.stayAwake.journal.last {
+                VStack(alignment: .leading, spacing: 6) {
+                    Eyebrow("Last time the lid was shut")
+                    ForEach(AwakeText.receipt(receipt), id: \.self) { line in
+                        Text(line).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.top, TunerTheme.sectionGap)
+                .onAppear { model.stayAwake.perform(.ok) }
+            }
             Spacer(minLength: 0)
         }
     }

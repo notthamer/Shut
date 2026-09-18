@@ -59,3 +59,70 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(AwakeText.duration(2 * 3600 + 5 * 60), "2 h 5 min")
     }
 }
+
+/// The receipt and the missed moment: bookkeeping on lid and hold events.
+@MainActor
+final class HoldJournalTests: XCTestCase {
+    private let t0 = Date(timeIntervalSinceReferenceDate: 800_000_000)
+    private func at(_ s: TimeInterval) -> Date { t0.addingTimeInterval(s) }
+    private func journal() -> HoldJournal { HoldJournal(defaults: UserDefaults(suiteName: "Journal-\(UUID().uuidString)")!) }
+    private let cursor = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", since: Date(timeIntervalSinceReferenceDate: 800_000_000))
+
+    func testAHoldThatFinishedWhileShut() throws {
+        let journal = journal()
+        journal.lidShut(holding: true, reasons: [cursor], battery: 82, now: at(0))
+        journal.holdChanged(to: .grace(until: at(3000)), now: at(2700))   // still holding: not an end
+        journal.holdChanged(to: .ready, now: at(3000))
+        journal.lidOpened(battery: 64, now: at(9000))
+        let receipt = try XCTUnwrap(journal.last)
+        XCTAssertEqual(receipt.end, .finished)
+        let lines = AwakeText.receipt(receipt)
+        XCTAssertTrue(lines[0].hasPrefix("Cursor kept your Mac awake for 50 min, until "), lines[0])
+        XCTAssertEqual(lines[1], "Battery 82 → 64 %.")
+        XCTAssertFalse(receipt.read)
+        journal.markRead()
+        XCTAssertEqual(journal.last?.read, true)
+    }
+
+    func testStoppedByALimitAndSleptAnyway() throws {
+        let low = journal()
+        low.lidShut(holding: true, reasons: [cursor], battery: 30, now: at(0))
+        low.holdChanged(to: .stopped(.batteryFloor), now: at(1200))
+        low.lidOpened(battery: 19, now: at(5000))
+        XCTAssertEqual(low.last?.end, .batteryFloor)
+        XCTAssertTrue(AwakeText.receipt(try XCTUnwrap(low.last))[0].contains("because the battery was low"))
+
+        let raced = journal()
+        raced.lidShut(holding: true, reasons: [cursor], battery: 80, now: at(0))
+        raced.sleptWhileHolding(now: at(600))
+        raced.lidOpened(battery: 80, now: at(4000))
+        XCTAssertEqual(raced.last?.end, .sleptAnyway)
+        XCTAssertTrue(AwakeText.receipt(try XCTUnwrap(raced.last))[0].contains("although Shut was holding it"), "a failed hold is said, not hidden")
+    }
+
+    func testNoReceiptForAnUnheldOrMomentaryClose() {
+        let journal = journal()
+        journal.lidShut(holding: false, reasons: [], battery: 80, now: at(0))
+        journal.lidOpened(battery: 80, now: at(5000))
+        XCTAssertNil(journal.last)
+        journal.lidShut(holding: true, reasons: [cursor], battery: 80, now: at(6000))
+        journal.lidOpened(battery: 80, now: at(6030))
+        XCTAssertNil(journal.last)
+    }
+
+    func testMissedMomentNeedsBothWorkAndASleep() {
+        let journal = journal()
+        journal.lidClosingWhileOff(workingApp: nil, now: at(0))
+        journal.macSlept(now: at(5))
+        XCTAssertNil(journal.missed, "nothing was working")
+
+        journal.lidClosingWhileOff(workingApp: "Cursor", now: at(100))
+        journal.macSlept(now: at(110))
+        XCTAssertEqual(journal.missed?.app, "Cursor")
+        journal.dismissMissed()
+
+        journal.lidClosingWhileOff(workingApp: "Cursor", now: at(1000))
+        journal.macSlept(now: at(5000))
+        XCTAssertNil(journal.missed, "a sleep an hour later is not about that lid close")
+    }
+}

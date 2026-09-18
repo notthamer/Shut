@@ -21,12 +21,15 @@ public final class StayAwakeController: ObservableObject {
     /// black overlay until the unlock, then plays the opening.
     var onLockedWhileShut: (() -> Void)?
 
+    let journal: HoldJournal
+    private var flippedToSleep = false
     private var lidEdges: LidStateProvider?
     private var sessionActive = true
     private var cancellables = Set<AnyCancellable>()
 
     public init(settings: StayAwakeSettings? = nil, arbiter: HoldArbiter? = nil) {
         self.settings = settings ?? StayAwakeSettings()
+        journal = HoldJournal(defaults: settings == nil ? .standard : UserDefaults(suiteName: "StayAwakeJournal-\(UUID().uuidString)") ?? .standard)
         self.arbiter = arbiter ?? HoldArbiter(hold: LidHold(log: { Log.awake.error("\($0, privacy: .public)") }))
     }
 
@@ -34,7 +37,8 @@ public final class StayAwakeController: ObservableObject {
         if arbiter.recoverFromLastRun() {
             Log.awake.notice("the last run ended while holding the lid; lid sleep restored")
         }
-        arbiter.onTransition = { from, to, reasons in
+        arbiter.onTransition = { [weak self] from, to, reasons in
+            if let self, self.arbiter.lidClosed { self.journal.holdChanged(to: to) }
             Log.awake.info("hold \(String(describing: from), privacy: .public) -> \(String(describing: to), privacy: .public), reasons: \(reasons.map(\.id).joined(separator: ", "), privacy: .public)")
         }
         arbiter.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
@@ -47,6 +51,9 @@ public final class StayAwakeController: ObservableObject {
         let workspace = NSWorkspace.shared.notificationCenter
         workspace.addObserver(forName: NSWorkspace.sessionDidResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.sessionActive = false; self?.applySettings() }
+        }
+        workspace.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.macWillSleep() }
         }
         workspace.addObserver(forName: NSWorkspace.sessionDidBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.sessionActive = true; self?.applySettings() }
@@ -93,6 +100,15 @@ public final class StayAwakeController: ObservableObject {
 
     private func lidEdge(isOpen: Bool) {
         arbiter.lidChanged(closed: !isOpen)
+        let battery = arbiter.conditions.batteryPercent
+        if isOpen {
+            journal.lidOpened(battery: battery)
+            // Option flipped this one close to "sleep"; the next close decides afresh.
+            if flippedToSleep { flippedToSleep = false; arbiter.undoLetItSleep() }
+            objectWillChange.send()
+        } else {
+            journal.lidShut(holding: arbiter.state.holdsLid, reasons: arbiter.reasons, battery: battery)
+        }
         guard !isOpen, arbiter.state.holdsLid, settings.lockWhenShut else { return }
         ScreenLock.lock { [weak self] locked in
             if locked { self?.onLockedWhileShut?() }
@@ -102,12 +118,49 @@ public final class StayAwakeController: ObservableObject {
     // MARK: For the lid
 
     /// From `AppController`, as the lid starts to come down.
-    func lidStartedClosing() { arbiter.lidIsClosing() }
+    func lidStartedClosing() {
+        if arbiter.limits.isOn {
+            arbiter.lidIsClosing()
+        } else {
+            // Off: one look at what is working, so that if the Mac now sleeps on it
+            // the feature can be offered from a real moment rather than a settings hunt.
+            let work = arbiter.mirror.refresh().first { $0.viaCommandLine || $0.app.isDeveloperTool }
+            journal.lidClosingWhileOff(workingApp: work?.app.name)
+        }
+    }
+
+    /// From `AppController`, as the overlay is about to appear. Holding Option flips
+    /// the decision for this one close; the caption then says which way it went.
+    func closeBeginning() {
+        guard arbiter.limits.isOn, settings.optionFlips, NSEvent.modifierFlags.contains(.option) else { return }
+        if arbiter.state.holdsLid {
+            flippedToSleep = true
+            arbiter.letItSleep()
+        } else {
+            arbiter.manual.begin(for: 3600)
+        }
+        Log.awake.info("Option held while closing: decision flipped")
+    }
+
+    private func macWillSleep() {
+        if arbiter.state.holdsLid, arbiter.lidClosed {
+            Log.awake.error("the Mac is going to sleep although the lid is held")
+            journal.sleptWhileHolding()
+        } else {
+            journal.macSlept()
+        }
+    }
 
     // MARK: For the interface
 
     var status: AwakeText.Status {
-        AwakeText.status(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
+        if !arbiter.limits.isOn, let missed = journal.missed {
+            return AwakeText.Status(dot: .warning, sentence: AwakeText.missed(missed), action: .turnOn)
+        }
+        if !arbiter.state.holdsLid, let receipt = journal.last, !receipt.read, let line = AwakeText.receipt(receipt).first {
+            return AwakeText.Status(dot: .winding, sentence: line, action: .ok)
+        }
+        return AwakeText.status(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
                          limits: arbiter.limits, canUndo: arbiter.canUndoLetItSleep, now: Date())
     }
 
@@ -121,6 +174,7 @@ public final class StayAwakeController: ObservableObject {
     func consent() {
         settings.hasConsented = true
         settings.isOn = true
+        journal.dismissMissed()
     }
 
     func perform(_ action: AwakeText.Action) {
@@ -129,6 +183,7 @@ public final class StayAwakeController: ObservableObject {
         case .letItSleep: arbiter.letItSleep()
         case .keepAwake: arbiter.manual.begin(for: 3600)
         case .undo: arbiter.undoLetItSleep()
+        case .ok: journal.markRead(); objectWillChange.send()
         }
     }
 

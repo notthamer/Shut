@@ -83,6 +83,10 @@ public final class AppController: ObservableObject {
     /// Stay awake listens here: the lid has started to come down, which is the
     /// moment to take a fresh reading of what is working.
     var onLidStartedClosing: (() -> Void)?
+    /// The overlay is about to appear. Stay awake reads the Option key here (it
+    /// flips the decision for this one close) and then supplies the caption.
+    var onCloseBeginning: (() -> Void)?
+    var closingCaption: (() -> String?)?
 
     /// Set by the Tuner host so the panel can hide while a real transition plays.
     public var onTransitionVisibilityChanged: ((Bool) -> Void)?
@@ -323,6 +327,9 @@ public final class AppController: ObservableObject {
         overlay?.metalView.transition = transition
         overlay?.metalView.context = context
         overlay?.metalView.progress = driver.progress
+        onCloseBeginning?()
+        overlay?.setCaption(closingCaption?())
+        overlay?.setCaptionProgress(driver.progress)
         overlay?.metalView.render()
         let placement = overlay?.show(on: screen) ?? .offActiveSpace
         shownAt = Date()
@@ -404,6 +411,7 @@ public final class AppController: ObservableObject {
         if changed || lastRenderedProgress == nil {
             progress = p
             overlay.metalView.progress = p
+            overlay.setCaptionProgress(state == .closing ? p : 0)
             overlay.metalView.context.time = Float(Date().timeIntervalSince(shownAt ?? Date()))
             overlay.metalView.context.velocity = Float(progressVelocity)
             overlay.metalView.render()
@@ -463,6 +471,7 @@ public final class AppController: ObservableObject {
                                     context: makeContext(screen: screen))
         }
         overlay?.setTransparent(false)
+        overlay?.setCaption(nil)
         overlay?.metalView.isBlackedOut = true
         overlay?.metalView.render()
         let placement = overlay?.show(on: screen) ?? .offActiveSpace
