@@ -102,7 +102,11 @@ shut hold stop --id render
 shut hold status
 ```
 
-The Awake page installs the command as a link in `~/.local/bin`. The wrapped
+Most people never need it: `caffeinate -i <command>`, which ships with macOS, is seen
+by Shut like any other request to stay awake. `shut hold` adds the command's name in
+the caption and works with "An app is busy" switched off. There is no installer in
+the interface; link it yourself once:
+`ln -s /Applications/Shut.app/Contents/MacOS/Shut ~/.local/bin/shut`. The wrapped
 command always runs, with or without Shut, so an alias never breaks a workflow.
 Any tool with hooks can call it; for Claude Code, in `~/.claude/settings.json`:
 

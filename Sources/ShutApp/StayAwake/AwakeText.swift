@@ -226,19 +226,6 @@ enum AwakeText {
         }
     }
 
-    /// The line under the cards: how this ends.
-    static func ending(reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits) -> String {
-        let what: String
-        switch reasons.count {
-        case 0: what = "Sleeps when the lid shuts"
-        case 1: what = "Sleeps when it ends"
-        case 2: what = "Sleeps when both end"
-        default: what = "Sleeps when all of them end"
-        }
-        guard !reasons.isEmpty, conditions.batteryPercent != nil else { return what + "." }
-        return what + ", or at \(limits.batteryFloor) % battery."
-    }
-
     /// The folded Limits row: the ones most worth knowing without opening it.
     static func limitsSummary(batteryFloor: Int, lockWhenShut: Bool, chargerOnly: Bool) -> String {
         var parts = [chargerOnly ? "Charger only" : "Sleeps at \(batteryFloor) % battery"]

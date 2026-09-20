@@ -152,8 +152,7 @@ private struct AwakeControls: View {
                 // Who is keeping it awake is said once, in the rows under "Stays awake when".
                 // A card appears here only to warn.
                 if copy.showsCards {
-                    AwakeCards(state: arbiter.state, reasons: [], conditions: arbiter.conditions,
-                               limits: arbiter.limits, now: context.date)
+                    AwakeWarnings(state: arbiter.state, conditions: arbiter.conditions, limits: arbiter.limits, now: context.date)
                 }
                 switch status.action {
                 case .allow:
@@ -302,10 +301,11 @@ private struct TriggerRow: View {
 
 // MARK: - Cards
 
-/// One bordered block, a row per thing keeping the Mac awake.
-struct AwakeCards: View {
+/// The one card the page still has: a Saffron row when a limit is near or has spoken, or
+/// a plain one while the Mac winds down. Who is keeping it awake is said in the trigger
+/// rows, once.
+struct AwakeWarnings: View {
     let state: HoldState
-    let reasons: [HoldReason]
     let conditions: PowerConditions
     let limits: HoldLimits
     let now: Date
@@ -313,36 +313,24 @@ struct AwakeCards: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if rows.isEmpty {
-                Text("Nothing is keeping your Mac awake.")
-                    .font(TunerTheme.body).foregroundStyle(theme.inkLabel)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-            }
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    if row.iconBundleID != nil {
-                        AppIconView(bundleID: row.iconBundleID, size: 20).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 5 }
-                    } else {
-                        // A shape to scan by; VoiceOver would read it as "black diamond".
-                        Text(row.glyph).font(.system(size: 11)).foregroundStyle(row.warning ? theme.ink : theme.inkLabel)
-                            .frame(width: 20)
-                            .accessibilityHidden(true)
-                    }
+                    // A shape to scan by; VoiceOver would read it as "black up-pointing triangle".
+                    Text(row.glyph).font(.system(size: 11)).foregroundStyle(row.warning ? theme.ink : theme.inkLabel)
+                        .frame(width: 20)
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(row.title).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink).lineLimit(1)
                         Text(row.subtitle).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 8)
-                    Text(row.trailing).font(TunerTheme.value).foregroundStyle(theme.inkTertiary)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 11)
                 .background(row.warning ? theme.washSaffron : .clear)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel([row.warning ? "Warning." : "", row.title, row.subtitle, row.trailing]
-                    .filter { !$0.isEmpty }.joined(separator: ", "))
+                .accessibilityLabel([row.warning ? "Warning." : "", row.title, row.subtitle].filter { !$0.isEmpty }.joined(separator: ", "))
             }
         }
         .surface(.card, radius: TunerTheme.cardRadius)
@@ -351,49 +339,24 @@ struct AwakeCards: View {
     }
 
     struct Row: Equatable {
-        let glyph, title, subtitle, trailing: String
+        let glyph, title, subtitle: String
         let warning: Bool
-        var iconBundleID: String? = nil
     }
 
     var rows: [Row] {
-        var result: [Row] = reasons.map { reason in
-            switch reason.kind {
-            case .working:
-                return Row(glyph: "◆", title: AwakeText.subject(reason),
-                           subtitle: reason.tool != nil ? "working in \(reason.title)" : (reason.detail.map { "working · \($0)" } ?? "working"),
-                           trailing: AwakeText.duration(now.timeIntervalSince(reason.since)), warning: false,
-                           iconBundleID: AppIcons.bundleID(for: reason))
-            case .display:
-                return Row(glyph: "▭", title: reason.title, subtitle: "while it is plugged in",
-                           trailing: "since \(AwakeText.clock(reason.since))", warning: false)
-            case .appOpen:
-                return Row(glyph: "▣", title: reason.title, subtitle: "while it is open", trailing: "", warning: false,
-                           iconBundleID: reason.bundleID)
-            case .command:
-                return Row(glyph: "›", title: reason.title, subtitle: "running from the command line",
-                           trailing: AwakeText.duration(now.timeIntervalSince(reason.since)), warning: false)
-            case .manual:
-                return Row(glyph: "◇", title: "Kept awake by you",
-                           subtitle: reason.until.map { "\(AwakeText.duration($0.timeIntervalSince(now))) left" } ?? "until you stop it",
-                           trailing: reason.until.map { "until \(AwakeText.clock($0))" } ?? "", warning: false)
-            }
-        }
         switch state {
         case .grace(let until):
-            result.append(Row(glyph: "◆", title: "Finished", subtitle: "sleeping in \(AwakeText.duration(until.timeIntervalSince(now))) unless it starts again",
-                              trailing: "", warning: false))
+            return [Row(glyph: "◆", title: "Finished", subtitle: "sleeping in \(AwakeText.duration(until.timeIntervalSince(now))) unless it starts again", warning: false)]
         case .stopped(let reason) where reason != .userLetItSleep:
-            result.append(Row(glyph: "▲", title: "Not holding the lid", subtitle: AwakeText.stopped(reason, conditions: conditions),
-                              trailing: "", warning: true))
+            return [Row(glyph: "▲", title: "Not holding the lid", subtitle: AwakeText.stopped(reason, conditions: conditions), warning: true)]
         case .holding:
             if !conditions.onCharger, let percent = conditions.batteryPercent, percent <= limits.batteryFloor + 5 {
-                result.append(Row(glyph: "▲", title: "On battery · \(percent) %", subtitle: "will let the Mac sleep at \(limits.batteryFloor) %",
-                                  trailing: "", warning: true))
+                return [Row(glyph: "▲", title: "On battery · \(percent) %", subtitle: "will let the Mac sleep at \(limits.batteryFloor) %", warning: true)]
             }
-        default: break
+            return []
+        default:
+            return []
         }
-        return result
     }
 }
 
@@ -520,31 +483,9 @@ struct AwakeLimits: View {
             TriggerRow("Option key changes its mind", about: "Hold ⌥ while closing the lid to do the opposite, just that once.",
                        live: nil, detail: nil, isOn: Binding(get: { settings.optionFlips }, set: { settings.optionFlips = $0 }), expanded: nil,
                        help: "Hold Option as you close the lid to do the opposite this once: sleep although something is working, or stay awake for an hour although nothing is.")
-            commandRow
         }
     }
 
-    /// For anything Shut cannot see by itself: a command that holds the lid while it runs.
-    private var commandRow: some View {
-        let awake = model.stayAwake
-        return HStack(alignment: .center, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Terminal command").font(TunerTheme.body).foregroundStyle(theme.ink)
-                Text(awake.commandLineInstalled ? "shut hold -- npm run build  keeps your Mac awake while that runs."
-                                                : "Adds a shut command that keeps your Mac awake while another one runs.")
-                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
-                    .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 6)
-            if awake.commandLineInstalled {
-                Text("Installed").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
-            } else {
-                CapsuleButton("Install…") { awake.installCommandLineTool() }
-            }
-        }
-        .padding(.vertical, 5)
-        .help("For anything Shut cannot see by itself. In a terminal: shut hold -- npm run build holds the lid while that command runs. Install puts a link to Shut in ~/.local/bin.")
-    }
 }
 
 /// A slider or a segmented row with its one line of explanation underneath.

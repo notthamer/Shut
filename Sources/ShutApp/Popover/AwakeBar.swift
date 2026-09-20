@@ -67,29 +67,6 @@ struct AwakeBar: View {
     }
 }
 
-/// Silver ring: nothing to hold for. Lime: holding. Saffron: a limit is near or has spoken.
-struct AwakeDot: View {
-    let dot: AwakeText.Dot
-    @Environment(\.tunerTheme) private var theme
-
-    var body: some View {
-        Circle()
-            .fill(fill)
-            .overlay(Circle().strokeBorder(dot == .idle ? theme.inkTertiary : theme.ink, lineWidth: 1))
-            .frame(width: 9, height: 9)
-            .tunerAnimation(TunerTheme.ease, value: dot)
-    }
-
-    private var fill: Color {
-        switch dot {
-        case .idle: return .clear
-        case .holding: return TunerTheme.limeWash
-        case .winding: return theme.linen
-        case .warning: return TunerTheme.saffron
-        }
-    }
-}
-
 /// A small bordered capsule: the bar's action, the cards' buttons.
 struct CapsuleButton: View {
     let title: String

@@ -252,39 +252,6 @@ public final class StayAwakeController: ObservableObject {
         }
     }
 
-    // MARK: Command line
-
-    static var commandLineLink: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin/shut")
-    }
-
-    var commandLineInstalled: Bool {
-        (try? FileManager.default.destinationOfSymbolicLink(atPath: Self.commandLineLink.path)) == Bundle.main.executablePath
-    }
-
-    /// Links `~/.local/bin/shut` to this app's executable, so `shut hold` works in a
-    /// terminal. A user folder: no password, nothing outside the home directory.
-    @discardableResult
-    func installCommandLineTool() -> Bool {
-        guard let executable = Bundle.main.executablePath else { return false }
-        let link = Self.commandLineLink
-        let manager = FileManager.default
-        do {
-            try manager.createDirectory(at: link.deletingLastPathComponent(), withIntermediateDirectories: true)
-            if (try? manager.destinationOfSymbolicLink(atPath: link.path)) != nil { try manager.removeItem(at: link) }
-            guard !manager.fileExists(atPath: link.path) else {
-                Log.awake.error("~/.local/bin/shut exists and is not a link; leaving it alone")
-                return false
-            }
-            try manager.createSymbolicLink(atPath: link.path, withDestinationPath: executable)
-            objectWillChange.send()
-            return true
-        } catch {
-            Log.awake.error("could not link the command line tool: \(error.localizedDescription, privacy: .public)")
-            return false
-        }
-    }
-
     enum ManualChoice: Int, CaseIterable { case off, oneHour, fourHours, untilStopped }
 
     var manualChoice: ManualChoice {
