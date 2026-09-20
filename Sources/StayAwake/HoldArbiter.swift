@@ -15,6 +15,8 @@ import Foundation
 public final class HoldArbiter: ObservableObject {
     @Published public private(set) var state: HoldState = .off
     @Published public private(set) var reasons: [HoldReason] = []
+    /// Apps asking to stay awake that the user has not decided about; see `AssertionMirror.pendingApps`.
+    @Published public private(set) var pendingApps: [SeenApp] = []
     @Published public private(set) var conditions = PowerConditions()
     /// True for a few seconds after "Let it sleep", while Undo is offered.
     @Published public private(set) var canUndoLetItSleep = false
@@ -177,6 +179,8 @@ public final class HoldArbiter: ObservableObject {
         allSources.forEach { $0.prune(now: moment) }
         let collected = allSources.flatMap(\.reasons)
         if collected != reasons { reasons = collected }
+        let pending = isEnabled(.working) && limits.isOn ? mirror.pendingApps : []
+        if pending != pendingApps { pendingApps = pending }
 
         let previous = state
         let next = machine.update(limits: limits, conditions: conditions, reasons: collected, lidClosed: lidClosed, now: moment)

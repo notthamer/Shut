@@ -216,6 +216,50 @@ final class AssertionAttributionTests: XCTestCase {
 }
 
 /// The arbiter against a fake kernel: what it asks the system to do, and when.
+/// An app that is asking but may not hold the lid gets one question, never two.
+@MainActor
+final class PendingAppTests: XCTestCase {
+    private func owner(_ id: String, _ name: String, developerTool: Bool = false) -> AssertionAttribution.Owner {
+        AssertionAttribution.Owner(app: .init(bundleID: id, name: name, isDeveloperTool: developerTool),
+                                   viaCommandLine: false, assertionName: "test", tool: nil)
+    }
+
+    func testOnlyAnUndecidedAppThatIsAskingNowIsPending() {
+        let mirror = AssertionMirror(defaults: nil)
+        mirror.take([owner("us.zoom.xos", "Zoom"), owner("com.apple.dt.Xcode", "Xcode", developerTool: true)])
+        XCTAssertEqual(mirror.pendingApps.map(\.name), ["Zoom"], "a developer tool is allowed from the start, so there is nothing to ask")
+
+        mirror.take([])
+        XCTAssertTrue(mirror.pendingApps.isEmpty, "it stopped asking")
+
+        mirror.take([owner("us.zoom.xos", "Zoom")])
+        XCTAssertEqual(mirror.pendingApps.count, 1)
+    }
+
+    func testEitherAnswerEndsTheQuestion() {
+        let mirror = AssertionMirror(defaults: nil)
+        var changes = 0
+        mirror.onChange = { changes += 1 }
+        mirror.take([owner("us.zoom.xos", "Zoom"), owner("com.spotify.client", "Spotify")])
+        XCTAssertEqual(mirror.pendingApps.count, 2)
+        XCTAssertGreaterThan(changes, 0, "the interface hears about a new question")
+
+        mirror.setAllowed("us.zoom.xos", true)
+        mirror.setAllowed("com.spotify.client", false)   // "Not this app": same value, now decided
+        mirror.take([owner("us.zoom.xos", "Zoom"), owner("com.spotify.client", "Spotify")])
+        XCTAssertTrue(mirror.pendingApps.isEmpty)
+        XCTAssertEqual(mirror.seenApps.first { $0.name == "Spotify" }?.allowed, false)
+        XCTAssertEqual(mirror.seenApps.first { $0.name == "Zoom" }?.allowed, true)
+    }
+
+    func testAListSavedBeforeTheQuestionExistedStillLoads() throws {
+        let old = #"[{"bundleID":"us.zoom.xos","name":"Zoom","allowed":false,"lastSeen":700000000}]"#
+        let apps = try JSONDecoder().decode([SeenApp].self, from: Data(old.utf8))
+        XCTAssertEqual(apps.first?.decided, false)
+        XCTAssertEqual(apps.first?.name, "Zoom")
+    }
+}
+
 @MainActor
 final class HoldArbiterTests: XCTestCase {
     final class FakeHold: LidHolding {

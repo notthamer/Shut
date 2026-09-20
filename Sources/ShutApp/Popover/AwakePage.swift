@@ -75,7 +75,8 @@ private struct AwakeStage: View {
         .onAppear { if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { preview.playRound() } }
     }
 
-    private var sampleCaption: String { "Staying awake · Cursor is working" }
+    /// With a question on the right, the stage shows what saying yes would look like.
+    private var sampleCaption: String { "Staying awake · \(model.stayAwake.pendingApp?.name ?? "Cursor") is working" }
 }
 
 // MARK: - Right: now, reasons, limits
@@ -123,11 +124,15 @@ private struct AwakeControls: View {
     private var hero: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             let arbiter = awake.arbiter
-            let copy = AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
-                                      limits: arbiter.limits, now: context.date)
+            let pending = awake.pendingApp
+            let copy = pending.map { AwakeText.pendingHero($0.name) }
+                ?? AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
+                                  limits: arbiter.limits, now: context.date)
             let status = awake.status
             VStack(alignment: .leading, spacing: 12) {
-                if arbiter.state.holdsLid, arbiter.reasons.count == 1, let reason = arbiter.reasons.first {
+                if let pending {
+                    AppIconView(bundleID: pending.bundleID, size: 40).padding(.bottom, 2)
+                } else if arbiter.state.holdsLid, arbiter.reasons.count == 1, let reason = arbiter.reasons.first {
                     AppIconView(bundleID: AppIcons.bundleID(for: reason), size: 40).padding(.bottom, 2)
                 }
                 Text(copy.headline)
@@ -141,6 +146,13 @@ private struct AwakeControls: View {
                                limits: arbiter.limits, now: context.date)
                 }
                 switch status.action {
+                case .allow:
+                    HStack(spacing: 14) {
+                        PrimaryButton("Allow") { model.performAwake(.allow) }
+                        QuietButton("Not this app") { model.performAwake(.notThisApp) }
+                            .help("Shut will not ask about this app again. You can change it under Options, Something is working.")
+                    }
+                    .padding(.top, 6)
                 case .letItSleep, .undo, .keepAwake:
                     PrimaryButton(status.action!.title) { model.performAwake(status.action!) }.padding(.top, 6)
                 default:

@@ -165,8 +165,15 @@ public final class StayAwakeController: ObservableObject {
         if !arbiter.state.holdsLid, let receipt = journal.last, !receipt.read, let line = AwakeText.receipt(receipt).first {
             return AwakeText.Status(dot: .winding, sentence: line, action: .ok)
         }
+        if let pendingApp { return AwakeText.pending(pendingApp.name) }
         return AwakeText.status(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
                          limits: arbiter.limits, canUndo: arbiter.canUndoLetItSleep, everTurnedOn: settings.hasConsented, now: Date())
+    }
+
+    /// An app to ask about, only while nothing is holding the lid: a question must never
+    /// push a working status off the bar.
+    var pendingApp: SeenApp? {
+        arbiter.state == .ready ? arbiter.pendingApps.first : nil
     }
 
     var caption: String? {
@@ -189,6 +196,8 @@ public final class StayAwakeController: ObservableObject {
         case .keepAwake: arbiter.manual.begin(for: 3600)
         case .undo: arbiter.undoLetItSleep()
         case .ok: journal.markRead(); objectWillChange.send()
+        case .allow: if let pendingApp { arbiter.mirror.setAllowed(pendingApp.bundleID, true) }
+        case .notThisApp: if let pendingApp { arbiter.mirror.setAllowed(pendingApp.bundleID, false) }
         }
     }
 

@@ -10,6 +10,23 @@ public struct SeenApp: Codable, Equatable, Identifiable, Sendable {
     public var name: String
     public var allowed: Bool
     public var lastSeen: Date
+    /// The user has said yes or no to this app. Until then, an app that is not allowed
+    /// but is asking macOS to stay awake is worth one question; afterwards, never again.
+    public var decided: Bool
+
+    public init(bundleID: String, name: String, allowed: Bool, lastSeen: Date, decided: Bool = false) {
+        self.bundleID = bundleID; self.name = name; self.allowed = allowed; self.lastSeen = lastSeen; self.decided = decided
+    }
+
+    /// Lists saved before `decided` existed load with it false.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        bundleID = try values.decode(String.self, forKey: .bundleID)
+        name = try values.decode(String.self, forKey: .name)
+        allowed = try values.decode(Bool.self, forKey: .allowed)
+        lastSeen = try values.decode(Date.self, forKey: .lastSeen)
+        decided = try values.decodeIfPresent(Bool.self, forKey: .decided) ?? false
+    }
 }
 
 /// One process in the chain from "whoever took the assertion" up to an app.
@@ -128,12 +145,36 @@ public final class AssertionMirror: HoldSource {
     public private(set) var seenApps: [SeenApp]
     public var onChange: (() -> Void)?
 
+    /// Bundle IDs that were asking macOS to stay awake at the last read.
+    public private(set) var askingNow: Set<String> = []
+
+    /// Apps asking right now that may not hold the lid and that nobody has decided about.
+    /// The interface asks once, where the user is already looking; this is how an app
+    /// that is not a developer tool (a call, a render, a download) gets found at all.
+    public var pendingApps: [SeenApp] {
+        seenApps.filter { !$0.allowed && !$0.decided && askingNow.contains($0.bundleID) }
+    }
+
     private let defaults: UserDefaults?
     private static let key = "stayAwake.seenApps"
     private var started = false
 
+    /// Who is asking macOS to stay awake. The real answer is one IOKit call; the tests
+    /// give their own so nothing depends on what this Mac happens to be doing.
+    private let read: () -> [AssertionAttribution.Owner]
+
     public init(defaults: UserDefaults? = .standard) {
         self.defaults = defaults
+        read = {
+            AssertionAttribution.owners(of: Self.readAssertions(), ownPID: ProcessInfo.processInfo.processIdentifier,
+                                        lookup: Self.lookup)
+        }
+        seenApps = defaults?.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([SeenApp].self, from: $0) } ?? []
+    }
+
+    init(defaults: UserDefaults?, read: @escaping () -> [AssertionAttribution.Owner]) {
+        self.defaults = defaults
+        self.read = read
         seenApps = defaults?.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([SeenApp].self, from: $0) } ?? []
     }
 
@@ -145,8 +186,10 @@ public final class AssertionMirror: HoldSource {
     }
 
     public func setAllowed(_ bundleID: String, _ allowed: Bool) {
-        guard let index = seenApps.firstIndex(where: { $0.bundleID == bundleID }), seenApps[index].allowed != allowed else { return }
+        guard let index = seenApps.firstIndex(where: { $0.bundleID == bundleID }),
+              seenApps[index].allowed != allowed || !seenApps[index].decided else { return }
         seenApps[index].allowed = allowed
+        seenApps[index].decided = true
         save()
         refresh(force: true)
     }
@@ -155,9 +198,16 @@ public final class AssertionMirror: HoldSource {
     /// what was working when a lid closed (the discovery card).
     @discardableResult
     public func refresh(force: Bool = false, now: Date = Date()) -> [AssertionAttribution.Owner] {
-        let owners = AssertionAttribution.owners(of: Self.readAssertions(), ownPID: ProcessInfo.processInfo.processIdentifier,
-                                                 lookup: Self.lookup)
+        take(read(), force: force, now: now)
+    }
+
+    /// The part of `refresh` after the system read, apart so the tests can say who is asking.
+    @discardableResult
+    func take(_ owners: [AssertionAttribution.Owner], force: Bool = false, now: Date = Date()) -> [AssertionAttribution.Owner] {
         var changed = force
+        let asking = Set(owners.map(\.app.bundleID))
+        let pendingBefore = pendingApps
+        askingNow = asking
         for owner in owners {
             if let index = seenApps.firstIndex(where: { $0.bundleID == owner.app.bundleID }) {
                 // Once a minute is plenty for "recently"; avoids a defaults write per read.
@@ -170,6 +220,7 @@ public final class AssertionMirror: HoldSource {
                 changed = true
             }
         }
+        if pendingApps != pendingBefore { changed = true }
         guard started else { if changed { onChange?() }; return owners }
 
         let allowed = Set(seenApps.filter(\.allowed).map(\.bundleID))

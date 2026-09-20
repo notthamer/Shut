@@ -31,7 +31,9 @@ struct AwakeBar: View {
                 } else {
                     AwakeDot(dot: status.dot)
                     Text("AWAKE").font(TunerTheme.eyebrow).tracking(TunerTheme.eyebrowTracking).foregroundStyle(theme.inkTertiary)
-                    if status.dot == .holding, model.stayAwake.arbiter.reasons.count == 1, let reason = model.stayAwake.arbiter.reasons.first {
+                    if status.action == .allow, let pending = model.stayAwake.pendingApp {
+                        AppIconView(bundleID: pending.bundleID, size: 16)
+                    } else if status.dot == .holding, model.stayAwake.arbiter.reasons.count == 1, let reason = model.stayAwake.arbiter.reasons.first {
                         AppIconView(bundleID: AppIcons.bundleID(for: reason), size: 16)
                     }
                     Text(status.sentence)

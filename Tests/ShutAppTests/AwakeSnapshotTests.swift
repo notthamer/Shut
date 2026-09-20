@@ -1,7 +1,7 @@
 import AppKit
 import LidSensor
 import Metal
-import StayAwake
+@testable import StayAwake
 import SwiftUI
 import TransitionKit
 import Tuner
@@ -27,15 +27,15 @@ final class AwakeSnapshotTests: XCTestCase {
         func stop() {}
     }
 
-    private func makeModel(on: Bool, reasons: [HoldReason]) throws -> (PopoverModel, StayAwakeController) {
+    private func makeModel(on: Bool, reasons: [HoldReason], asking: [AssertionAttribution.Owner]? = nil) throws -> (PopoverModel, StayAwakeController) {
         let suite = UserDefaults(suiteName: "AwakeSnapshot-\(UUID().uuidString)")!
         let awakeSettings = StayAwakeSettings(defaults: suite)
         awakeSettings.hasConsented = on
         awakeSettings.isOn = on
-        awakeSettings.whenWorking = false          // no real system reads
+        awakeSettings.whenWorking = asking != nil  // on only with a stand-in for the system read
         awakeSettings.whenDisplayConnected = false
         let marker = ArmedMarker(directory: FileManager.default.temporaryDirectory.appendingPathComponent("AwakeSnapshot-\(UUID().uuidString)"))
-        let arbiter = HoldArbiter(hold: FakeHold(), marker: marker, mirror: AssertionMirror(defaults: nil))
+        let arbiter = HoldArbiter(hold: FakeHold(), marker: marker, mirror: AssertionMirror(defaults: nil, read: { asking ?? [] }))
         let awake = StayAwakeController(settings: awakeSettings, arbiter: arbiter)
         awake.start()
         if !reasons.isEmpty { arbiter.add(FixedSource(reasons)) }
@@ -86,6 +86,25 @@ final class AwakeSnapshotTests: XCTestCase {
         XCTAssertEqual(awake.arbiter.state, .holding)
         XCTAssertEqual(awake.status.sentence, "Claude Code is working · 47 min")
         try render(holding, name: "bar-holding")
+        awake.shutDown()
+    }
+
+    /// Nothing holds the lid and Zoom is asking: the bar and the page ask once, and
+    /// either answer puts the ordinary status back.
+    func testAnAppAskingToStayAwake() throws {
+        let zoom = AssertionAttribution.Owner(app: .init(bundleID: "us.zoom.xos", name: "Zoom", isDeveloperTool: false),
+                                              viaCommandLine: false, assertionName: "call", tool: nil)
+        let (model, awake) = try makeModel(on: true, reasons: [], asking: [zoom])
+        XCTAssertEqual(awake.pendingApp?.name, "Zoom")
+        XCTAssertEqual(awake.status.sentence, "Zoom is asking to stay awake")
+        XCTAssertEqual(awake.status.action, .allow)
+        try render(model, name: "bar-pending")
+        model.page = .awake
+        try render(model, name: "page-pending")
+
+        awake.perform(.notThisApp)
+        XCTAssertNil(awake.pendingApp)
+        XCTAssertNotEqual(awake.status.action, .allow)
         awake.shutDown()
     }
 

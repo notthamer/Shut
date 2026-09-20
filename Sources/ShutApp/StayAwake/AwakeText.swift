@@ -18,6 +18,8 @@ enum AwakeText {
 
     enum Action: Equatable {
         case turnOn, letItSleep, keepAwake, undo, ok
+        /// Answers to "this app is asking to stay awake".
+        case allow, notThisApp
         var title: String {
             switch self {
             case .turnOn: return "Turn on…"
@@ -25,6 +27,8 @@ enum AwakeText {
             case .keepAwake: return "Keep awake"
             case .undo: return "Undo"
             case .ok: return "OK"
+            case .allow: return "Allow"
+            case .notThisApp: return "Not this app"
             }
         }
     }
@@ -52,6 +56,18 @@ enum AwakeText {
         case .stopped(let reason):
             return Status(dot: reason == .userLetItSleep ? .idle : .warning, sentence: stopped(reason, conditions: conditions), action: nil)
         }
+    }
+
+    /// An app is asking macOS to stay awake and Shut is not holding the lid for it,
+    /// because nobody has said whether it may. Asked once, only while nothing else holds.
+    static func pending(_ app: String) -> Status {
+        Status(dot: .idle, sentence: "\(app) is asking to stay awake", action: .allow)
+    }
+
+    static func pendingHero(_ app: String) -> Hero {
+        Hero(headline: "\(app) is asking to stay awake.",
+             detail: "Shut is not holding the lid for it. Allow, and your Mac stays awake with the lid shut while \(app) needs it.",
+             showsCards: false)
     }
 
     /// The menu bar badge: what the lid would do now, without the journal's unread receipt
