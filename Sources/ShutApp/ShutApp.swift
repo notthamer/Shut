@@ -13,6 +13,9 @@ public enum ShutApp {
     /// never meets the single-instance handover; returns only when there was no command.
     public static func runCommandIfAny() {
         let arguments = CommandLine.arguments
+        // The guard a holding Shut keeps beside it (see `LidGuard`). First, and before
+        // anything of the app exists: this process must never become a second Shut.
+        if arguments.contains(LidGuard.argument) { LidGuard.run(arguments: arguments) }
         guard arguments.count >= 2, arguments[1] == "hold" else { return }
         exit(HoldCommand.run(Array(arguments.dropFirst(2))))
     }

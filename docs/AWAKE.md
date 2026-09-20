@@ -169,4 +169,21 @@ watching the screen. The limits are there for the day someone does it anyway.
 
 Agents in Docker or a dev container, and agents that run in the cloud (there is
 nothing local to keep awake). Two keep-awake apps share the one kernel bit and can
-undo each other. Intel MacBooks are untested.
+undo each other. Intel MacBooks are untested. Macs without a lid (mini, iMac, Studio)
+do not get the feature at all.
+
+## If Shut dies while holding
+
+The kernel's lid bit outlives the process that set it, so every way Shut can end has
+to put it back. Quitting, an update and a handover to another copy restore it on the
+way out. A crash leaves a marker file, and the next launch restores it before doing
+anything else. That left one case: Shut force-killed while holding and never opened
+again, which used to mean a Mac that did not sleep when shut until its next reboot.
+
+While a hold is armed Shut therefore keeps a **guard**: a second copy of its own
+executable (`Shut --lid-guard <pid>`) that sleeps in the kernel on a process event
+until Shut exits, then restores lid sleep, removes the marker and exits. No root, no
+helper to install, no CPU while it waits, and it exists only while a hold does. When
+a hold ends the ordinary way Shut restores the lid itself and dismisses the guard.
+As the lid starts to close, Shut also sets the bit again whatever happened to it
+since (powerd rewrites it, another keep-awake app can clear it).

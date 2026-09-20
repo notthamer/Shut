@@ -106,7 +106,12 @@ public final class HoldArbiter: ObservableObject {
     /// From the hinge: the lid has started to close. The one moment a fresh answer
     /// matters most, so read the assertions now rather than trust a 30 s old one.
     public func lidIsClosing() {
-        guard limits.isOn, isEnabled(.working) else { return }
+        guard limits.isOn else { return }
+        // The bit is shared: powerd rewrites it, another keep-awake app can clear it, and so
+        // can the guard of a copy of Shut that was just replaced. Whatever happened since it
+        // was set, it is set again before the lid is down.
+        if applied { hold.setLidSleepDisabled(true) }
+        guard isEnabled(.working) else { return }
         mirror.refresh()
         evaluate()
     }

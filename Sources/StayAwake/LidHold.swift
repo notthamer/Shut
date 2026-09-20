@@ -35,8 +35,15 @@ public final class LidHold: LidHolding {
     private var assertion: IOPMAssertionID = 0
     private var activity: NSObjectProtocol?
     private let log: (String) -> Void
+    private let keeper: LidGuardKeeper?
 
-    public init(log: @escaping (String) -> Void = { _ in }) { self.log = log }
+    /// `guardExecutable`: this app's own executable, which knows `--lid-guard`. With it, a
+    /// guard process runs for as long as a hold is armed (see `LidGuard`). nil (the tests,
+    /// the guard itself): no guard.
+    public init(guardExecutable: URL? = nil, log: @escaping (String) -> Void = { _ in }) {
+        self.log = log
+        keeper = guardExecutable.map(LidGuardKeeper.init(executable:))
+    }
 
     deinit { if connection != 0 { IOServiceClose(connection) } }
 
@@ -48,6 +55,10 @@ public final class LidHold: LidHolding {
         if result != KERN_SUCCESS {
             // A refused call must never be silent: the Mac would sleep mid-hold with no trace of why.
             log("lid sleep \(disabled ? "disable" : "restore") refused: 0x\(String(result, radix: 16))")
+        } else if disabled {
+            keeper?.start(log: log)
+        } else {
+            keeper?.stop()
         }
         return result == KERN_SUCCESS
     }

@@ -41,7 +41,8 @@ public final class StayAwakeController: ObservableObject {
         self.hasLid = hasLid
         self.settings = settings ?? StayAwakeSettings()
         journal = HoldJournal(defaults: settings == nil ? .standard : UserDefaults(suiteName: "StayAwakeJournal-\(UUID().uuidString)") ?? .standard)
-        self.arbiter = arbiter ?? HoldArbiter(hold: LidHold(log: { Log.awake.error("\($0, privacy: .public)") }))
+        self.arbiter = arbiter ?? HoldArbiter(hold: LidHold(guardExecutable: Bundle.main.executableURL,
+                                                            log: { Log.awake.error("\($0, privacy: .public)") }))
     }
 
     func start() {
