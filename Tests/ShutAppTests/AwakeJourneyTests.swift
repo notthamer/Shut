@@ -198,6 +198,25 @@ final class AwakeJourneyTests: XCTestCase {
         awake.shutDown()
     }
 
+    // MARK: 6. A hold that runs out looks again before it lets the Mac sleep
+
+    /// 20 September, 23:36: a five-minute manual hold ended while an agent was working, on a
+    /// reading taken before the agent's current caffeinate existed.
+    func testAHoldRunningOutLooksAgainBeforeItLetsGo() throws {
+        let world = World()
+        let awake = start(world)
+        awake.arbiter.manual.begin(for: 0.3)
+        XCTAssertEqual(awake.arbiter.reasons.map(\.kind), [.manual])
+        awake.lidEdge(isOpen: false, now: Date().addingTimeInterval(-240))
+        // Work starts, and nothing tells Shut: macOS sends no event for it.
+        world.asking = [owner("com.todesktop.230313mzl4w4u92", "Cursor", developerTool: true, tool: "Claude Code")]
+        spin(0.7)
+        XCTAssertEqual(awake.arbiter.state, .holding, "the manual hold ran out, but something is working")
+        XCTAssertEqual(awake.arbiter.reasons.map(\.kind), [.working])
+        XCTAssertNotEqual(world.kernel.lidCalls.last, false, "the lid was never let go")
+        awake.shutDown()
+    }
+
     // MARK: 5. Switching the feature off and on with the lid shut must not lose the lid
 
     func testTheLidStaysShutAcrossASettingsChange() throws {

@@ -33,6 +33,7 @@ public final class LidHold: LidHolding {
 
     private var connection: io_connect_t = 0
     private var assertion: IOPMAssertionID = 0
+    private var activity: NSObjectProtocol?
     private let log: (String) -> Void
 
     public init(log: @escaping (String) -> Void = { _ in }) { self.log = log }
@@ -52,6 +53,16 @@ public final class LidHold: LidHolding {
     }
 
     public func setIdleSleepPrevented(_ prevented: Bool) {
+        // With the lid shut Shut has nothing on screen, which is when macOS naps an app and
+        // stretches its timers; the periodic look at what is working, the battery floor and
+        // the re-applied lid bit all run on timers. Only while holding, so idle stays idle.
+        if prevented, activity == nil {
+            activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiatedAllowingIdleSystemSleep],
+                                                             reason: "Holding the lid: limits and reasons are checked on timers")
+        } else if !prevented, let token = activity {
+            ProcessInfo.processInfo.endActivity(token)
+            activity = nil
+        }
         if prevented, assertion == 0 {
             let result = IOPMAssertionCreateWithName(kIOPMAssertPreventUserIdleSystemSleep as CFString,
                                                      IOPMAssertionLevel(kIOPMAssertionLevelOn),

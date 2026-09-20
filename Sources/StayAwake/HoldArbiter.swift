@@ -220,7 +220,16 @@ public final class HoldArbiter: ObservableObject {
         deadlineTimer = nil
         guard let date else { return }
         let timer = Timer(fire: date.addingTimeInterval(0.05), interval: 0, repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated { self?.evaluate() }
+            MainActor.assumeIsolated {
+                // A deadline is the one way a hold ends with nobody asking for it, and with
+                // the lid shut, ending it is sleep: not something to decide on a reading that
+                // is up to thirty seconds old. Look again first. (Seen for real: a five-minute
+                // manual hold ran out while an agent was mid-task, and the last reading had
+                // landed between two of its caffeinate processes.)
+                guard let self else { return }
+                if self.limits.isOn, self.isEnabled(.working) { self.mirror.refresh() }
+                self.evaluate()
+            }
         }
         RunLoop.main.add(timer, forMode: .common)
         deadlineTimer = timer
