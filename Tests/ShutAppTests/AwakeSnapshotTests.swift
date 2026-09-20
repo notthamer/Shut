@@ -90,6 +90,17 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    func testTheOfferIsCountedPerOpenedPanelAndThenStops() throws {
+        let (_, awake) = try makeModel(on: false, reasons: [])
+        XCTAssertEqual(awake.status.action, .turnOn)
+        for _ in 0..<StayAwakeSettings.offerLimit { awake.panelOpened() }
+        XCTAssertNil(awake.status.action)
+        XCTAssertEqual(awake.status.sentence, "Stay awake with the lid shut")
+        awake.panelOpened()
+        XCTAssertEqual(awake.settings.offersSeen, StayAwakeSettings.offerLimit, "it stops counting too")
+        awake.shutDown()
+    }
+
     // MARK: The receipt slip
 
     /// A held close that ended while the lid was shut, left unread in the journal.
@@ -242,7 +253,7 @@ final class AwakeSnapshotTests: XCTestCase {
         oneAwake.shutDown()
 
         let (holding, awake) = try makeModel(on: true, reasons: [
-            cursor, HoldReason(id: "display:studio", kind: .display, title: "Studio Display", since: started)])
+            cursor, HoldReason(id: "display:studio", kind: .display, title: "Studio Display", since: started)], asking: [])
         holding.page = .awake
         try render(holding, name: "page-two")
         awake.shutDown()

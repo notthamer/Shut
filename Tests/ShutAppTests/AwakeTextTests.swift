@@ -60,6 +60,25 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(badge(.stopped(.userLetItSleep)), .idle, "the user's own choice is not a warning")
     }
 
+    /// The offer is made a few times, then the bar keeps its name and stops asking.
+    func testTheBarStopsOfferingOnceTheOfferHasBeenSeen() {
+        let seen = AwakeText.status(state: .off, reasons: [], conditions: plugged, limits: limits,
+                                    canUndo: false, offerIt: false, now: t0)
+        XCTAssertEqual(seen.sentence, "Stay awake with the lid shut")
+        XCTAssertNil(seen.action)
+    }
+
+    /// The trigger row says who is at work, once, with the running time where there is one.
+    func testTheLiveLineOfATrigger() {
+        let claude = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", tool: "Claude Code", since: t0)
+        XCTAssertEqual(AwakeText.live([claude], now: t0.addingTimeInterval(47 * 60)), "Claude Code in Cursor · 47 min")
+        XCTAssertEqual(AwakeText.live([work()], now: t0.addingTimeInterval(120)), "Cursor · 2 min")
+        XCTAssertEqual(AwakeText.live([work(), work("Terminal")], now: t0), "Cursor and 1 more")
+        let display = HoldReason(id: "display:x", kind: .display, title: "Studio Display", since: t0)
+        XCTAssertEqual(AwakeText.live([display], now: t0), "Studio Display")
+        XCTAssertNil(AwakeText.live([], now: t0))
+    }
+
     func testLimitsSummarySaysTheOnesWorthKnowing() {
         XCTAssertEqual(AwakeText.limitsSummary(batteryFloor: 20, lockWhenShut: true, chargerOnly: false),
                        "Sleeps at 20 % battery · locks when shut")
@@ -80,7 +99,8 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(AwakeEyes.frame(.drowsy, at: 2), .shut)
         XCTAssertEqual(AwakeEyes.restingFrame(.asleep), .asleep)
         XCTAssertEqual(AppAssets.eyes.count, 5, "five frames cut from the sheet")
-        XCTAssertEqual(AppAssets.eyes.first?.size, NSSize(width: 16, height: 8))
+        XCTAssertEqual(AppAssets.eyes.map(\.count), [44, 44, 44, 10, 14], "inked pixels per frame, counted from the sheet")
+        XCTAssertTrue(AppAssets.eyes.allSatisfy { frame in frame.allSatisfy { (0..<16).contains(Int($0.x)) && (0..<8).contains(Int($0.y)) } })
     }
 
     func testBatteryWarningBeforeTheFloor() {

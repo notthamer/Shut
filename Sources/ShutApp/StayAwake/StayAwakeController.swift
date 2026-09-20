@@ -190,7 +190,15 @@ public final class StayAwakeController: ObservableObject {
         }
         if let pendingApp { return AwakeText.pending(pendingApp.name) }
         return AwakeText.status(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
-                         limits: arbiter.limits, canUndo: arbiter.canUndoLetItSleep, everTurnedOn: settings.hasConsented, now: Date())
+                         limits: arbiter.limits, canUndo: arbiter.canUndoLetItSleep, everTurnedOn: settings.hasConsented,
+                         offerIt: settings.offersSeen < StayAwakeSettings.offerLimit, now: Date())
+    }
+
+    /// The panel opened. Counts the times it opened on the plain offer, so the bar can
+    /// stop making it.
+    func panelOpened() {
+        guard !settings.hasConsented, journal.missed == nil, settings.offersSeen < StayAwakeSettings.offerLimit else { return }
+        settings.offersSeen += 1
     }
 
     /// An app to ask about, only while nothing is holding the lid: a question must never

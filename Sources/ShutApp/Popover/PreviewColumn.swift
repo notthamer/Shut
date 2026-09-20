@@ -1,7 +1,7 @@
 import SwiftUI
 import Tuner
 
-/// Left column: the live preview, a scrubber, the style's name and summary, Play.
+/// Left column: the live preview, a scrubber, the style's name and summary, and its timing.
 struct PreviewColumn: View {
     @ObservedObject var model: PopoverModel
     @ObservedObject var preview: PreviewModel
@@ -39,8 +39,8 @@ struct PreviewColumn: View {
             }
             .padding(.top, 16)
 
+            // The name is its own heading; an eyebrow saying "Selected" over it only cost a row.
             VStack(alignment: .leading, spacing: 4) {
-                Eyebrow("Selected")
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(model.registry.current.displayName)
                         .font(TunerTheme.heading).tracking(TunerTheme.headingTracking).foregroundStyle(theme.ink)
@@ -53,15 +53,26 @@ struct PreviewColumn: View {
                     }
                 }
                 Text(model.registry.current.summary).font(TunerTheme.body).foregroundStyle(theme.inkLabel)
-                    .lineSpacing(5)
+                    .lineSpacing(4)
+                    .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.top, TunerTheme.sectionGap)
+            .padding(.top, 18)
             .id(model.registry.current.id)
             .transition(.blurFade)
             .tunerAnimation(TunerTheme.ease, value: model.registry.current.id)
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 14)
+
+            // Timing belongs to the preview: Speed is how much of the close the effect
+            // uses, and letting go of it replays the close right above.
+            VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
+                Eyebrow("Timing").padding(.bottom, 2)
+                SpeedRow(model: model, labelWidth: 48)
+                ToggleRow("Animate opening",
+                          isOn: Binding(get: { model.settings.animateOpening }, set: { model.settings.animateOpening = $0 }),
+                          help: "Play the style backwards when the lid opens or the Mac unlocks.")
+            }
         }
     }
 }

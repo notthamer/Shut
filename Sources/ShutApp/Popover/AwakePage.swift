@@ -150,8 +150,10 @@ private struct AwakeControls: View {
                 Text(copy.detail)
                     .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
-                if arbiter.reasons.count > 1 || copy.showsCards {
-                    AwakeCards(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
+                // Who is keeping it awake is said once, in the rows under "Stays awake when".
+                // A card appears here only to warn.
+                if copy.showsCards {
+                    AwakeCards(state: arbiter.state, reasons: [], conditions: arbiter.conditions,
                                limits: arbiter.limits, now: context.date)
                 }
                 switch status.action {
@@ -177,12 +179,17 @@ private struct AwakeControls: View {
     /// click. Four rows, one line of explanation each; the one at work right now says so
     /// in ink with a Lime dot. Lists of apps stay folded until asked for.
     private var triggers: some View {
+        // The running time is part of the line, so it is kept true the same way the hero is.
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            triggerRows(now: context.date)
+        }
+    }
+
+    private func triggerRows(now: Date) -> some View {
         let reasons = awake.arbiter.reasons
         func live(_ kind: HoldReason.Kind) -> String? {
-            let mine = reasons.filter { $0.kind == kind }
-            guard isOn, let first = mine.first else { return nil }
-            let who = kind == .working ? AwakeText.subject(first) : first.title
-            return mine.count > 1 ? "\(who) and \(mine.count - 1) more, now" : "\(who), now"
+            guard isOn else { return nil }
+            return AwakeText.live(reasons.filter { $0.kind == kind }, now: now)
         }
         return VStack(alignment: .leading, spacing: 4) {
             Eyebrow("Stays awake when").padding(.bottom, 6)
@@ -524,11 +531,27 @@ private struct AwakeLimits: View {
 /// Shown once, the first time the feature is switched on. Void Black, like the welcome.
 private struct AwakeConsent: View {
     @ObservedObject var model: PopoverModel
+    /// "Turn on" opens the eyes, and the sheet leaves a moment later: the first thing the
+    /// feature ever does is wake up.
+    @State private var awake = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private func turnOn() {
+        guard !awake else { return }
+        awake = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + (reduceMotion ? 0 : 0.55)) {
+            model.stayAwake.consent()
+            model.showingAwakeConsent = false
+        }
+    }
 
     var body: some View {
         ZStack {
             TunerTheme.voidBlack
             VStack(alignment: .leading, spacing: 18) {
+                AwakeEyes(mood: awake ? .awake : .asleep, pixel: 4, tint: awake ? TunerTheme.limeWash : .white.opacity(0.7))
+                    .padding(.bottom, 4)
+                    .tunerAnimation(TunerTheme.ease, value: awake)
                 Text("Your Mac will stay awake\nwith the lid shut.")
                     .font(TunerTheme.display(30)).tracking(-0.8).foregroundStyle(.white).lineSpacing(2)
                 Text("Only while something is working, a display is connected, or you say so. It goes to sleep by itself when that ends, at \(model.stayAwake.settings.batteryFloor) % battery, or if it gets hot.")
@@ -540,7 +563,7 @@ private struct AwakeConsent: View {
                     Spacer()
                     Button("Not now") { model.showingAwakeConsent = false }
                         .buttonStyle(ConsentButtonStyle(filled: false))
-                    Button("Turn on") { model.stayAwake.consent(); model.showingAwakeConsent = false }
+                    Button("Turn on", action: turnOn)
                         .buttonStyle(ConsentButtonStyle(filled: true))
                         .keyboardShortcut(.defaultAction)
                 }

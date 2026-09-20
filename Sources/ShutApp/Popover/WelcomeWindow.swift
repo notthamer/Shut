@@ -72,10 +72,18 @@ struct WelcomeView: View {
             }
             .modifier(Entrance(appeared: appeared, delay: 0.1))
             Spacer()
-            PrimaryButton("Enable", action: enable)
-                .frame(width: 180)
-                .padding(.bottom, 28)
-                .modifier(Entrance(appeared: appeared, delay: 0.15))
+            VStack(spacing: 12) {
+                PrimaryButton("Start", action: enable)
+                    .frame(width: 180)
+                // The window closes on Start; say where the app went.
+                HStack(spacing: 6) {
+                    MarkGlyph(size: 12, tint: TunerTheme.paperWhite.opacity(0.55))
+                    Text("Shut lives in your menu bar.")
+                        .font(TunerTheme.bodySmall).foregroundStyle(TunerTheme.paperWhite.opacity(0.55))
+                }
+            }
+            .padding(.bottom, 24)
+            .modifier(Entrance(appeared: appeared, delay: 0.15))
         }
         .frame(width: 480, height: 380)
         .onAppear { appeared = true }

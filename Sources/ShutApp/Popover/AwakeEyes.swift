@@ -7,8 +7,8 @@ import Tuner
 /// the only question the feature has, before a word is read.
 ///
 /// The sheet (`Resources/eyes.png`) holds five frames side by side: open, looking left,
-/// looking right, shut, and asleep. It is one colour on transparency, so it is drawn as a
-/// template in the theme's ink, with no smoothing: every pixel stays a square.
+/// looking right, shut, and asleep. It is one colour on transparency, so only the inked pixels
+/// are kept and each is drawn as a square in the theme's ink: crisp at any size.
 struct AwakeEyes: View {
     enum Mood: Equatable {
         /// Holding the lid: open, with a glance around and a blink now and then.
@@ -53,12 +53,15 @@ struct AwakeEyes: View {
         .accessibilityHidden(true)   // the sentence beside it says the same thing
     }
 
-    @ViewBuilder
+    /// Every inked pixel of the frame as its own square, so nothing is ever smoothed.
     private func image(_ frame: Frame) -> some View {
-        if let picture = AppAssets.eyes[safe: frame.rawValue] {
-            Image(nsImage: picture).renderingMode(.template).interpolation(.none).resizable()
-                .foregroundStyle(tint ?? theme.ink)
+        let inked = AppAssets.eyes[safe: frame.rawValue] ?? []
+        return Path { path in
+            for point in inked {
+                path.addRect(CGRect(x: point.x * pixel, y: point.y * pixel, width: pixel, height: pixel))
+            }
         }
+        .fill(tint ?? theme.ink)
     }
 
     static func restingFrame(_ mood: Mood) -> Frame {

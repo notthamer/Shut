@@ -4,6 +4,8 @@
 
 - Stay awake: close the lid while something is working and your Mac stays awake, then sleeps by itself when the work is done. Reasons, not timers: an allowed app asking macOS to stay awake, an external display, apps you pick, "I say so", or `shut hold` in a terminal. No password and no helper.
 - The closing screen says what will happen ("Staying awake · Cursor is working"), and a short receipt says what happened when you come back. Hold Option while closing to flip the decision once.
+- The main page is rearranged: Speed and Animate opening sit under the preview they change, the master switch is labelled "Lid effects", and a style waiting for Screen Recording says so in a calm card with one next step.
+- The welcome says where Shut goes afterwards: your menu bar.
 - The Awake page shows what keeps your Mac awake without a click: an app is busy, a display is connected, an app you pick is open, or you say so. The one at work right now says so.
 - A pair of eyes in the Awake bar and on the Awake page: open when your Mac will stay awake, shut when the lid will sleep it.
 - When you come back, a slip under the menu bar icon says what happened while the lid was shut, once the screen is unlocked. It fades by itself.

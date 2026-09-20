@@ -33,10 +33,16 @@ screen.
   is open (apps you pick), you say so. The trigger at work right now says who, in ink
   with a Lime dot ("Claude Code, now"). The lists of apps unfold from their rows;
   only the limits, which are safe defaults, stay folded, with a one-line summary.
+  Who is keeping the Mac awake is said once, in those rows ("Claude Code in Cursor ·
+  47 min"); a card appears above them only to warn (battery near the floor).
+- **The first switch-on** goes through a Void Black sheet with the eyes asleep at the
+  top; "Turn on" opens them, and the sheet leaves a moment later.
 - **The Awake bar**, under the header of the panel, always says what is keeping
   the Mac awake in one sentence, with the one thing to do about it: "Cursor is
   working · 47 min · Let it sleep". Once you have switched the feature off it stops
-  offering itself and says "Off · lid sleeps as usual".
+  offering itself and says "Off · lid sleeps as usual". For someone who has never
+  turned it on, the offer ("Turn on…") is made on the first three opened panels and
+  then the bar keeps its name and stops asking.
 - **The menu bar mark** carries a badge that says what the lid will do, in the one
   place that is always on screen: a dot while holding, a ring while winding down
   after the work ended, Saffron when a limit is near or has stopped the hold. Its

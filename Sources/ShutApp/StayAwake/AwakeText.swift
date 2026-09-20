@@ -35,14 +35,17 @@ enum AwakeText {
 
     /// `everTurnedOn`: the user has been through the consent sheet. Someone who switched
     /// the feature off knows what it is; the bar stops offering it and just says so.
+    /// `offerIt`: still worth a button. After a few looks the offer has been seen; the bar
+    /// keeps its place and its name, and stops asking.
     static func status(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
-                       canUndo: Bool, everTurnedOn: Bool = false, now: Date) -> Status {
+                       canUndo: Bool, everTurnedOn: Bool = false, offerIt: Bool = true, now: Date) -> Status {
         if canUndo, !state.holdsLid {
             return Status(dot: .idle, sentence: "Letting it sleep", action: .undo)
         }
         switch state {
         case .off:
             if everTurnedOn { return Status(dot: .idle, sentence: "Off · lid sleeps as usual", action: nil) }
+            if !offerIt { return Status(dot: .idle, sentence: "Stay awake with the lid shut", action: nil) }
             return Status(dot: .idle, sentence: "Keep working with the lid shut", action: .turnOn)
         case .ready:
             return Status(dot: .idle, sentence: "Nothing is working · lid sleeps as usual", action: nil)
@@ -129,6 +132,22 @@ enum AwakeText {
                 ? (first.until == nil ? "until you let it sleep" : "until then")
                 : "and sleeps by itself when \(reasons.count > 1 ? "they end" : "that ends")"
             return Hero(headline: headline, detail: "Close the lid: your Mac stays awake \(ends)\(floor).", showsCards: low)
+        }
+    }
+
+    /// One trigger's line while it is the one at work: "Claude Code in Cursor · 47 min",
+    /// "Studio Display", "Xcode and 1 more". nil when nothing of that kind is holding.
+    static func live(_ reasons: [HoldReason], now: Date) -> String? {
+        guard let first = reasons.first else { return nil }
+        let who: String
+        switch first.kind {
+        case .working: who = first.tool.map { "\($0) in \(first.title)" } ?? first.title
+        default: who = first.title
+        }
+        if reasons.count > 1 { return "\(who) and \(reasons.count - 1) more" }
+        switch first.kind {
+        case .working, .command: return "\(who) · \(duration(now.timeIntervalSince(first.since)))"
+        default: return who
         }
     }
 

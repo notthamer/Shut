@@ -103,6 +103,18 @@ final class PopoverModel: ObservableObject {
         return BuiltInDisplay.externalCount > 0 ? "\(base), on the built-in display" : base
     }
 
+    /// Running and doing what it says: nothing the header needs to spell out. The
+    /// permission card speaks for a style that is standing in, so that counts too.
+    var statusIsOrdinary: Bool {
+        guard settings.isEnabled else { return false }
+        if BuiltInDisplay.screen == nil, BuiltInDisplay.externalCount > 0 { return false }
+        return sensor.capability != .unsupported
+    }
+
+    /// Set once "Allow…" has opened System Settings: from then on the card's next step is
+    /// the restart macOS needs before the permission counts.
+    @Published var askedForScreenRecording = false
+
     var needsPermissionCard: Bool {
         registry.current.needsSnapshot && !registry.captureAvailable
     }

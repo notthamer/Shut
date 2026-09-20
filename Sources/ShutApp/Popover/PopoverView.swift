@@ -29,7 +29,8 @@ struct PopoverView: View {
                     HStack(spacing: 0) {
                         PreviewColumn(model: model)
                             .padding(16)
-                            .frame(width: Self.previewWidth, height: Self.bodyHeight)
+                            // Top-aligned: if it ever runs long, the bottom gives, never the preview.
+                            .frame(width: Self.previewWidth, height: Self.bodyHeight, alignment: .top)
                         Rectangle().fill(theme.hairline).frame(width: 1)
                         ControlsColumn(model: model)
                             .frame(width: Self.width - Self.previewWidth - 1, height: Self.bodyHeight)
@@ -73,15 +74,26 @@ struct PopoverHeader: View {
             Circle().fill(statusColor).frame(width: 6, height: 6)
                 .tunerAnimation(TunerTheme.ease, value: statusColor)
                 .help(model.statusLine)
+            // A coloured dot alone says nothing. When things are ordinary it is enough;
+            // when they are not (paused, a style standing in, no sensor) it gets its words.
+            if !model.statusIsOrdinary {
+                Text(model.statusLine).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1)
+                    .transition(.opacity)
+            }
             Spacer(minLength: 8)
             if !hostedInWindow {
                 IconButton("macwindow", help: "Open Shut as a window you can move and minimize.", action: model.openWindow)
             }
+            // Named, like the "Stay awake" switch that sits right under it on the Awake page:
+            // two bare switches one above the other left nobody sure which did what.
+            Text("Lid effects").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
             SmallPill(isOn: model.settings.isEnabled, size: .regular) { model.settings.isEnabled.toggle() }
                 .help(model.settings.isEnabled ? "Stop animating the lid." : "Start animating the lid.")
+                .accessibilityLabel("Lid effects")
         }
         .padding(.horizontal, 16)
         .frame(height: 56)
+        .tunerAnimation(TunerTheme.ease, value: model.statusIsOrdinary)
         // In the window the traffic lights own the top strip; the header sits under it.
         .padding(.top, hostedInWindow ? 26 : 0)
     }
