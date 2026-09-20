@@ -1,20 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
-- Stay awake: close the lid while something is working and your Mac stays awake, then sleeps by itself when the work is done. Reasons, not timers: an allowed app asking macOS to stay awake, an external display, apps you pick, "I say so", or `shut hold` in a terminal. No password and no helper.
-- The closing screen says what will happen ("Staying awake · Cursor is working"), and a short receipt says what happened when you come back. Hold Option while closing to flip the decision once.
+**Stay awake.** Close the lid while something is working and your Mac stays awake, then goes to sleep by itself when the work is done. Off until you turn it on. No password, no helper to install.
+
+- Reasons, not timers. Your Mac stays awake while an app is busy (a coding agent, a build, a render, a download), while an external display is connected, while apps you pick are open, or for as long as you say: one dial, from five minutes to twelve hours, or until you stop it.
+- You always know what the lid will do. A pair of eyes in the panel: open, your Mac will stay awake; shut, the lid will sleep it. The menu bar icon carries a dot while holding, a ring while winding down, and Saffron when a limit is near.
+- The closing screen says what will happen ("Staying awake · Claude Code is working"), readable on any wallpaper. Hold Option at any point of the close to do the opposite, just that once.
+- When you come back, a slip under the menu bar icon says what happened: how long, from when to when, for what, and the battery it used.
+- An app that asks to stay awake and is not allowed yet (a call, a recording) is asked about once: Allow, or Not this app.
+- Limits that always win: a battery level you choose, heat, eight hours on battery, Low Power Mode. It locks the screen as the lid shuts.
+- Safe to leave: if Shut quits, updates, crashes or is force-killed while keeping your Mac awake, lid sleep is given back to macOS.
+- Only on Macs with a lid.
+
+**Also**
+
 - The main page is rearranged: Speed and Animate opening sit under the preview they change, the master switch is labelled "Lid effects", and a style waiting for Screen Recording says so in a calm card with one next step.
-- The version is in the panel's footer, small, beside Quit. Click it to copy the details a bug report needs: app version and build, macOS, Mac model.
+- The version is in the panel's footer, beside Quit. Click it to copy what a bug report needs: app version, macOS, Mac model.
 - The welcome says where Shut goes afterwards: your menu bar.
-- The Awake page shows what keeps your Mac awake without a click: an app is busy, a display is connected, an app you pick is open, or you say so. The one at work right now says so.
-- "You say so" is one dial: from five minutes to twelve hours, or until you stop it. The line under it says when it ends, and the thumb counts down.
-- A pair of eyes in the Awake bar and on the Awake page: open when your Mac will stay awake, shut when the lid will sleep it.
-- When you come back, a slip under the menu bar icon says what happened while the lid was shut, once the screen is unlocked. It fades by itself.
-- An app that is asking to stay awake and is not allowed yet (a call, a render) is asked about once, in the bar and on the Awake page: Allow, or Not this app.
-- The menu bar icon shows a dot while holding, a ring while winding down and Saffron when a limit is near or has spoken. Its tooltip says what is working.
-- The closing caption is readable on any wallpaper, bad news is set in Saffron, and Option works at any point of the close (press again to take it back). The first few closes show how.
-- Limits that always win: a battery floor, heat, eight hours on battery, Low Power Mode. Locks when the lid shuts. Off until you turn it on.
 
 ## 0.2.1
 
