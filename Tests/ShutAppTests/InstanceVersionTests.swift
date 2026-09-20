@@ -12,6 +12,22 @@ final class InstanceVersionTests: XCTestCase {
         XCTAssertFalse(v("0.1", "1").isNewer(than: v("0.1.0", "1")), "missing components read as zero")
     }
 
+    /// The footer reads the running bundle's Info.plist; nothing about the version is written
+    /// into the code. Bump App/Info.plist and the mark follows.
+    func testTheVersionComesFromTheBundleNotFromTheCode() throws {
+        let made = InstanceVersion(info: ["CFBundleShortVersionString": "9.8.7", "CFBundleVersion": "654"])
+        XCTAssertEqual(made.label, "v9.8.7")
+        XCTAssertTrue(made.report().hasPrefix("Shut 9.8.7 (654) · macOS "))
+        let running = Bundle.main.infoDictionary ?? [:]
+        XCTAssertEqual(InstanceVersion.current.short, running["CFBundleShortVersionString"] as? String ?? "0")
+        XCTAssertEqual(InstanceVersion.current.build, running["CFBundleVersion"] as? String ?? "0")
+        // And the repo's one source of truth is the plist the release scripts read.
+        let plist = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("App/Info.plist")
+        let info = try XCTUnwrap(NSDictionary(contentsOf: plist) as? [String: Any])
+        XCTAssertEqual(InstanceVersion(info: info).label, "v" + (try XCTUnwrap(info["CFBundleShortVersionString"] as? String)))
+    }
+
     /// What the footer shows, and what a click puts on the clipboard.
     func testTheVersionMarkAndItsReport() {
         let version = InstanceVersion(short: "0.2.1", build: "3")
