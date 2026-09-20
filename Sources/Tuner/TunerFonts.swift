@@ -37,12 +37,35 @@ public enum TunerFonts {
     @discardableResult
     static func register() -> Bool {
         if NSFont(name: "ApfelGrotezk-Regular", size: 12) != nil, NSFont(name: displayPostScriptName, size: 12) != nil { return true }
-        let urls = (Bundle.module.urls(forResourcesWithExtension: "otf", subdirectory: "Fonts") ?? [])
-            + (Bundle.module.urls(forResourcesWithExtension: "ttf", subdirectory: "Fonts") ?? [])
+        guard let bundle = resourceBundle() else { return false }
+        let urls = (bundle.urls(forResourcesWithExtension: "otf", subdirectory: "Fonts") ?? [])
+            + (bundle.urls(forResourcesWithExtension: "ttf", subdirectory: "Fonts") ?? [])
         for url in urls {
             CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }
         return NSFont(name: "ApfelGrotezk-Regular", size: 12) != nil
+    }
+
+    /// Locates `Shut_Tuner.bundle` by looking where the bundle can really be. The
+    /// accessor SwiftPM generates only knows the .app root and the absolute build
+    /// directory of the Mac that compiled it, and traps when neither is there:
+    /// inside Shut.app that is every Mac but the one that built it (0.2.0 and earlier
+    /// crashed on launch this way).
+    static func resourceBundle() -> Bundle? {
+        let name = "Shut_Tuner.bundle"
+        var candidates: [URL] = []
+        if let url = Bundle.main.resourceURL { candidates.append(url) }        // Shut.app/Contents/Resources
+        candidates.append(Bundle.main.bundleURL)                                // .app root, or swift build dir
+        if let exe = Bundle.main.executableURL { candidates.append(exe.deletingLastPathComponent()) }
+        let hostBundle = Bundle(for: PresetStore.self)
+        candidates.append(hostBundle.bundleURL)
+        if let url = hostBundle.resourceURL { candidates.append(url) }
+        // `swift test`: the resource bundle sits next to the .xctest bundle.
+        candidates.append(hostBundle.bundleURL.deletingLastPathComponent())
+        for dir in candidates {
+            if let bundle = Bundle(url: dir.appendingPathComponent(name)) { return bundle }
+        }
+        return nil
     }
 
     /// Body text at a size and weight, with the system font as the fallback.

@@ -19,6 +19,8 @@ DMG="build/releases/Shut-$VERSION.dmg"
 
 scripts/build.sh
 codesign --verify --deep --strict "$APP"
+# Nothing goes to Apple that would not launch on somebody else's Mac.
+scripts/smoke.sh
 
 echo "Notarizing the app…"
 rm -f "$ZIP"

@@ -60,6 +60,13 @@ built-in display, and ships a reusable tuning panel. The design is described in
 11. **Idle must stay idle.** The sensor parks at 1 Hz; only a real hinge movement
     (≥ 2°) wakes it; nothing draws unless progress changed. Any change that adds a
     timer, a poll, or a per-frame publish needs a reason in the commit message.
+12. **Never use `Bundle.module`.** The accessor SwiftPM generates looks in the .app root
+    and in the absolute build directory of the Mac that compiled it, then traps. It works
+    on the build machine and crashes on every other one (0.1.0 and 0.2.0 shipped that
+    way). Each target with resources has a `resourceBundle()` that searches
+    `Contents/Resources` and friends and returns nil when there is nothing; a missing
+    resource degrades (system font, no image), it never crashes. `scripts/smoke.sh`
+    enforces both halves and runs in CI and before notarization.
 
 ## Layout
 
