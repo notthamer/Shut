@@ -83,35 +83,38 @@ struct PreviewColumn: View {
 struct PreviewWindow: View {
     @ObservedObject var preview: PreviewModel
     var caption: AwakeText.Caption? = nil
+    /// A small illustration (the Stay awake page) instead of the page's centrepiece.
+    var compact = false
 
     var body: some View {
+        let dot: CGFloat = compact ? 5 : 8
         VStack(spacing: 0) {
             HStack(spacing: 6) {
                 ForEach([Color(red: 1, green: 0.38, blue: 0.35), Color(red: 1, green: 0.74, blue: 0.2), Color(red: 0.3, green: 0.8, blue: 0.35)], id: \.self) { c in
-                    Circle().fill(c).frame(width: 8, height: 8)
+                    Circle().fill(c).frame(width: dot, height: dot)
                 }
                 Spacer()
             }
-            .padding(.horizontal, 10)
-            .frame(height: 24)
+            .padding(.horizontal, compact ? 7 : 10)
+            .frame(height: compact ? 15 : 24)
             ZStack(alignment: .bottomLeading) {
                 PreviewMetalView(model: preview)
                 if !preview.hasSnapshot {
                     ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 if let caption {
-                    ClosingCaption(caption: caption, progress: preview.progress, scale: 0.36)
+                    ClosingCaption(caption: caption, progress: preview.progress, scale: compact ? 0.17 : 0.36)
                 }
             }
-            .frame(height: 150)
+            .frame(height: compact ? 78 : 150)
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .padding([.horizontal, .bottom], 6)
+            .clipShape(RoundedRectangle(cornerRadius: compact ? 4 : 6, style: .continuous))
+            .padding([.horizontal, .bottom], compact ? 4 : 6)
         }
-        .surface(.card, radius: TunerTheme.cardRadius)
+        .surface(.card, radius: compact ? 8 : TunerTheme.cardRadius)
         .shadow(color: .black.opacity(0.10), radius: 2, y: 1)
-        .shadow(color: .black.opacity(0.12), radius: 12, y: 8)
-        .shadow(color: .black.opacity(0.14), radius: 24, y: 16)
+        .shadow(color: .black.opacity(compact ? 0.08 : 0.12), radius: compact ? 6 : 12, y: compact ? 4 : 8)
+        .shadow(color: .black.opacity(compact ? 0 : 0.14), radius: 24, y: 16)
     }
 }
 

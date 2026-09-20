@@ -16,6 +16,7 @@
 **Also**
 
 - The main page is rearranged: Speed and Animate opening sit under the preview they change, the master switch is labelled "Lid effects", and a style waiting for Screen Recording says so in a calm card with one next step.
+- App settings (open at login, Dock icon, updates) moved behind a gear in the footer.
 - The version is in the panel's footer, beside Quit. Click it to copy what a bug report needs: app version, macOS, Mac model.
 - The welcome says where Shut goes afterwards: your menu bar.
 

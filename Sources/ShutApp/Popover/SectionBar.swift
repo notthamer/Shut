@@ -46,6 +46,7 @@ private struct SectionTab<Label: View>: View {
                 .font(isSelected ? TunerTheme.bodyMedium : TunerTheme.body)
                 .foregroundStyle(isSelected || hover ? theme.ink : theme.inkLabel)
                 .lineLimit(1).fixedSize()
+                .offset(y: 4)   // onto the baseline of "Shut."
                 .frame(height: PopoverHeader.height)
                 // The indicator sits exactly where the header's bottom line runs.
                 .overlay(alignment: .bottom) {

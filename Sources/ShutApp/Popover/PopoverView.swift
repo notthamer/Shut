@@ -93,16 +93,16 @@ struct PopoverHeader: View {
             if !hostedInWindow {
                 IconButton("macwindow", help: "Open Shut as a window you can move and minimize.", action: model.openWindow)
             }
-            // One switch, in one place, and it belongs to the tab on show: its name says which.
-            // (There used to be two, one above the other, and nobody could tell them apart.)
+            // One switch, in one place, and it belongs to the section on show. The section's
+            // name is already in the header, selected; the switch says only its state.
             if model.page == .awake, model.stayAwake.hasLid {
                 let on = model.stayAwake.settings.isOn && model.stayAwake.settings.hasConsented
-                Text("Stay awake").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+                Text(on ? "On" : "Off").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                 SmallPill(isOn: on, size: .regular) { model.toggleAwake() }
                     .help("Keep the Mac awake with the lid shut while something is working.")
                     .accessibilityLabel("Stay awake")
             } else {
-                Text("Lid effects").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+                Text(model.settings.isEnabled ? "On" : "Off").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                 SmallPill(isOn: model.settings.isEnabled, size: .regular) { model.settings.isEnabled.toggle() }
                     .help(model.settings.isEnabled ? "Stop animating the lid." : "Start animating the lid.")
                     .accessibilityLabel("Lid effects")
@@ -122,29 +122,42 @@ struct PopoverFooter: View {
     @State private var launchAtLogin = false
     @State private var automaticUpdates: Bool? = nil
 
+    /// App-wide settings are not part of whichever page is above them, so they stay out of
+    /// sight behind the gear. They swap in place: the panel is a non-activating window, and
+    /// a popover of its own would count as a click outside and close it.
+    @State private var showingSettings = false
+
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
-            HStack(spacing: 8) {
-                Text("Open at login").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
-                SmallPill(isOn: launchAtLogin) { launchAtLogin.toggle(); model.setLaunchAtLogin(launchAtLogin) }
-            }
-            HStack(spacing: 8) {
-                Text("In Dock").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
-                SmallPill(isOn: model.settings.showInDock) { model.settings.showInDock.toggle() }
-                    .help("Keep Shut in the Dock. Off keeps it in the menu bar only.")
-            }
-            if let on = automaticUpdates {
+            if showingSettings {
                 HStack(spacing: 8) {
-                    Text("Auto-update").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
-                    SmallPill(isOn: on) { automaticUpdates = !on; model.setAutomaticUpdates(!on) }
-                        .help("Check for a new version about once a day. Off: only when you choose Check for Updates.")
+                    Text("Open at login").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                    SmallPill(isOn: launchAtLogin) { launchAtLogin.toggle(); model.setLaunchAtLogin(launchAtLogin) }
                 }
+                HStack(spacing: 8) {
+                    Text("In Dock").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                    SmallPill(isOn: model.settings.showInDock) { model.settings.showInDock.toggle() }
+                        .help("Keep Shut in the Dock. Off keeps it in the menu bar only.")
+                }
+                if let on = automaticUpdates {
+                    HStack(spacing: 8) {
+                        Text("Auto-update").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                        SmallPill(isOn: on) { automaticUpdates = !on; model.setAutomaticUpdates(!on) }
+                            .help("Check for a new version about once a day. Off: only when you choose Check for Updates.")
+                    }
+                }
+                Spacer()
+                QuietButton("Done") { showingSettings = false }
+            } else {
+                IconButton("gearshape", help: "Open at login, Dock icon, updates.") { showingSettings = true }
+                    .accessibilityLabel("App settings")
+                Spacer()
+                VersionMark()
+                QuietButton("Quit", action: model.quit)
+                    .keyboardShortcut("q", modifiers: .command)
             }
-            Spacer()
-            VersionMark()
-            QuietButton("Quit", action: model.quit)
-                .keyboardShortcut("q", modifiers: .command)
         }
+        .tunerAnimation(TunerTheme.ease, value: showingSettings)
         .padding(.horizontal, 16)
         .frame(height: 48)
         .onAppear { launchAtLogin = model.launchAtLogin(); automaticUpdates = model.automaticUpdates() }

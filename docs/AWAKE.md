@@ -58,11 +58,21 @@ screen.
   the offer. When the row is absent the page has its height; the panel never changes
   size. (All this replaced a strip that was a status readout, a link and a button holder
   at once, and that mostly said "Nothing is working", which read like an error.)
-- **The page answers one question, always in the same words: what will closing the lid
-  do?** "Closing the lid will sleep your Mac." or "Closing the lid keeps your Mac
-  awake.", then why. If "An app is busy" is off it says that agents and builds will not
-  keep the Mac awake. Under the answer sits the one thing to do, the "Keep awake now"
-  dial; then "Also keep it awake while" with the three reasons; then Settings, folded.
+- **The page has two columns with one job each.** Left, where the eye lands first, the
+  status: the answer to the one question anyone has, always in the same words ("Closing
+  the lid will sleep your Mac." / "Closing the lid keeps your Mac awake."), then why,
+  with the icon of the app it is about; the one action (Let it sleep, Allow); the "Keep
+  awake now" dial with its scale written under it (5 min … 12 h · until I stop); what
+  happened last time; and a small preview of the close. Right, the rules: "Keep it awake
+  while" with the three reasons, and Settings, folded, with its summary on a line of its
+  own. If "An app is busy" is off the answer says that agents and builds will not keep
+  the Mac awake.
+- **Said once.** The eyes are in the header and nowhere else. A control that has its
+  explanation written under it has no tooltip repeating it. The header switch says "On"
+  or "Off": the section's name is already beside it, selected.
+- **Readable.** Text that carries meaning is Carbon (5.4:1 on the paper); Slate, which
+  was 3.2:1 as #888888, is #767676 now and is kept for eyebrows and scales. A whole
+  reason row opens its list, not only the word at its end.
 - **The menu bar mark** carries a badge that says what the lid will do, in the one
   place that is always on screen: a dot while holding, a ring while winding down
   after the work ended, Saffron when a limit is near or has stopped the hold. Its
