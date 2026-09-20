@@ -26,11 +26,14 @@ built-in display, and ships a reusable tuning panel. The design is described in
 7. **Match the visual system: an editorial broadsheet.** One
    appearance; every window sets `TunerTheme.appearance` (Aqua) and the app sets
    it on `NSApp`. **Palette** (fixed, in `TunerTheme`): Bone paper, Paper White
-   cards and the primary button, Linen pills and wells, Pure Black / Carbon /
-   Slate ink, Silver borders, Soft Graphite dark fills, Lime Wash selection,
+   cards and secondary buttons, Linen pills and wells, Pure Black / Carbon /
+   Slate ink, Silver borders, Soft Graphite dark fills (a switch that is on, and the primary button), Lime Wash selection,
    Saffron warm highlight, Void Black only on the welcome stage; the Spectrum
    Marquee appears once per panel as a 2-pt `SpectrumLine`, never as a fill,
    and fills the mark on the app icon (Void Black tile, `scripts/make-glass-icon.swift`).
+   **Buttons** have three tiers (`PrimaryButton`, `SecondaryButton`/`ActionRow`, the
+   text link) and a view has at most one primary: filled Soft Graphite, as wide as its
+   words, inverted on Void Black. Every Bool is a `TunerSwitch`; segments are for choices.
    **Depth** is a one-point border (`surface(.card/.pill/.well/.wash)`); nothing
    inside a panel casts a shadow, except the preview's product window (the
    three-layer drop shadow) and the windows themselves. **Radii**: 12 (cards,

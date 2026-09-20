@@ -120,28 +120,10 @@ private struct StatusSpot: View {
     }
 }
 
-/// A small bordered capsule: the bar's action, the cards' buttons.
+/// Tier two, under the name the app already used for it. See `PrimaryButton`.
 struct CapsuleButton: View {
     let title: String
     let action: () -> Void
-    @Environment(\.tunerTheme) private var theme
-    @State private var hover = false
     init(_ title: String, action: @escaping () -> Void) { self.title = title; self.action = action }
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(TunerTheme.bodySmall)
-                .foregroundStyle(theme.ink)
-                .padding(.horizontal, 12)
-                .frame(height: 24)
-                .background(Capsule().fill(hover ? theme.linen : theme.card))
-                .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
-                .contentShape(Capsule())
-        }
-        .buttonStyle(PressStyle())
-        .onHover { hover = $0 }
-        .tunerAnimation(TunerTheme.ease, value: hover)
-        .focusEffectDisabled()
-    }
+    var body: some View { SecondaryButton(title, action: action) }
 }

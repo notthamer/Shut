@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A full-width button row.
+/// Tier two at full width, for a row of equals (Copy · Export · Import). See `PrimaryButton`.
 public struct ActionRow: View {
     let label: String
     let action: () -> Void
@@ -15,17 +15,18 @@ public struct ActionRow: View {
     public var body: some View {
         Button(action: action) {
             Text(label)
-                .font(TunerTheme.bodyMedium)
+                .font(TunerTheme.bodySmall)
                 .foregroundStyle(theme.ink)
+                .lineLimit(1)
                 .frame(maxWidth: .infinity)
-                .frame(height: TunerTheme.rowHeight)
+                .frame(height: 28)
                 .background(Capsule().fill(hover ? theme.linen : theme.card))
                 .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
                 .contentShape(Capsule())
+                .contentShape(.focusEffect, Capsule())
         }
         .buttonStyle(PressStyle())
         .onHover { hover = $0 }
         .tunerAnimation(TunerTheme.ease, value: hover)
-        .focusEffectDisabled()
     }
 }

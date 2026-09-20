@@ -73,8 +73,7 @@ struct WelcomeView: View {
             .modifier(Entrance(appeared: appeared, delay: 0.1))
             Spacer()
             VStack(spacing: 12) {
-                PrimaryButton("Start", action: enable)
-                    .frame(width: 180)
+                PrimaryButton("Start", onDark: true, action: enable)
                 // The window closes on Start; say where the app went.
                 HStack(spacing: 6) {
                     MarkGlyph(size: 12, tint: TunerTheme.paperWhite.opacity(0.55))

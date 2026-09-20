@@ -170,33 +170,13 @@ struct VersionMark: View {
     }
 }
 
-/// An Off/On pill: small for the footer, regular for the master switch.
+/// The app's name for the shared switch: small for the footer, regular elsewhere.
 struct SmallPill: View {
-    enum Size { case small, regular }
+    typealias Size = TunerSwitch.Size
     let isOn: Bool
     var size: Size = .small
     let action: () -> Void
-    @Environment(\.tunerTheme) private var theme
-    var body: some View {
-        let w: CGFloat = size == .small ? 26 : 36, h: CGFloat = size == .small ? 14 : 20
-        Button(action: action) {
-            // Soft Graphite when on, a bordered Linen trough when off, a Paper
-            // White knob. The colour eases; the knob simply moves.
-            Capsule().fill(isOn ? theme.buttonDark : theme.linen)
-                .overlay(Capsule().strokeBorder(isOn ? Color.clear : theme.border, lineWidth: 1))
-                .frame(width: w, height: h)
-                .overlay(alignment: isOn ? .trailing : .leading) {
-                    Circle().fill(theme.card)
-                        .overlay(Circle().strokeBorder(theme.border, lineWidth: isOn ? 0 : 1))
-                        .frame(width: h - 4, height: h - 4)
-                        .padding(2)
-                }
-                .contentShape(Capsule())
-        }
-        .buttonStyle(PressStyle())
-        .tunerAnimation(TunerTheme.ease, value: isOn)
-        .accessibilityValue(isOn ? "On" : "Off")
-    }
+    var body: some View { TunerSwitch(isOn: isOn, size: size, action: action) }
 }
 
 /// A 24-pt symbol button with the same hover surface as QuietButton.
@@ -227,18 +207,30 @@ struct IconButton: View {
 
 struct QuietButton: View {
     let title: String
+    /// Opens a list under its row: a real chevron and a little more ink than a plain link,
+    /// so "Apps" reads as somewhere to go, and "Reset" as something to do.
+    var disclosure = false
     let action: () -> Void
     @Environment(\.tunerTheme) private var theme
     @State private var hover = false
-    init(_ title: String, action: @escaping () -> Void) { self.title = title; self.action = action }
+
+    init(_ title: String, disclosure: Bool = false, action: @escaping () -> Void) {
+        self.title = title; self.disclosure = disclosure; self.action = action
+    }
+
     var body: some View {
         Button(action: action) {
             // A text link: ink on hover, otherwise Carbon; no fill.
-            Text(title)
-                .font(TunerTheme.bodySmall)
-                .foregroundStyle(hover ? theme.ink : theme.inkLabel)
-                .padding(.horizontal, 6).padding(.vertical, 5)
-                .contentShape(Rectangle())
+            HStack(spacing: 4) {
+                Text(title).font(disclosure ? TunerTheme.body : TunerTheme.bodySmall)
+                if disclosure {
+                    Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold))
+                }
+            }
+            .foregroundStyle(hover || disclosure ? theme.ink : theme.inkLabel)
+            .opacity(disclosure && !hover ? 0.8 : 1)
+            .padding(.horizontal, 6).padding(.vertical, 5)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
         .onHover { hover = $0 }

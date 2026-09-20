@@ -175,28 +175,107 @@ public struct PressScaleStyle: ButtonStyle {
     }
 }
 
-/// The primary action: Paper White, a one-point ink border, ink text, full
-/// radius. Hover fills with Linen. Never a coloured button.
+/// Buttons come in three tiers, and a view has at most one of the first.
+///
+/// 1. `PrimaryButton`: the thing to do. Filled Soft Graphite (the dark of a switch that is
+///    on) with Paper White text, as wide as its words, never the column. On a Void Black
+///    stage it inverts. One dark shape per view is where the eye lands.
+/// 2. `SecondaryButton` (and `ActionRow`, its full-width form for rows of equals): the
+///    outlined Paper White capsule, 28 pt. The other choice, or an action that is not the
+///    point of the view.
+/// 3. The text link (`QuietButton` in the app): minor actions and disclosures.
+///
+/// They used to be three separate styles that all drew the same white pill, so nothing on
+/// a page said "this one".
 public struct PrimaryButton: View {
+    let title: String
+    let onDark: Bool
+    let action: () -> Void
+    @Environment(\.tunerTheme) private var theme
+    @State private var hover = false
+
+    public init(_ title: String, onDark: Bool = false, action: @escaping () -> Void) {
+        self.title = title; self.onDark = onDark; self.action = action
+    }
+
+    public var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(TunerTheme.bodyMedium)
+                .foregroundStyle(onDark ? Color.black : theme.card)
+                .lineLimit(1).fixedSize()
+                .padding(.horizontal, 20)
+                .frame(height: 32)
+                .background(Capsule().fill(onDark ? Color.white : theme.buttonDark).opacity(hover ? 0.86 : 1))
+                .contentShape(Capsule())
+                .contentShape(.focusEffect, Capsule())
+        }
+        .buttonStyle(PressStyle())
+        .onHover { hover = $0 }
+        .tunerAnimation(TunerTheme.ease, value: hover)
+    }
+}
+
+/// Tier two: the outlined capsule, as wide as its words.
+public struct SecondaryButton: View {
     let title: String
     let action: () -> Void
     @Environment(\.tunerTheme) private var theme
     @State private var hover = false
     public init(_ title: String, action: @escaping () -> Void) { self.title = title; self.action = action }
+
     public var body: some View {
         Button(action: action) {
             Text(title)
-                .font(TunerTheme.bodyMedium)
+                .font(TunerTheme.bodySmall)
                 .foregroundStyle(theme.ink)
-                .frame(maxWidth: .infinity)
-                .frame(height: TunerTheme.rowHeight)
+                .lineLimit(1).fixedSize()
+                .padding(.horizontal, 14)
+                .frame(height: 28)
                 .background(Capsule().fill(hover ? theme.linen : theme.card))
-                .overlay(Capsule().strokeBorder(theme.borderStrong, lineWidth: 1))
+                .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
                 .contentShape(Capsule())
+                .contentShape(.focusEffect, Capsule())
         }
         .buttonStyle(PressStyle())
         .onHover { hover = $0 }
         .tunerAnimation(TunerTheme.ease, value: hover)
-        .focusEffectDisabled()
+    }
+}
+
+/// The one on/off control: Soft Graphite when on, a bordered Linen trough when off, a Paper
+/// White knob. The colour eases; the knob simply moves. Every Bool in the app and in the
+/// panel is this (an Off/On segmented pill used to stand in for it in places, so the same
+/// decision had two looks); segments are for choices.
+public struct TunerSwitch: View {
+    public enum Size { case small, regular }
+    let isOn: Bool
+    let size: Size
+    let action: () -> Void
+    @Environment(\.tunerTheme) private var theme
+
+    public init(isOn: Bool, size: Size = .small, action: @escaping () -> Void) {
+        self.isOn = isOn; self.size = size; self.action = action
+    }
+
+    public var body: some View {
+        let w: CGFloat = size == .small ? 26 : 36, h: CGFloat = size == .small ? 14 : 20
+        Button(action: action) {
+            Capsule().fill(isOn ? theme.buttonDark : theme.linen)
+                .overlay(Capsule().strokeBorder(isOn ? Color.clear : theme.border, lineWidth: 1))
+                .frame(width: w, height: h)
+                .overlay(alignment: isOn ? .trailing : .leading) {
+                    Circle().fill(theme.card)
+                        .overlay(Circle().strokeBorder(theme.border, lineWidth: isOn ? 0 : 1))
+                        .frame(width: h - 4, height: h - 4)
+                        .padding(2)
+                }
+                .contentShape(Capsule())
+                .contentShape(.focusEffect, Capsule())
+        }
+        .buttonStyle(PressStyle())
+        .tunerAnimation(TunerTheme.ease, value: isOn)
+        .accessibilityAddTraits(.isToggle)
+        .accessibilityValue(isOn ? "On" : "Off")
     }
 }

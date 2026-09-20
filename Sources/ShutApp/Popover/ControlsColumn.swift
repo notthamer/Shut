@@ -225,10 +225,10 @@ struct PermissionCard: View {
             }
             HStack(spacing: 14) {
                 if asked {
-                    CapsuleButton("Restart Shut") { model.relaunch() }
+                    PrimaryButton("Restart Shut") { model.relaunch() }
                     QuietButton("Open Settings again") { model.allowScreenRecording() }
                 } else {
-                    CapsuleButton("Allow…") { model.askedForScreenRecording = true; model.allowScreenRecording() }
+                    PrimaryButton("Allow…") { model.askedForScreenRecording = true; model.allowScreenRecording() }
                 }
             }
             .padding(.leading, 15)

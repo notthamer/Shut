@@ -161,9 +161,9 @@ private struct AwakeControls: View {
                 }
                 switch status.action {
                 case .allow:
-                    HStack(spacing: 14) {
+                    HStack(spacing: 10) {
                         PrimaryButton("Allow") { model.performAwake(.allow) }
-                        QuietButton("Not this app") { model.performAwake(.notThisApp) }
+                        CapsuleButton("Not this app") { model.performAwake(.notThisApp) }
                             .help("Shut will not ask about this app again. You can change it under Options, Something is working.")
                     }
                     .padding(.top, 6)
@@ -341,7 +341,7 @@ private struct TriggerRow: View {
             }
             Spacer(minLength: 6)
             if let expanded, let detail {
-                QuietButton(expanded.wrappedValue ? "Done" : "\(detail) ›") { expanded.wrappedValue.toggle() }
+                QuietButton(expanded.wrappedValue ? "Done" : detail, disclosure: !expanded.wrappedValue) { expanded.wrappedValue.toggle() }
             }
             SmallPill(isOn: isOn, size: .regular) { isOn.toggle() }
         }

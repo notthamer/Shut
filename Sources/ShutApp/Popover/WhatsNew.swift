@@ -142,7 +142,7 @@ struct WhatsNewView: View {
                     }
                 }
                 HStack(spacing: 14) {
-                    CapsuleButton("Show me", action: onShow)
+                    PrimaryButton("Show me", action: onShow)
                     QuietButton("Later", action: onClose)
                     Spacer()
                     if news.points.count > Self.shownPoints {
