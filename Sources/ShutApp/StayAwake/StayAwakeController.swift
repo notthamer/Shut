@@ -171,7 +171,7 @@ public final class StayAwakeController: ObservableObject {
     /// so the caption on screen can be set again.
     @discardableResult
     func flipDecision() -> Bool {
-        guard arbiter.limits.isOn, settings.optionFlips else { return false }
+        guard arbiter.limits.isOn else { return false }
         switch flip {
         case nil:
             if arbiter.state.holdsLid { flip = .toSleep; arbiter.letItSleep() }
@@ -229,7 +229,7 @@ public final class StayAwakeController: ObservableObject {
     /// The caption for the real close. `beginning` is the one call per close that may
     /// spend one of the five "Hold ⌥" hints.
     func closingCaption(beginning: Bool) -> AwakeText.Caption? {
-        let teach = settings.optionFlips && settings.optionHintsShown < StayAwakeSettings.optionHintLimit
+        let teach = settings.optionHintsShown < StayAwakeSettings.optionHintLimit
         let caption = AwakeText.closingCaption(state: arbiter.state, reasons: arbiter.reasons,
                                                conditions: arbiter.conditions, teachOption: teach)
         if beginning, caption?.hint != nil { settings.optionHintsShown += 1 }

@@ -39,7 +39,8 @@ screen.
   plain words, every row with a line under its name saying what it does: "Protects
   your Mac" (sleep when battery reaches, stay awake on any power or the charger only,
   then sleep after, lock the screen, follow Low Power Mode) and "Extras" (tell me what
-  happened, Option key changes its mind, terminal command).
+  happened, and a line saying what the Option key does; it has no switch, because nobody
+  holds Option while closing a lid by accident).
   Who is keeping the Mac awake is said once, in those rows ("Claude Code in Cursor ·
   47 min"); a card appears above them only to warn (battery near the floor).
 - **The first switch-on** goes through a Void Black sheet with the eyes asleep at the

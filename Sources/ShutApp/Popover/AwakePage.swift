@@ -169,9 +169,9 @@ private struct AwakeControls: View {
                 case .letItSleep, .undo, .keepAwake:
                     PrimaryButton(status.action!.title) { model.performAwake(status.action!) }.padding(.top, 6)
                 default:
-                    if arbiter.state == .ready {
-                        PrimaryButton("Keep awake for an hour") { awake.setManualHold(stop: AwakeText.manualStop(remaining: 3600)) }.padding(.top, 6)
-                    }
+                    // Nothing to do about "nothing is working". Keeping the Mac awake by hand is
+                    // the "You say so" dial, four rows down, for any length of time.
+                    EmptyView()
                 }
             }
         }
@@ -523,12 +523,14 @@ struct AwakeLimits: View {
                        help: "While macOS Low Power Mode is on, the lid sleeps your Mac as usual.")
 
             Eyebrow("Extras").padding(.top, TunerTheme.sectionGap - 4).padding(.bottom, 6)
+            // No switch for the Option key: a gesture nobody makes by accident needs no way to
+            // be turned off, only a way to be found. The caption teaches it, and so does this.
+            Text("Hold ⌥ while closing the lid to do the opposite, just that once.")
+                .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+                .fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
             TriggerRow("Tell me what happened", about: "A short note under the menu bar icon when you open the lid again.",
                        live: nil, detail: nil, isOn: Binding(get: { settings.showReceipt }, set: { settings.showReceipt = $0 }), expanded: nil,
                        help: "When you open the lid after your Mac stayed awake, a small note under the menu bar icon says what happened: how long, how it ended, the battery it used. It fades by itself.")
-            TriggerRow("Option key changes its mind", about: "Hold ⌥ while closing the lid to do the opposite, just that once.",
-                       live: nil, detail: nil, isOn: Binding(get: { settings.optionFlips }, set: { settings.optionFlips = $0 }), expanded: nil,
-                       help: "Hold Option as you close the lid to do the opposite this once: sleep although something is working, or stay awake for an hour although nothing is.")
         }
     }
 

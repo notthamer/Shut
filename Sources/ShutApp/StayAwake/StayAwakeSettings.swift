@@ -24,8 +24,6 @@ public final class StayAwakeSettings: ObservableObject {
     @Published public var grace: TimeInterval { didSet { defaults.set(grace, forKey: "stayAwake.grace") } }
     @Published public var respectLowPowerMode: Bool { didSet { defaults.set(respectLowPowerMode, forKey: "stayAwake.lowPower") } }
     @Published public var lockWhenShut: Bool { didSet { defaults.set(lockWhenShut, forKey: "stayAwake.lockWhenShut") } }
-    /// Holding Option as the lid comes down flips the decision for that one close.
-    @Published public var optionFlips: Bool { didSet { defaults.set(optionFlips, forKey: "stayAwake.optionFlips") } }
 
     /// A slip under the menu bar icon on coming back, saying what happened while the lid was shut.
     @Published public var showReceipt: Bool { didSet { defaults.set(showReceipt, forKey: "stayAwake.showReceipt") } }
@@ -50,7 +48,6 @@ public final class StayAwakeSettings: ObservableObject {
         grace = defaults.object(forKey: "stayAwake.grace") as? TimeInterval ?? 300
         respectLowPowerMode = bool("stayAwake.lowPower", true)
         lockWhenShut = bool("stayAwake.lockWhenShut", true)
-        optionFlips = bool("stayAwake.optionFlips", true)
         showReceipt = bool("stayAwake.showReceipt", true)
         offersSeen = defaults.integer(forKey: "stayAwake.offersSeen")
         optionHintsShown = defaults.integer(forKey: "stayAwake.optionHintsShown")
