@@ -35,6 +35,25 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(status(.stopped(.userLetItSleep), [work()], canUndo: true).action, .undo)
     }
 
+    /// Offered once. Someone who switched it off is told so, not sold to again.
+    func testTheBarStopsOfferingAfterItWasSwitchedOff() {
+        let never = status(.off)
+        XCTAssertEqual(never.sentence, "Keep working with the lid shut")
+        XCTAssertEqual(never.action, .turnOn)
+        let switchedOff = AwakeText.status(state: .off, reasons: [], conditions: plugged, limits: limits,
+                                           canUndo: false, everTurnedOn: true, now: t0)
+        XCTAssertEqual(switchedOff.sentence, "Off · lid sleeps as usual")
+        XCTAssertNil(switchedOff.action)
+        XCTAssertEqual(switchedOff.dot, .idle)
+    }
+
+    func testOptionsSummaryLeadsWithTheReasonsThatAreOn() {
+        XCTAssertEqual(AwakeText.optionsSummary(working: true, display: true, apps: false, batteryFloor: 20),
+                       "Working · display · sleeps at 20 %")
+        XCTAssertEqual(AwakeText.optionsSummary(working: false, display: false, apps: false, batteryFloor: 30),
+                       "Only when you say so · sleeps at 30 %")
+    }
+
     func testBatteryWarningBeforeTheFloor() {
         let low = PowerConditions(onCharger: false, batteryPercent: 24)
         let result = status(.holding, [work()], low)

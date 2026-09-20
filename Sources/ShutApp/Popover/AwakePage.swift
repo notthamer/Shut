@@ -112,7 +112,8 @@ private struct AwakeControls: View {
             Text("Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done.")
                 .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
-            PrimaryButton("Turn on…") { model.toggleAwake() }
+            // The ellipsis promises a sheet; there is one only the first time.
+            PrimaryButton(settings.hasConsented ? "Turn on" : "Turn on…") { model.toggleAwake() }
                 .padding(.top, 6)
         }
     }
@@ -180,7 +181,8 @@ private struct AwakeControls: View {
     }
 
     private var optionsSummary: String {
-        "Sleeps at \(settings.batteryFloor) % battery" + (settings.lockWhenShut ? " · locks when shut" : "")
+        AwakeText.optionsSummary(working: settings.whenWorking, display: settings.whenDisplayConnected,
+                                 apps: settings.whenAppsOpen && !settings.pickedApps.isEmpty, batteryFloor: settings.batteryFloor)
     }
 
     private var reasonsSection: some View {
@@ -281,8 +283,10 @@ struct AwakeCards: View {
                     if row.iconBundleID != nil {
                         AppIconView(bundleID: row.iconBundleID, size: 20).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 5 }
                     } else {
+                        // A shape to scan by; VoiceOver would read it as "black diamond".
                         Text(row.glyph).font(.system(size: 11)).foregroundStyle(row.warning ? theme.ink : theme.inkLabel)
                             .frame(width: 20)
+                            .accessibilityHidden(true)
                     }
                     VStack(alignment: .leading, spacing: 3) {
                         Text(row.title).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink).lineLimit(1)
@@ -294,6 +298,9 @@ struct AwakeCards: View {
                 }
                 .padding(.horizontal, 14).padding(.vertical, 11)
                 .background(row.warning ? theme.washSaffron : .clear)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel([row.warning ? "Warning." : "", row.title, row.subtitle, row.trailing]
+                    .filter { !$0.isEmpty }.joined(separator: ", "))
             }
         }
         .surface(.card, radius: TunerTheme.cardRadius)

@@ -29,13 +29,16 @@ enum AwakeText {
         }
     }
 
+    /// `everTurnedOn`: the user has been through the consent sheet. Someone who switched
+    /// the feature off knows what it is; the bar stops offering it and just says so.
     static func status(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
-                       canUndo: Bool, now: Date) -> Status {
+                       canUndo: Bool, everTurnedOn: Bool = false, now: Date) -> Status {
         if canUndo, !state.holdsLid {
             return Status(dot: .idle, sentence: "Letting it sleep", action: .undo)
         }
         switch state {
         case .off:
+            if everTurnedOn { return Status(dot: .idle, sentence: "Off · lid sleeps as usual", action: nil) }
             return Status(dot: .idle, sentence: "Keep working with the lid shut", action: .turnOn)
         case .ready:
             return Status(dot: .idle, sentence: "Nothing is working · lid sleeps as usual", action: nil)
@@ -169,6 +172,16 @@ enum AwakeText {
         return what + ", or at \(limits.batteryFloor) % battery."
     }
 
+    /// The collapsed Options row: the reasons that are on, then the limit that matters most.
+    static func optionsSummary(working: Bool, display: Bool, apps: Bool, batteryFloor: Int) -> String {
+        var reasons: [String] = []
+        if working { reasons.append("working") }
+        if display { reasons.append("display") }
+        if apps { reasons.append("apps") }
+        let first = reasons.isEmpty ? "Only when you say so" : reasons.joined(separator: " · ").capitalizedFirst
+        return first + " · sleeps at \(batteryFloor) %"
+    }
+
     /// "<1 min", "47 min", "2 h 5 min"
     static func duration(_ seconds: TimeInterval) -> String {
         let minutes = Int(max(seconds, 0) / 60)
@@ -184,4 +197,8 @@ enum AwakeText {
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
+}
+
+private extension String {
+    var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
 }

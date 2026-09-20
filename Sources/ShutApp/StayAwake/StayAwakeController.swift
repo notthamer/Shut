@@ -166,7 +166,7 @@ public final class StayAwakeController: ObservableObject {
             return AwakeText.Status(dot: .winding, sentence: line, action: .ok)
         }
         return AwakeText.status(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
-                         limits: arbiter.limits, canUndo: arbiter.canUndoLetItSleep, now: Date())
+                         limits: arbiter.limits, canUndo: arbiter.canUndoLetItSleep, everTurnedOn: settings.hasConsented, now: Date())
     }
 
     var caption: String? {
