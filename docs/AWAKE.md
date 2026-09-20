@@ -31,7 +31,9 @@ screen.
 - **The Awake page answers "when?" without a click.** Under the headline, "Stays
   awake when" lists the four triggers, each with one line about it and its switch:
   an app is busy (apps that ask macOS to stay awake), a display is connected, an app
-  is open (apps you pick), you say so. The trigger at work right now says who, in ink
+  is open (apps you pick), you say so: one dial from Off through five minutes to
+  twelve hours and on to "until I stop", with the choice said whole under it ("Awake
+  until 6:40 PM · 1 h 12 min left"); while it runs the thumb drifts back towards Off. The trigger at work right now says who, in ink
   with a Lime dot ("Claude Code, now"). The lists of apps unfold from their rows;
   only **Settings** stays folded, with a one-line summary. Opened, it is two groups in
   plain words, every row with a line under its name saying what it does: "Protects

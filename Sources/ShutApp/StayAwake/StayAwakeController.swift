@@ -250,21 +250,19 @@ public final class StayAwakeController: ObservableObject {
         }
     }
 
-    /// The "I say so" row: nil duration means until stopped; `off` ends it.
-    func setManualHold(_ choice: ManualChoice) {
-        switch choice {
-        case .off: arbiter.manual.end()
-        case .oneHour: arbiter.manual.begin(for: 3600)
-        case .fourHours: arbiter.manual.begin(for: 4 * 3600)
-        case .untilStopped: arbiter.manual.begin(for: nil)
-        }
+    /// The "You say so" dial: stop 0 ends the hold, the last stop holds until stopped, the
+    /// ones between hold for `AwakeText.manualDurations`.
+    func setManualHold(stop: Int) {
+        if stop <= 0 { arbiter.manual.end() }
+        else if stop >= AwakeText.manualLastStop { arbiter.manual.begin(for: nil) }
+        else { arbiter.manual.begin(for: AwakeText.manualDurations[stop - 1]) }
     }
 
-    enum ManualChoice: Int, CaseIterable { case off, oneHour, fourHours, untilStopped }
+    /// The running manual hold, if any.
+    var manualHold: HoldReason? { arbiter.manual.reasons.first }
 
-    var manualChoice: ManualChoice {
-        guard let reason = arbiter.manual.reasons.first else { return .off }
-        guard let until = reason.until else { return .untilStopped }
-        return until.timeIntervalSince(reason.since) > 3600 ? .fourHours : .oneHour
+    func manualStop(now: Date = Date()) -> Int {
+        guard let hold = manualHold else { return 0 }
+        return AwakeText.manualStop(remaining: hold.until.map { $0.timeIntervalSince(now) })
     }
 }

@@ -7,6 +7,7 @@
 - The main page is rearranged: Speed and Animate opening sit under the preview they change, the master switch is labelled "Lid effects", and a style waiting for Screen Recording says so in a calm card with one next step.
 - The welcome says where Shut goes afterwards: your menu bar.
 - The Awake page shows what keeps your Mac awake without a click: an app is busy, a display is connected, an app you pick is open, or you say so. The one at work right now says so.
+- "You say so" is one dial: from five minutes to twelve hours, or until you stop it. The line under it says when it ends, and the thumb counts down.
 - A pair of eyes in the Awake bar and on the Awake page: open when your Mac will stay awake, shut when the lid will sleep it.
 - When you come back, a slip under the menu bar icon says what happened while the lid was shut, once the screen is unlocked. It fades by itself.
 - An app that is asking to stay awake and is not allowed yet (a call, a render) is asked about once, in the bar and on the Awake page: Allow, or Not this app.

@@ -98,7 +98,8 @@ enum AwakeText {
 
     /// The Awake page in two sentences: what is happening, and what the lid will do.
     static func hero(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits, now: Date) -> Hero {
-        let floor = conditions.batteryPercent == nil ? "" : ", or at \(limits.batteryFloor) % battery"
+        // A no-break space: "20" at the end of one line and "% battery" on the next reads badly.
+        let floor = conditions.batteryPercent == nil ? "" : ", or at \(limits.batteryFloor)\u{00A0}% battery"
         switch state {
         case .off:
             return Hero(headline: "Off.", detail: "The lid sleeps your Mac as usual.", showsCards: false)
@@ -224,6 +225,39 @@ enum AwakeText {
         case .chargerOnly: return "On battery · holds on the charger only"
         case .userLetItSleep: return "Letting it sleep"
         }
+    }
+
+    // MARK: The "You say so" dial
+
+    /// The dial's stops between Off (0) and "until I stop" (the last): close together where
+    /// people actually choose (a meeting, a build), far apart beyond that.
+    static let manualDurations: [TimeInterval] = [5, 10, 15, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720].map { $0 * 60 }
+    static var manualLastStop: Int { manualDurations.count + 1 }
+
+    /// The value column is narrow, so the dial says it short; the caption under it says it whole.
+    static func manualValue(stop: Int) -> String {
+        if stop <= 0 { return "Off" }
+        if stop >= manualLastStop { return "∞" }
+        let minutes = Int(manualDurations[stop - 1] / 60)
+        return minutes % 60 == 0 ? "\(minutes / 60) h" : "\(minutes) min"
+    }
+
+    /// Where the thumb sits for a hold that is running: the smallest stop that still covers
+    /// the time left, so the dial drifts towards Off as the time runs out.
+    static func manualStop(remaining: TimeInterval?) -> Int {
+        guard let remaining else { return manualLastStop }
+        return (manualDurations.firstIndex { $0 >= remaining - 30 } ?? manualDurations.count - 1) + 1
+    }
+
+    /// The line under the dial. `stop` is where the thumb is (while dragging, where it would
+    /// land); `until` is the running hold's end, nil for none or for "until I stop".
+    static func manualCaption(stop: Int, running: Bool, until: Date?, now: Date) -> String {
+        if stop <= 0 { return "Drag to keep your Mac awake with the lid shut, whatever is running." }
+        if stop >= manualLastStop { return running ? "Awake until you drag this back to Off." : "Until you drag this back to Off." }
+        if running, let until {
+            return "Awake until \(clock(until)) · \(duration(until.timeIntervalSince(now))) left."
+        }
+        return "Until \(clock(now.addingTimeInterval(manualDurations[stop - 1])))."
     }
 
     /// The folded Limits row: the ones most worth knowing without opening it.

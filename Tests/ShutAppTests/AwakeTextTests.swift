@@ -79,6 +79,32 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertNil(AwakeText.live([], now: t0))
     }
 
+    /// One dial instead of Off / 1 h / 4 h / ∞.
+    func testTheKeepAwakeDial() {
+        func stop(_ minutes: Double) -> Int { AwakeText.manualDurations.firstIndex(of: minutes * 60)! + 1 }
+        XCTAssertEqual(AwakeText.manualValue(stop: 0), "Off")
+        XCTAssertEqual(AwakeText.manualValue(stop: 1), "5 min", "the shortest: a quick errand")
+        XCTAssertEqual(AwakeText.manualValue(stop: stop(60)), "1 h")
+        XCTAssertEqual(AwakeText.manualValue(stop: stop(90)), "90 min")
+        XCTAssertEqual(AwakeText.manualValue(stop: stop(720)), "12 h")
+        XCTAssertEqual(AwakeText.manualValue(stop: AwakeText.manualLastStop), "∞")
+        // The thumb covers the time left, and drifts towards Off as it runs out.
+        XCTAssertEqual(AwakeText.manualStop(remaining: 3600), stop(60))
+        XCTAssertEqual(AwakeText.manualStop(remaining: 40 * 60), stop(45), "40 min left sits at 45 min")
+        XCTAssertEqual(AwakeText.manualStop(remaining: 40), 1)
+        XCTAssertEqual(AwakeText.manualStop(remaining: nil), AwakeText.manualLastStop)
+        XCTAssertEqual(AwakeText.manualStop(remaining: 30 * 3600), AwakeText.manualLastStop - 1, "a long command-line hold still fits on the dial")
+        // The caption says it whole.
+        let until = t0.addingTimeInterval(72 * 60)
+        XCTAssertEqual(AwakeText.manualCaption(stop: stop(90), running: true, until: until, now: t0),
+                       "Awake until \(AwakeText.clock(until)) · 1 h 12 min left.")
+        XCTAssertEqual(AwakeText.manualCaption(stop: stop(60), running: false, until: nil, now: t0),
+                       "Until \(AwakeText.clock(t0.addingTimeInterval(3600))).")
+        XCTAssertTrue(AwakeText.manualCaption(stop: 0, running: false, until: nil, now: t0).hasPrefix("Drag to keep"))
+        XCTAssertEqual(AwakeText.manualCaption(stop: AwakeText.manualLastStop, running: true, until: nil, now: t0),
+                       "Awake until you drag this back to Off.")
+    }
+
     func testLimitsSummarySaysTheOnesWorthKnowing() {
         XCTAssertEqual(AwakeText.limitsSummary(batteryFloor: 20, lockWhenShut: true, chargerOnly: false),
                        "Sleeps at 20 % battery · locks when shut")

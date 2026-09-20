@@ -166,7 +166,7 @@ private struct AwakeControls: View {
                     PrimaryButton(status.action!.title) { model.performAwake(status.action!) }.padding(.top, 6)
                 default:
                     if arbiter.state == .ready {
-                        PrimaryButton("Keep awake for an hour") { awake.setManualHold(.oneHour) }.padding(.top, 6)
+                        PrimaryButton("Keep awake for an hour") { awake.setManualHold(stop: AwakeText.manualStop(remaining: 3600)) }.padding(.top, 6)
                     }
                 }
             }
@@ -206,11 +206,7 @@ private struct AwakeControls: View {
                        help: "Hold the lid for as long as an app you pick is open.")
             if showPicker { AppPicker(model: model).transition(.blurFade).padding(.bottom, 6) }
 
-            SegmentedRow("You say so", options: ["Off", "1 h", "4 h", "∞"],
-                         selection: Binding(get: { awake.manualChoice.rawValue },
-                                            set: { awake.setManualHold(StayAwakeController.ManualChoice(rawValue: $0) ?? .off) }),
-                         help: "Keep the Mac awake with the lid shut for an hour, four hours, or until you switch this off.")
-                .padding(.top, 4)
+            KeepAwakeDial(awake: awake, now: now).padding(.top, 4)
         }
         // Readable before the feature is on (it is the explanation), usable once it is.
         .disabled(!isOn)
@@ -251,6 +247,52 @@ private struct AwakeControls: View {
 
     private func bind(_ keyPath: ReferenceWritableKeyPath<StayAwakeSettings, Bool>) -> Binding<Bool> {
         Binding(get: { settings[keyPath: keyPath] }, set: { settings[keyPath: keyPath] = $0 })
+    }
+}
+
+/// "You say so": one dial instead of four arbitrary buttons. Off on the left, any time from
+/// five minutes to twelve hours, "until I stop" on the right. The line under it says
+/// the choice whole ("Awake until 6:40 PM · 1 h 12 min left"), and while a hold runs the
+/// thumb drifts back towards Off, so the dial is also the countdown.
+private struct KeepAwakeDial: View {
+    @ObservedObject var awake: StayAwakeController
+    let now: Date
+    /// Where the thumb is while it is being moved; the hold starts when it is let go.
+    @State private var dragged: Double?
+    @State private var settle: DispatchWorkItem?
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        let stop = dragged.map { Int($0.rounded()) } ?? awake.manualStop(now: now)
+        VStack(alignment: .leading, spacing: 0) {
+            FillSliderRow("You say so",
+                          value: Binding(get: { dragged ?? Double(awake.manualStop(now: now)) },
+                                         set: { dragged = $0; commitSoon() }),
+                          in: 0...Double(AwakeText.manualLastStop), step: 1, decimals: 0,
+                          help: "Keep the Mac awake with the lid shut for as long as you choose, whatever is running. All the way right: until you drag it back.",
+                          valueText: { AwakeText.manualValue(stop: Int($0.rounded())) },
+                          onEditingEnded: commit)
+            Text(AwakeText.manualCaption(stop: stop, running: dragged == nil && awake.manualHold != nil,
+                                         until: awake.manualHold?.until, now: now))
+                .font(TunerTheme.bodySmall)
+                .foregroundStyle(stop > 0 ? theme.ink : theme.inkTertiary)
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func commit() {
+        settle?.cancel()
+        guard let dragged else { return }
+        awake.setManualHold(stop: Int(dragged.rounded()))
+        self.dragged = nil
+    }
+
+    /// The arrow keys move the thumb without a drag ever ending; let go means "a moment of stillness".
+    private func commitSoon() {
+        settle?.cancel()
+        let work = DispatchWorkItem { commit() }
+        settle = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
     }
 }
 

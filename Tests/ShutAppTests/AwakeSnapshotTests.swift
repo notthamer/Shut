@@ -200,6 +200,27 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    /// The dial starts, changes and ends the manual hold.
+    func testTheDialHoldsForWhatItSays() throws {
+        let (model, awake) = try makeModel(on: true, reasons: [], asking: [])
+        XCTAssertEqual(awake.manualStop(), 0)
+        let ninety = AwakeText.manualStop(remaining: 90 * 60)
+        awake.setManualHold(stop: ninety)
+        XCTAssertEqual(awake.arbiter.state, .holding)
+        let hold = try XCTUnwrap(awake.manualHold)
+        XCTAssertEqual(try XCTUnwrap(hold.until).timeIntervalSince(hold.since), 90 * 60, accuracy: 1)
+        XCTAssertEqual(awake.manualStop(), ninety)
+        XCTAssertEqual(awake.manualStop(now: Date().addingTimeInterval(50 * 60)), AwakeText.manualStop(remaining: 45 * 60), "40 min left: the thumb has drifted to 45 min")
+        model.page = .awake
+        try render(model, name: "page-manual")
+
+        awake.setManualHold(stop: AwakeText.manualLastStop)
+        XCTAssertNil(try XCTUnwrap(awake.manualHold).until, "until stopped")
+        awake.setManualHold(stop: 0)
+        XCTAssertEqual(awake.arbiter.state, .ready)
+        awake.shutDown()
+    }
+
     /// Option flips the decision for one close, and a second press takes it back.
     func testOptionFlipsAndFlipsBack() throws {
         let cursor = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", since: Date())
