@@ -54,6 +54,19 @@ enum AwakeText {
         }
     }
 
+    /// The menu bar badge: what the lid would do now, without the journal's unread receipt
+    /// (that belongs to the panel, and would leave a ring up until someone read it).
+    static func badge(state: HoldState, conditions: PowerConditions, limits: HoldLimits) -> Dot {
+        switch state {
+        case .off, .ready: return .idle
+        case .holding:
+            let low = !conditions.onCharger && (conditions.batteryPercent.map { $0 <= limits.batteryFloor + 5 } ?? false)
+            return low ? .warning : .holding
+        case .grace: return .winding
+        case .stopped(let reason): return reason == .userLetItSleep ? .idle : .warning
+        }
+    }
+
     /// Who is working: the tool when it is known ("Claude Code"), else the app ("Cursor").
     static func subject(_ reason: HoldReason) -> String { reason.tool ?? reason.title }
 

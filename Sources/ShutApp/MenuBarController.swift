@@ -1,6 +1,8 @@
 import AppKit
 import Combine
+import SwiftUI
 import TransitionKit
+import Tuner
 
 /// The status item and its menu. The angle readout only updates while the menu
 /// is open, so an idle app does no menu work at all.
@@ -38,31 +40,87 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// The first switch-on needs the consent sheet, which lives in the panel.
     var showAwakePage: (() -> Void)?
 
-    /// Set once by the app. The mark gains a dot while the lid is being held; that
-    /// follows the arbiter's state as an event, never a timer.
+    /// Set once by the app. The mark carries a small badge that says what the lid will do,
+    /// in the one place that is always on screen: a dot while holding, a ring while winding
+    /// down, Saffron when a limit is near or has spoken. It follows the controller's changes
+    /// as events, never a timer.
     var stayAwake: StayAwakeController? {
         didSet {
             guard let stayAwake else { return }
-            stayAwake.arbiter.$state
-                .map(\.holdsLid)
+            stayAwake.objectWillChange
+                .receive(on: RunLoop.main)   // willChange: read the new values on the next turn
+                .map { [weak stayAwake] _ -> Badge in
+                    guard let stayAwake else { return Badge(dot: .idle, toolTip: "Shut") }
+                    let arbiter = stayAwake.arbiter
+                    let dot = AwakeText.badge(state: arbiter.state, conditions: arbiter.conditions, limits: arbiter.limits)
+                    // The headline has no running time in it, so a tooltip set now stays true.
+                    let headline = AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
+                                                  limits: arbiter.limits, now: Date()).headline
+                    return Badge(dot: dot, toolTip: arbiter.limits.isOn ? "Shut · \(headline)" : "Shut")
+                }
                 .removeDuplicates()
-                .sink { [weak self] holding in self?.showHoldingDot(holding) }
+                .sink { [weak self] badge in self?.show(badge) }
                 .store(in: &cancellables)
         }
     }
 
-    private func showHoldingDot(_ holding: Bool) {
+    private struct Badge: Equatable {
+        let dot: AwakeText.Dot
+        let toolTip: String
+    }
+
+    private func show(_ badge: Badge) {
         guard let button = statusItem.button, let mark = AppAssets.menuBarIcon else { return }
-        guard holding else { button.image = mark; return }
+        button.toolTip = badge.toolTip
+        button.image = Self.image(mark: mark, dot: badge.dot)
+    }
+
+    /// The mark with its badge. Dot and ring stay template images, so the menu bar tints
+    /// them. Saffron cannot be a template: there the mark is filled with `labelColor`
+    /// inside the drawing handler, which AppKit runs again whenever the menu bar turns
+    /// light or dark.
+    static func image(mark: NSImage, dot: AwakeText.Dot) -> NSImage {
+        guard dot != .idle else { return mark }
         let image = NSImage(size: mark.size, flipped: false) { rect in
             mark.draw(in: rect)
-            NSColor.black.setFill()
-            NSBezierPath(ovalIn: NSRect(x: rect.maxX - 6, y: rect.maxY - 6, width: 5.5, height: 5.5)).fill()
+            if dot == .warning {
+                NSColor.labelColor.setFill()
+                rect.fill(using: .sourceIn)
+            }
+            let spot = NSRect(x: rect.maxX - 6, y: rect.maxY - 6, width: 5.5, height: 5.5)
+            // A sliver of nothing around the badge, so it reads as a badge and not as
+            // part of the mark it overlaps.
+            NSGraphicsContext.current?.compositingOperation = .clear
+            NSBezierPath(ovalIn: spot.insetBy(dx: -1.25, dy: -1.25)).fill()
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            switch dot {
+            case .idle: break
+            case .holding:
+                NSColor.black.setFill()
+                NSBezierPath(ovalIn: spot).fill()
+            case .winding:
+                NSColor.black.setStroke()
+                let ring = NSBezierPath(ovalIn: spot.insetBy(dx: 0.6, dy: 0.6))
+                ring.lineWidth = 1.2
+                ring.stroke()
+            case .warning:
+                NSColor(TunerTheme.saffron).setFill()
+                NSBezierPath(ovalIn: spot.insetBy(dx: -0.5, dy: -0.5)).fill()
+                NSColor.labelColor.withAlphaComponent(0.55).setStroke()
+                let edge = NSBezierPath(ovalIn: spot.insetBy(dx: -0.5, dy: -0.5))
+                edge.lineWidth = 0.75
+                edge.stroke()
+            }
             return true
         }
-        image.isTemplate = true
-        image.accessibilityDescription = "Shut, keeping the Mac awake"
-        button.image = image
+        image.isTemplate = dot != .warning
+        switch dot {
+        case .idle: break
+        case .holding: image.accessibilityDescription = "Shut, keeping the Mac awake"
+        case .winding: image.accessibilityDescription = "Shut, about to let the Mac sleep"
+        case .warning: image.accessibilityDescription = "Shut, not keeping the Mac awake: a limit was reached or is near"
+        }
+        return image
     }
 
     init(controller: AppController, settings: AppSettings, registry: TransitionRegistry) {

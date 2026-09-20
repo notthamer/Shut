@@ -47,6 +47,19 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(switchedOff.dot, .idle)
     }
 
+    func testTheMenuBarBadgeSaysWhatTheLidWillDo() {
+        func badge(_ state: HoldState, _ conditions: PowerConditions? = nil) -> AwakeText.Dot {
+            AwakeText.badge(state: state, conditions: conditions ?? plugged, limits: limits)
+        }
+        XCTAssertEqual(badge(.off), .idle)
+        XCTAssertEqual(badge(.ready), .idle)
+        XCTAssertEqual(badge(.holding), .holding)
+        XCTAssertEqual(badge(.holding, PowerConditions(onCharger: false, batteryPercent: 23)), .warning)
+        XCTAssertEqual(badge(.grace(until: t0)), .winding)
+        XCTAssertEqual(badge(.stopped(.tooHot)), .warning)
+        XCTAssertEqual(badge(.stopped(.userLetItSleep)), .idle, "the user's own choice is not a warning")
+    }
+
     func testOptionsSummaryLeadsWithTheReasonsThatAreOn() {
         XCTAssertEqual(AwakeText.optionsSummary(working: true, display: true, apps: false, batteryFloor: 20),
                        "Working · display · sleeps at 20 %")
