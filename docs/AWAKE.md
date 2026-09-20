@@ -45,17 +45,19 @@ screen.
   47 min"); a card appears above them only to warn (battery near the floor).
 - **The first switch-on** goes through a Void Black sheet with the eyes asleep at the
   top; "Turn on" opens them, and the sheet leaves a moment later.
-- **Two tabs under the header: "Lid effects" and "Stay awake".** The app has two
-  sections and they look like it. The eyes sit in the "Stay awake" tab, so the state is
-  in view from either one. The header has one switch, in one place, and it belongs to
-  the tab on show; its label says which ("Lid effects" or "Stay awake").
-- **Words only when they matter.** Beside the tabs, on the Lid effects tab, one line of
-  status with its one action appears while the Mac is being kept awake ("Claude Code is
-  working · 47 min · Let it sleep"), while it winds down, when a limit is near or has
-  spoken, when an app is asking, and for an unread receipt. "It will sleep, as always"
-  is not worth a line, and neither is an offer to turn the feature on: the tab is the
-  offer. (It replaced a strip that was a status readout, a link and a button holder at
-  once, and that mostly said "Nothing is working", which read like an error.)
+- **Two sections, as two words in the header: "Lid effects" and "Stay awake".** No pill
+  and no row of their own. The 2-pt spectrum line that runs under the header is the
+  indicator: it is drawn under the chosen word, over a hairline. The eyes sit beside
+  "Stay awake", so the state is in view from either section. The header has one switch,
+  in one place, and it belongs to the section on show; its label says which.
+- **Words only when they matter.** A status row appears under the header, on the Lid
+  effects side, only when there is something to say: the Mac is being kept awake
+  ("Claude Code is working · 47 min · Let it sleep"), it is winding down, a limit is near
+  or has spoken, an app is asking, or a receipt is unread. "It will sleep, as always" is
+  not worth a row, and neither is an offer to turn the feature on: the section's name is
+  the offer. When the row is absent the page has its height; the panel never changes
+  size. (All this replaced a strip that was a status readout, a link and a button holder
+  at once, and that mostly said "Nothing is working", which read like an error.)
 - **The page answers one question, always in the same words: what will closing the lid
   do?** "Closing the lid will sleep your Mac." or "Closing the lid keeps your Mac
   awake.", then why. If "An app is busy" is off it says that agents and builds will not

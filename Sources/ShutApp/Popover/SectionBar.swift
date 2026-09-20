@@ -2,101 +2,114 @@ import StayAwake
 import SwiftUI
 import Tuner
 
-/// Under the header: the app's two sections as two equal tabs, and, only when there is
-/// something to say, one line of status with its one action.
-///
-/// It replaces a strip that was a status readout, a navigation link and a button holder at
-/// once, and that spent most of its life saying "nothing" in the most prominent place in the
-/// panel. Now navigation looks like navigation (tabs, as on any Mac), the eyes in the
-/// "Stay awake" tab carry the state at a glance, and words appear when they matter: staying
-/// awake, winding down, a limit, a question, an unread receipt.
-struct SectionBar: View {
+/// The app's two sections, as two words in the header: "Lid effects" and "Stay awake". No
+/// pill, no row of their own. The 2-pt spectrum line that has always run under the header
+/// is the indicator: it is drawn under the chosen word, and the rest of the line is a
+/// hairline. The eyes sit beside "Stay awake", so its state shows from either section.
+struct SectionTabs: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
 
-    static let height: CGFloat = 40
-
     var body: some View {
-        // The sentence can carry a running time ("47 min"); a slow timeline keeps it true
-        // while the panel is on screen and costs nothing when it is not.
-        TimelineView(.periodic(from: .now, by: 30)) { _ in
-            let status = model.stayAwake.status
-            let isOn = model.stayAwake.settings.isOn && model.stayAwake.settings.hasConsented
-            HStack(spacing: 12) {
-                HStack(spacing: 2) {
-                    SectionTab(isSelected: model.page == .styles, help: "Ways to close your Mac: the style and how it plays.") {
-                        model.page = .styles
-                    } label: { Text("Lid effects") }
-                    SectionTab(isSelected: model.page == .awake, help: "Keep working with the lid shut: when, and its limits.") {
-                        model.page = .awake
-                    } label: {
-                        HStack(spacing: 7) {
-                            AwakeEyes(mood: .init(status.dot, isOn: isOn), pixel: 1.5, tint: eyeTint(status.dot, isOn: isOn))
-                            Text("Stay awake")
-                        }
-                    }
-                }
-                .padding(2)
-                .surface(.pill)
-
-                Spacer(minLength: 8)
-
-                // On the Stay awake tab the page itself says all of this, with the same button.
-                if status.speaks, model.page != .awake {
-                    HStack(spacing: 10) {
-                        StatusSpot(dot: status.dot)
-                        Text(status.sentence)
-                            .font(TunerTheme.body).foregroundStyle(theme.ink)
-                            .lineLimit(1).minimumScaleFactor(0.85).truncationMode(.tail)
-                            .id(status.sentence).transition(.opacity)
-                            .help(status.sentence)
-                        if let action = status.action {
-                            CapsuleButton(action.title) { model.performAwake(action) }
-                        }
-                    }
-                    .transition(.opacity)
+        let status = model.stayAwake.status
+        let isOn = model.stayAwake.settings.isOn && model.stayAwake.settings.hasConsented
+        HStack(spacing: 22) {
+            SectionTab(isSelected: model.page == .styles, help: "Ways to close your Mac: the style and how it plays.") {
+                model.page = .styles
+            } label: { Text("Lid effects") }
+            SectionTab(isSelected: model.page == .awake, help: "Keep working with the lid shut: when, and its limits.") {
+                model.page = .awake
+            } label: {
+                HStack(spacing: 7) {
+                    Text("Stay awake")
+                    AwakeEyes(mood: .init(status.dot, isOn: isOn), pixel: 1.5,
+                              tint: status.dot == .idle ? theme.inkTertiary : theme.ink)
                 }
             }
-            .padding(.horizontal, 16)
-            .frame(height: Self.height)
-            .tunerAnimation(TunerTheme.ease, value: status)
-            .tunerAnimation(TunerTheme.ease, value: model.page)
-            .accessibilityElement(children: .contain)
         }
-    }
-
-    private func eyeTint(_ dot: AwakeText.Dot, isOn: Bool) -> Color {
-        dot == .idle ? theme.inkTertiary : theme.ink
+        .tunerAnimation(TunerTheme.ease, value: status)
     }
 }
 
-/// One of the two tabs: Paper White with a border when chosen, bare Linen otherwise.
+/// One word of the two. Ink when chosen, Carbon otherwise; the spectrum under it when chosen.
 private struct SectionTab<Label: View>: View {
     let isSelected: Bool
     let help: String
     let action: () -> Void
     @ViewBuilder let label: () -> Label
     @Environment(\.tunerTheme) private var theme
+    @State private var hover = false
 
     var body: some View {
         Button(action: action) {
             label()
                 .font(isSelected ? TunerTheme.bodyMedium : TunerTheme.body)
-                .foregroundStyle(isSelected ? theme.ink : theme.inkLabel)
+                .foregroundStyle(isSelected || hover ? theme.ink : theme.inkLabel)
                 .lineLimit(1).fixedSize()
-                .padding(.horizontal, 14).padding(.vertical, 5)
-                .background {
-                    Capsule().fill(theme.card)
-                        .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+                .frame(height: PopoverHeader.height)
+                // The indicator sits exactly where the header's bottom line runs.
+                .overlay(alignment: .bottom) {
+                    LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing)
+                        .frame(height: 2)
                         .opacity(isSelected ? 1 : 0)
+                        .offset(y: 1)
                 }
-                .contentShape(Capsule())
+                .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
         .focusEffectDisabled()
+        .onHover { hover = $0 }
         .tunerAnimation(TunerTheme.ease, value: isSelected)
+        .tunerAnimation(TunerTheme.ease, value: hover)
         .help(help)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+}
+
+/// A row that exists only when there is something to say. On the right, what Stay awake is
+/// doing and its one action (staying awake, winding down, a limit, a question, an unread
+/// receipt); on the left, on the Lid effects side, why the lid effects are not simply
+/// running (paused, no sensor, lid shut on an external display). Silence otherwise: the
+/// panel gives the row's height back to the page.
+struct StatusLine: View {
+    @ObservedObject var model: PopoverModel
+    @Environment(\.tunerTheme) private var theme
+
+    static let height: CGFloat = 40
+
+    /// Whether the row is there at all.
+    static func shows(_ model: PopoverModel) -> Bool {
+        guard model.page == .styles else { return false }   // the Stay awake page says it itself
+        return (model.stayAwake.hasLid && model.stayAwake.status.speaks) || model.lidEffectsNote != nil
+    }
+
+    var body: some View {
+        // The sentence can carry a running time ("47 min"); a slow timeline keeps it true
+        // while the panel is on screen and costs nothing when it is not.
+        TimelineView(.periodic(from: .now, by: 30)) { _ in
+            let status = model.stayAwake.status
+            HStack(spacing: 10) {
+                if let note = model.lidEffectsNote {
+                    Text(note).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                if model.stayAwake.hasLid, status.speaks {
+                    StatusSpot(dot: status.dot)
+                    Text(status.sentence)
+                        .font(TunerTheme.body).foregroundStyle(theme.ink)
+                        .lineLimit(1).minimumScaleFactor(0.85).truncationMode(.tail)
+                        .id(status.sentence).transition(.opacity)
+                        .help(status.sentence)
+                    if let action = status.action {
+                        CapsuleButton(action.title) { model.performAwake(action) }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .frame(height: Self.height)
+            .tunerAnimation(TunerTheme.ease, value: status)
+            .accessibilityElement(children: .contain)
+        }
     }
 }
 

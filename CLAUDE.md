@@ -29,7 +29,8 @@ built-in display, and ships a reusable tuning panel. The design is described in
    cards and secondary buttons, Linen pills and wells, Pure Black / Carbon /
    Slate ink, Silver borders, Soft Graphite dark fills (a switch that is on, and the primary button), Lime Wash selection,
    Saffron warm highlight, Void Black only on the welcome stage; the Spectrum
-   Marquee appears once per panel as a 2-pt `SpectrumLine`, never as a fill,
+   Marquee appears once per panel as a 2-pt line, never as a fill (under the header; with
+   two sections it is the mark under the chosen one),
    and fills the mark on the app icon (Void Black tile, `scripts/make-glass-icon.swift`).
    **Buttons** have three tiers (`PrimaryButton`, `SecondaryButton`/`ActionRow`, the
    text link) and a view has at most one primary: filled Soft Graphite, as wide as its

@@ -11,17 +11,25 @@ struct PopoverView: View {
 
     static let width: CGFloat = 640
     static let previewWidth: CGFloat = 290
-    /// 560 before the section bar; the bar and its hairline came out of the body so the panel kept its size.
-    static let bodyHeight: CGFloat = 560 - SectionBar.height - 1
+    /// The page's height. The status line, when it has something to say, takes its row out of
+    /// the page, so the panel is the same size with it or without.
+    static func bodyHeight(statusLine: Bool) -> CGFloat { statusLine ? 560 - StatusLine.height - 1 : 560 }
 
     var body: some View {
+        let statusLine = StatusLine.shows(model)
+        let bodyHeight = Self.bodyHeight(statusLine: statusLine)
         VStack(spacing: 0) {
             PopoverHeader(model: model, hostedInWindow: hostedInWindow)
-            // The one place the spectrum appears: a thin line under the header.
-            SpectrumLine(height: 2)
-            // The two sections as tabs. A Mac with no lid has only one, so no tabs.
+            // The one place the spectrum appears. With two sections it is the mark under the
+            // chosen one (drawn by the tab) over a hairline; a Mac with no lid has one
+            // section, and keeps the full line.
             if model.stayAwake.hasLid {
-                SectionBar(model: model)
+                Rectangle().fill(theme.hairline).frame(height: 1)
+            } else {
+                SpectrumLine(height: 2)
+            }
+            if statusLine {
+                StatusLine(model: model).transition(.opacity)
                 Rectangle().fill(theme.hairline).frame(height: 1)
             }
             ZStack {
@@ -31,10 +39,10 @@ struct PopoverView: View {
                         PreviewColumn(model: model)
                             .padding(16)
                             // Top-aligned: if it ever runs long, the bottom gives, never the preview.
-                            .frame(width: Self.previewWidth, height: Self.bodyHeight, alignment: .top)
+                            .frame(width: Self.previewWidth, height: bodyHeight, alignment: .top)
                         Rectangle().fill(theme.hairline).frame(width: 1)
                         ControlsColumn(model: model)
-                            .frame(width: Self.width - Self.previewWidth - 1, height: Self.bodyHeight)
+                            .frame(width: Self.width - Self.previewWidth - 1, height: bodyHeight)
                     }
                     .opacity(model.settings.isEnabled ? 1 : 0.45)
                     .allowsHitTesting(model.settings.isEnabled)
@@ -44,7 +52,7 @@ struct PopoverView: View {
                     AwakePage(model: model).transition(.blurFade)
                 }
             }
-            .frame(width: Self.width, height: Self.bodyHeight)
+            .frame(width: Self.width, height: bodyHeight)
             .tunerAnimation(TunerTheme.ease, value: model.page)
             Rectangle().fill(theme.hairline).frame(height: 1)
             PopoverFooter(model: model)
@@ -58,6 +66,8 @@ struct PopoverHeader: View {
     @ObservedObject var model: PopoverModel
     var hostedInWindow = false
     @Environment(\.tunerTheme) private var theme
+
+    static let height: CGFloat = 56
 
     /// Green: following the lid. Orange: running, but substituting. Grey: paused
     /// or nothing to follow.
@@ -75,11 +85,9 @@ struct PopoverHeader: View {
             Circle().fill(statusColor).frame(width: 6, height: 6)
                 .tunerAnimation(TunerTheme.ease, value: statusColor)
                 .help(model.statusLine)
-            // A coloured dot alone says nothing. When things are ordinary it is enough;
-            // when they are not (paused, a style standing in, no sensor) it gets its words.
-            if !model.statusIsOrdinary, model.page == .styles {
-                Text(model.statusLine).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1)
-                    .transition(.opacity)
+            // The dot's words, when it needs any, are in the status line under the header.
+            if model.stayAwake.hasLid {
+                SectionTabs(model: model).padding(.leading, 18)
             }
             Spacer(minLength: 8)
             if !hostedInWindow {
@@ -101,7 +109,7 @@ struct PopoverHeader: View {
             }
         }
         .padding(.horizontal, 16)
-        .frame(height: 56)
+        .frame(height: Self.height)
         .tunerAnimation(TunerTheme.ease, value: model.statusIsOrdinary)
         // In the window the traffic lights own the top strip; the header sits under it.
         .padding(.top, hostedInWindow ? 26 : 0)

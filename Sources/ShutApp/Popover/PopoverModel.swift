@@ -111,6 +111,15 @@ final class PopoverModel: ObservableObject {
         return sensor.capability != .unsupported
     }
 
+    /// Why the lid effects are not simply running, for the status line; nil when they are.
+    /// Not the "needs Screen Recording" case: the permission card right under it says that.
+    var lidEffectsNote: String? {
+        if !settings.isEnabled { return "Lid effects are paused" }
+        if BuiltInDisplay.screen == nil, BuiltInDisplay.externalCount > 0 { return "Lid shut on an external display: nothing to play" }
+        if sensor.capability == .unsupported { return "Preview only: no lid sensor on this Mac" }
+        return nil
+    }
+
     /// Set once "Allow…" has opened System Settings: from then on the card's next step is
     /// the restart macOS needs before the permission counts.
     @Published var askedForScreenRecording = false
