@@ -243,7 +243,9 @@ enum AwakeText {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
         formatter.timeStyle = .short
-        return formatter.string(from: date)
+        // macOS puts a narrow no-break space before AM/PM; Playfair Display has no glyph
+        // for it and sets "3:23PM". An ordinary no-break space keeps the two together.
+        return formatter.string(from: date).replacingOccurrences(of: "\u{202F}", with: "\u{00A0}")
     }
 }
 

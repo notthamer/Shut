@@ -84,6 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popoverModel: PopoverModel!
     private var popover: PopoverController!
     private var mainWindow: MainWindowController!
+    private var receiptSlip: ReceiptSlip!
     private let welcome = WelcomeWindow()
     private let dock = DockPresence()
     private let updater = Updater()
@@ -210,6 +211,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.checkPermissionNow()
             if mainWindow.isShown { popover.close(); mainWindow.show() } else { popover.toggle(relativeTo: button) }
         }
+        // Coming back to a Mac that stayed awake: the receipt is handed over, not filed.
+        receiptSlip = ReceiptSlip(stayAwake: stayAwake,
+                                  anotherSurfaceIsOpen: { [weak self] in self?.popover.isShown == true || self?.mainWindow.isShown == true })
+        receiptSlip.anchor = { [weak self] in self?.menuBar.statusButton }
+        receiptSlip.openAwakePage = { [weak self] in self?.menuBar.showAwakePage?() }
+        stayAwake.onReturn = { [weak self] in self?.receiptSlip.lidOpened() }
+
         menuBar.showAwakePage = { [weak self] in
             guard let self else { return }
             popoverModel.page = .awake

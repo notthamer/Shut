@@ -27,6 +27,8 @@ public final class StayAwakeSettings: ObservableObject {
     /// Holding Option as the lid comes down flips the decision for that one close.
     @Published public var optionFlips: Bool { didSet { defaults.set(optionFlips, forKey: "stayAwake.optionFlips") } }
 
+    /// A slip under the menu bar icon on coming back, saying what happened while the lid was shut.
+    @Published public var showReceipt: Bool { didSet { defaults.set(showReceipt, forKey: "stayAwake.showReceipt") } }
     /// How many closes have carried the "Hold ⌥" hint. It teaches, then gets out of the way.
     public var optionHintsShown: Int { didSet { defaults.set(optionHintsShown, forKey: "stayAwake.optionHintsShown") } }
     public static let optionHintLimit = 5
@@ -46,6 +48,7 @@ public final class StayAwakeSettings: ObservableObject {
         respectLowPowerMode = bool("stayAwake.lowPower", true)
         lockWhenShut = bool("stayAwake.lockWhenShut", true)
         optionFlips = bool("stayAwake.optionFlips", true)
+        showReceipt = bool("stayAwake.showReceipt", true)
         optionHintsShown = defaults.integer(forKey: "stayAwake.optionHintsShown")
     }
 

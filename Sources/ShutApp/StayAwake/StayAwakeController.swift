@@ -23,6 +23,8 @@ public final class StayAwakeController: ObservableObject {
 
     let journal: HoldJournal
     private let commands = CommandHold()
+    /// The lid opened on a receipt nobody has read yet: the moment for the slip.
+    var onReturn: (() -> Void)?
     /// What Option did to this one close, so a second press can take it back.
     private enum Flip { case toSleep, toAwake }
     private var flip: Flip?
@@ -113,6 +115,7 @@ public final class StayAwakeController: ObservableObject {
             // Option flipped this one close to "sleep"; the next close decides afresh.
             if flip == .toSleep { arbiter.undoLetItSleep() }
             flip = nil
+            if let receipt = journal.last, !receipt.read { onReturn?() }
             objectWillChange.send()
         } else {
             journal.lidShut(holding: arbiter.state.holdsLid, reasons: arbiter.reasons, battery: battery)

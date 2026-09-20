@@ -4,6 +4,10 @@
 
 - Stay awake: close the lid while something is working and your Mac stays awake, then sleeps by itself when the work is done. Reasons, not timers: an allowed app asking macOS to stay awake, an external display, apps you pick, "I say so", or `shut hold` in a terminal. No password and no helper.
 - The closing screen says what will happen ("Staying awake · Cursor is working"), and a short receipt says what happened when you come back. Hold Option while closing to flip the decision once.
+- When you come back, a slip under the menu bar icon says what happened while the lid was shut, once the screen is unlocked. It fades by itself.
+- An app that is asking to stay awake and is not allowed yet (a call, a render) is asked about once, in the bar and on the Awake page: Allow, or Not this app.
+- The menu bar icon shows a dot while holding, a ring while winding down and Saffron when a limit is near or has spoken. Its tooltip says what is working.
+- The closing caption is readable on any wallpaper, bad news is set in Saffron, and Option works at any point of the close (press again to take it back). The first few closes show how.
 - Limits that always win: a battery floor, heat, eight hours on battery, Low Power Mode. Locks when the lid shuts. Off until you turn it on.
 
 ## 0.2.1

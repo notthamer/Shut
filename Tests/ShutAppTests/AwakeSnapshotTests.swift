@@ -89,6 +89,88 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    // MARK: The receipt slip
+
+    /// A held close that ended while the lid was shut, left unread in the journal.
+    private func leaveAReceipt(in awake: StayAwakeController, end: HoldState = .ready) {
+        let shut = Date().addingTimeInterval(-2 * 3600 - 14 * 60)
+        let cursor = HoldReason(id: "working:cursor", kind: .working, title: "Claude Code", since: shut)
+        awake.journal.lidShut(holding: true, reasons: [cursor], battery: 82, now: shut)
+        awake.journal.holdChanged(to: end, now: Date().addingTimeInterval(-40 * 60))
+        awake.journal.lidOpened(battery: 64)
+    }
+
+    func testTheSlipWaitsForTheUnlockAndSpeaksOnce() throws {
+        let (_, awake) = try makeModel(on: true, reasons: [])
+        leaveAReceipt(in: awake)
+        XCTAssertEqual(awake.journal.last?.read, false)
+
+        var locked = true
+        var shown: [HoldReceipt] = []
+        let slip = ReceiptSlip(stayAwake: awake, isLocked: { locked })
+        slip.settleDelay = 0
+        slip.present = { shown.append($0) }
+
+        slip.lidOpened()
+        XCTAssertTrue(shown.isEmpty, "nothing over a lock screen")
+        locked = false
+        slip.sessionUnlocked()
+        XCTAssertEqual(shown.count, 1)
+        XCTAssertEqual(awake.journal.last?.read, true, "handed over counts as read, so the bar does not repeat it")
+
+        slip.lidOpened()
+        slip.sessionUnlocked()
+        XCTAssertEqual(shown.count, 1, "once")
+        awake.shutDown()
+    }
+
+    func testNoSlipWhenSwitchedOffOrWhenThePanelIsAlreadyOpen() throws {
+        let (_, awake) = try makeModel(on: true, reasons: [])
+        leaveAReceipt(in: awake)
+        var shown = 0
+        let behindAPanel = ReceiptSlip(stayAwake: awake, isLocked: { false }, anotherSurfaceIsOpen: { true })
+        behindAPanel.settleDelay = 0
+        behindAPanel.present = { _ in shown += 1 }
+        behindAPanel.lidOpened()
+        XCTAssertEqual(shown, 0)
+        XCTAssertEqual(awake.journal.last?.read, false, "the bar will say it instead")
+
+        awake.settings.showReceipt = false
+        let quiet = ReceiptSlip(stayAwake: awake, isLocked: { false })
+        quiet.settleDelay = 0
+        quiet.present = { _ in shown += 1 }
+        quiet.lidOpened()
+        XCTAssertEqual(shown, 0)
+        awake.shutDown()
+    }
+
+    func testTheSlipRenders() throws {
+        let (_, awake) = try makeModel(on: true, reasons: [])
+        for (name, end) in [("finished", HoldState.ready), ("battery", .stopped(.batteryFloor))] {
+            leaveAReceipt(in: awake, end: end)
+            let receipt = try XCTUnwrap(awake.journal.last)
+            XCTAssertFalse(AwakeText.receipt(receipt).isEmpty)
+            let hosting = NSHostingView(rootView: ReceiptSlipView(receipt: receipt).environment(\.tunerTheme, TunerTheme()))
+            hosting.appearance = TunerTheme.appearance
+            let size = hosting.fittingSize
+            XCTAssertEqual(size.width, ReceiptSlipView.width)
+            hosting.frame = NSRect(origin: .zero, size: size)
+            let container = NSView(frame: hosting.frame.insetBy(dx: -24, dy: -24).offsetBy(dx: 24, dy: 24))
+            container.wantsLayer = true
+            container.layer?.backgroundColor = NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1).cgColor
+            hosting.setFrameOrigin(NSPoint(x: 24, y: 24))
+            container.addSubview(hosting)
+            hosting.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+            let rep = try XCTUnwrap(container.bitmapImageRepForCachingDisplay(in: container.bounds))
+            container.cacheDisplay(in: container.bounds, to: rep)
+            if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"], let png = rep.representation(using: .png, properties: [:]) {
+                try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("slip-\(name).png"))
+            }
+        }
+        awake.shutDown()
+    }
+
     /// Option flips the decision for one close, and a second press takes it back.
     func testOptionFlipsAndFlipsBack() throws {
         let cursor = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", since: Date())

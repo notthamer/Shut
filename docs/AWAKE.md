@@ -21,15 +21,31 @@ screen.
 
 - **The Awake bar**, under the header of the panel, always says what is keeping
   the Mac awake in one sentence, with the one thing to do about it: "Cursor is
-  working · 47 min · Let it sleep". The menu bar mark gains a dot while the lid is
-  being held.
+  working · 47 min · Let it sleep". Once you have switched the feature off it stops
+  offering itself and says "Off · lid sleeps as usual".
+- **The menu bar mark** carries a badge that says what the lid will do, in the one
+  place that is always on screen: a dot while holding, a ring while winding down
+  after the work ended, Saffron when a limit is near or has stopped the hold. Its
+  tooltip is the headline ("Claude Code is working in Cursor.").
 - **As the lid comes down**, the closing screen says what will happen: "Staying
   awake · Cursor is working". With nothing to hold for there is no caption and the
-  lid sleeps your Mac as it always has.
-- **When you come back**, a short receipt: how long it stayed awake and for what,
-  when it slept, how much battery went. If a hold was cut short it says why.
-- **Hold Option as you close the lid** to do the opposite this once: sleep although
-  something is working, or stay awake for an hour although nothing is.
+  lid sleeps your Mac as it always has. The caption brings its own dark gradient
+  (measured against a plain white desktop), and a limit that lets the Mac sleep
+  ("Sleeping · battery is at 18 %") is set in Saffron.
+- **When you come back**, the receipt is handed over: a slip of paper under the menu
+  bar icon, once the lid is open and the screen unlocked, saying how long it stayed
+  awake and for what, when it slept, how much battery went. If a hold was cut short
+  it says why, on Saffron. It never takes focus, fades after seven seconds (hovering
+  keeps it), and a click opens the Awake page, which keeps it under "Last time".
+  "Receipt when I come back" in Options switches it off; with Shut's panel already
+  open the bar says it instead.
+- **Hold Option as the lid comes down**, at the start or at any point on the way, to
+  do the opposite this once: sleep although something is working, or stay awake for
+  an hour although nothing is. A second press takes it back, and the caption
+  crossfades to say which way it went. Option is read on the frames a close already
+  draws: no timer, no event tap, no permission. The first five captioned closes
+  carry a one-line hint, "Hold ⌥ to let it sleep instead"; using Option once ends
+  the lesson early.
 
 ## How "something is working" is known
 
@@ -39,7 +55,11 @@ does it while it works). Shut reads those requests and walks each one up the
 process tree to the app it belongs to, so `caffeinate <- claude <- zsh <- Cursor`
 is "Cursor". Apps seen asking appear in **Allowed apps** by themselves; developer
 tools and anything run from a terminal are allowed by default, a music player is
-not. You decide.
+not. You decide, and you are asked where you are already looking: while nothing is
+holding the lid, an app that is asking and has never been decided about turns the
+bar and the Awake page into one question, "Zoom is asking to stay awake", with
+**Allow** and **Not this app**. Either answer is remembered and the question is
+never asked about that app again.
 
 macOS sends no event when one app's request ends, so the list is read when it
 matters: as the lid starts to close, while Shut's window is open, and once every

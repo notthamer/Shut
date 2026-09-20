@@ -467,6 +467,8 @@ private struct AwakeLimits: View {
                           help: "On battery, at this charge Shut lets your Mac sleep whatever is working.")
             ToggleRow("Lock when shut", isOn: Binding(get: { settings.lockWhenShut }, set: { settings.lockWhenShut = $0 }),
                       help: "A Mac that never slept is unlocked for whoever opens it next. On: Shut locks the screen as the lid shuts.")
+            ToggleRow("Receipt when I come back", isOn: Binding(get: { settings.showReceipt }, set: { settings.showReceipt = $0 }),
+                      help: "When you open the lid after your Mac stayed awake, a small note under the menu bar icon says what happened: how long, how it ended, the battery it used. It fades by itself.")
             ToggleRow("Pause in Low Power Mode", isOn: Binding(get: { settings.respectLowPowerMode }, set: { settings.respectLowPowerMode = $0 }),
                       help: "While macOS Low Power Mode is on, the lid sleeps your Mac as usual.")
             ToggleRow("⌥ flips the decision", isOn: Binding(get: { settings.optionFlips }, set: { settings.optionFlips = $0 }),
