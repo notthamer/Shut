@@ -24,7 +24,7 @@ public final class StayAwakeController: ObservableObject {
     let journal: HoldJournal
     private let commands = CommandHold()
     /// The lid opened on a receipt nobody has read yet: the moment for the slip.
-    var onReturn: (() -> Void)?
+    var onReturn: ((HoldReceipt) -> Void)?
     /// What Option did to this one close, so a second press can take it back.
     private enum Flip { case toSleep, toAwake }
     private var flip: Flip?
@@ -44,7 +44,9 @@ public final class StayAwakeController: ObservableObject {
         }
         arbiter.onTransition = { [weak self] from, to, reasons in
             if let self, self.arbiter.lidClosed { self.journal.holdChanged(to: to) }
-            Log.awake.info("hold \(String(describing: from), privacy: .public) -> \(String(describing: to), privacy: .public), reasons: \(reasons.map(\.id).joined(separator: ", "), privacy: .public)")
+            // notice, not info: info lines are gone from the log within minutes, and "why did
+            // it sleep last night" is asked the next morning.
+            Log.awake.notice("hold \(String(describing: from), privacy: .public) -> \(String(describing: to), privacy: .public), reasons: \(reasons.map(\.id).joined(separator: ", "), privacy: .public)")
         }
         arbiter.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         settings.objectWillChange
@@ -108,14 +110,20 @@ public final class StayAwakeController: ObservableObject {
     }
 
     private func lidEdge(isOpen: Bool) {
+        arbiter.refreshPower()
         arbiter.lidChanged(closed: !isOpen)
         let battery = arbiter.conditions.batteryPercent
+        Log.awake.notice("lid \(isOpen ? "opened" : "shut", privacy: .public): \(String(describing: self.arbiter.state), privacy: .public), battery \(battery ?? -1) %")
         if isOpen {
             journal.lidOpened(battery: battery)
             // Option flipped this one close to "sleep"; the next close decides afresh.
             if flip == .toSleep { arbiter.undoLetItSleep() }
             flip = nil
-            if let receipt = journal.last, !receipt.read { onReturn?() }
+            // Handed to the slip as it is now: the Awake page, if it happens to be open, marks
+            // a receipt read the moment it draws it, and that must not swallow the slip.
+            if let receipt = journal.last, !receipt.read, receipt.openedAt.map({ Date().timeIntervalSince($0) < 5 }) == true {
+                onReturn?(receipt)
+            }
             objectWillChange.send()
         } else {
             journal.lidShut(holding: arbiter.state.holdsLid, reasons: arbiter.reasons, battery: battery)

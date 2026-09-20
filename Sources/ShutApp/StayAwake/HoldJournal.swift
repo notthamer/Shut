@@ -79,6 +79,7 @@ final class HoldJournal {
         // A lid shut for a moment is not worth a receipt.
         guard now.timeIntervalSince(receipt.closedAt) >= 60 else { return }
         last = receipt
+        Log.awake.notice("receipt: \(AwakeText.receipt(receipt).joined(separator: " "), privacy: .public)")
     }
 
     func markRead() {
@@ -122,7 +123,9 @@ extension AwakeText {
         if let end = receipt.end, let endedAt = receipt.endedAt {
             let length = duration(endedAt.timeIntervalSince(receipt.closedAt))
             switch end {
-            case .finished: lines.append("\(who) kept your Mac awake for \(length), until \(clock(endedAt)). Then it slept.")
+            case .finished: lines.append(receipt.titles.isEmpty
+                ? "Your Mac stayed awake for \(length), until \(clock(endedAt)). Then it slept."
+                : "\(who) kept your Mac awake for \(length), until \(clock(endedAt)). Then it slept.")
             case .batteryFloor: lines.append("Stopped at \(clock(endedAt)) because the battery was low. \(who) \(works) still going.")
             case .tooHot: lines.append("Stopped at \(clock(endedAt)) because your Mac was hot. \(who) \(works) still going.")
             case .timeCap: lines.append("Stopped at \(clock(endedAt)) after 8 hours on battery.")
@@ -132,7 +135,9 @@ extension AwakeText {
             case .sleptAnyway: lines.append("Your Mac slept at \(clock(endedAt)) although Shut was holding it. \(who) \(works) paused.")
             }
         } else if let openedAt = receipt.openedAt {
-            lines.append("\(who) kept your Mac awake for \(duration(openedAt.timeIntervalSince(receipt.closedAt))), the whole time the lid was shut.")
+            let length = duration(openedAt.timeIntervalSince(receipt.closedAt))
+            lines.append(receipt.titles.isEmpty ? "Your Mac stayed awake for \(length), the whole time the lid was shut."
+                                                : "\(who) kept your Mac awake for \(length), the whole time the lid was shut.")
         }
         if let from = receipt.batteryAtClose, let to = receipt.batteryAtOpen, from != to {
             lines.append("Battery \(from) → \(to) %.")

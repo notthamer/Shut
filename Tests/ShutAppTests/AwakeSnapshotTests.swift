@@ -115,7 +115,7 @@ final class AwakeSnapshotTests: XCTestCase {
     func testTheSlipWaitsForTheUnlockAndSpeaksOnce() throws {
         let (_, awake) = try makeModel(on: true, reasons: [])
         leaveAReceipt(in: awake)
-        XCTAssertEqual(awake.journal.last?.read, false)
+        let receipt = try XCTUnwrap(awake.journal.last)
 
         var locked = true
         var shown: [HoldReceipt] = []
@@ -123,35 +123,52 @@ final class AwakeSnapshotTests: XCTestCase {
         slip.settleDelay = 0
         slip.present = { shown.append($0) }
 
-        slip.lidOpened()
+        slip.lidOpened(receipt)
         XCTAssertTrue(shown.isEmpty, "nothing over a lock screen")
         locked = false
         slip.sessionUnlocked()
         XCTAssertEqual(shown.count, 1)
         XCTAssertEqual(awake.journal.last?.read, true, "handed over counts as read, so the bar does not repeat it")
 
-        slip.lidOpened()
         slip.sessionUnlocked()
-        XCTAssertEqual(shown.count, 1, "once")
+        XCTAssertEqual(shown.count, 1, "once per return")
         awake.shutDown()
     }
 
-    func testNoSlipWhenSwitchedOffOrWhenThePanelIsAlreadyOpen() throws {
+    /// What swallowed the first real slip: the Awake page was open, drew "Last time", and
+    /// marked the receipt read before the slip's moment came. The slip holds the receipt it
+    /// was handed, so that no longer matters; nor does a main window, which may be minimized.
+    func testAnOpenAwakePageDoesNotSwallowTheSlip() throws {
         let (_, awake) = try makeModel(on: true, reasons: [])
         leaveAReceipt(in: awake)
+        let receipt = try XCTUnwrap(awake.journal.last)
         var shown = 0
-        let behindAPanel = ReceiptSlip(stayAwake: awake, isLocked: { false }, anotherSurfaceIsOpen: { true })
-        behindAPanel.settleDelay = 0
-        behindAPanel.present = { _ in shown += 1 }
-        behindAPanel.lidOpened()
+        let slip = ReceiptSlip(stayAwake: awake, isLocked: { false })
+        slip.settleDelay = 0
+        slip.present = { _ in shown += 1 }
+        awake.perform(.ok)   // the page marking it read
+        slip.lidOpened(receipt)
+        XCTAssertEqual(shown, 1)
+        awake.shutDown()
+    }
+
+    func testNoSlipWhenSwitchedOffOrUnderTheOpenPopover() throws {
+        let (_, awake) = try makeModel(on: true, reasons: [])
+        leaveAReceipt(in: awake)
+        let receipt = try XCTUnwrap(awake.journal.last)
+        var shown = 0
+        let underThePopover = ReceiptSlip(stayAwake: awake, isLocked: { false }, anotherSurfaceIsOpen: { true })
+        underThePopover.settleDelay = 0
+        underThePopover.present = { _ in shown += 1 }
+        underThePopover.lidOpened(receipt)
         XCTAssertEqual(shown, 0)
-        XCTAssertEqual(awake.journal.last?.read, false, "the bar will say it instead")
+        XCTAssertEqual(awake.journal.last?.read, false, "the popover's bar says it instead")
 
         awake.settings.showReceipt = false
         let quiet = ReceiptSlip(stayAwake: awake, isLocked: { false })
         quiet.settleDelay = 0
         quiet.present = { _ in shown += 1 }
-        quiet.lidOpened()
+        quiet.lidOpened(receipt)
         XCTAssertEqual(shown, 0)
         awake.shutDown()
     }

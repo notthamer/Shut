@@ -194,6 +194,12 @@ final class HoldJournalTests: XCTestCase {
         XCTAssertTrue(AwakeText.receipt(try XCTUnwrap(raced.last))[0].contains("although Shut was holding it"), "a failed hold is said, not hidden")
     }
 
+    /// A hold with no named reason (the lid shut while winding down) has no "who".
+    func testAReceiptWithNobodyToName() {
+        let receipt = HoldReceipt(closedAt: t0, openedAt: t0.addingTimeInterval(180), titles: [], batteryAtClose: 72, batteryAtOpen: 72)
+        XCTAssertEqual(AwakeText.receipt(receipt), ["Your Mac stayed awake for 3 min, the whole time the lid was shut."])
+    }
+
     func testNoReceiptForAnUnheldOrMomentaryClose() {
         let journal = journal()
         journal.lidShut(holding: false, reasons: [], battery: 80, now: at(0))

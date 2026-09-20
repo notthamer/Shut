@@ -48,6 +48,11 @@ public final class PowerSourceMonitor {
         observers = []
     }
 
+    /// Reads now, whatever macOS has or has not notified. The arbiter asks at the lid's
+    /// edges and on its slow tick: a battery floor must not rest on a number that is only
+    /// as fresh as the last notification.
+    public func readNow() { refresh(always: false) }
+
     private func refresh(always: Bool) {
         let now = reader()
         guard always || now != conditions else { return }

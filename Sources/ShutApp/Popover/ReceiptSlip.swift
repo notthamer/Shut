@@ -41,14 +41,17 @@ final class ReceiptSlip {
         unlock.onUnlock = { [weak self] in self?.sessionUnlocked() }
     }
 
-    /// From Stay awake: the lid opened on a receipt nobody has read.
-    func lidOpened() {
-        guard stayAwake.settings.showReceipt else { return }
+    private var pending: HoldReceipt?
+
+    /// From Stay awake: the lid opened on a fresh receipt.
+    func lidOpened(_ receipt: HoldReceipt) {
+        guard stayAwake.settings.showReceipt else { Log.awake.notice("receipt slip: switched off"); return }
+        pending = receipt
         after(settleDelay) { [weak self] in
             guard let self else { return }
             // Locked (Lock when shut, or the Mac slept and woke): the desktop is not
             // there to show anything over. Wait for the unlock.
-            if isLocked() { waitingForUnlock = true } else { show() }
+            if isLocked() { waitingForUnlock = true; Log.awake.notice("receipt slip: waiting for unlock") } else { show() }
         }
     }
 
@@ -59,9 +62,13 @@ final class ReceiptSlip {
     }
 
     private func show() {
-        // The panel or the window already says it, in the bar.
-        guard !anotherSurfaceIsOpen(), let receipt = stayAwake.journal.last, !receipt.read,
-              !AwakeText.receipt(receipt).isEmpty else { return }
+        guard let receipt = pending, !AwakeText.receipt(receipt).isEmpty else { return }
+        pending = nil
+        // Only Shut's own popover stands in for the slip: it opens under the same icon and
+        // its bar says the same sentence. A main window does not: it may be minimized or
+        // behind everything (that rule once swallowed every slip while the window existed).
+        guard !anotherSurfaceIsOpen() else { Log.awake.notice("receipt slip: the popover is open and says it"); return }
+        Log.awake.notice("receipt slip: shown")
         if let present { present(receipt) } else { presentPanel(receipt) }
         // Said once. The Awake page keeps it under "Last time".
         stayAwake.perform(.ok)

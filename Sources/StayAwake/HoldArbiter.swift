@@ -167,6 +167,9 @@ public final class HoldArbiter: ObservableObject {
         evaluate()
     }
 
+    /// A fresh look at charger, battery and heat. Called as the lid shuts and opens.
+    public func refreshPower() { monitor.readNow(); if monitor.conditions != conditions { powerChanged() } }
+
     private func powerChanged() {
         conditions = monitor.conditions
         // powerd recomputes the shared lid bit on power-source changes; put ours back first.
@@ -228,7 +231,7 @@ public final class HoldArbiter: ObservableObject {
         mirrorTimer = nil
         guard limits.isOn, isEnabled(.working) else { return }
         let timer = Timer(timeInterval: mirrorInterval, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { _ = self?.mirror.refresh() }
+            MainActor.assumeIsolated { self?.refreshPower(); _ = self?.mirror.refresh() }
         }
         timer.tolerance = mirrorInterval / 3
         RunLoop.main.add(timer, forMode: .common)
