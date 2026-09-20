@@ -109,24 +109,25 @@ public final class StayAwakeController: ObservableObject {
         }
     }
 
-    private func lidEdge(isOpen: Bool) {
+    /// Internal, with the time as a parameter, so the journey tests can shut and open the lid.
+    func lidEdge(isOpen: Bool, now: Date = Date()) {
         arbiter.refreshPower()
         arbiter.lidChanged(closed: !isOpen)
         let battery = arbiter.conditions.batteryPercent
         Log.awake.notice("lid \(isOpen ? "opened" : "shut", privacy: .public): \(String(describing: self.arbiter.state), privacy: .public), battery \(battery ?? -1) %")
         if isOpen {
-            journal.lidOpened(battery: battery)
+            journal.lidOpened(battery: battery, now: now)
             // Option flipped this one close to "sleep"; the next close decides afresh.
             if flip == .toSleep { arbiter.undoLetItSleep() }
             flip = nil
             // Handed to the slip as it is now: the Awake page, if it happens to be open, marks
             // a receipt read the moment it draws it, and that must not swallow the slip.
-            if let receipt = journal.last, !receipt.read, receipt.openedAt.map({ Date().timeIntervalSince($0) < 5 }) == true {
+            if let receipt = journal.last, !receipt.read, receipt.openedAt.map({ now.timeIntervalSince($0) < 5 }) == true {
                 onReturn?(receipt)
             }
             objectWillChange.send()
         } else {
-            journal.lidShut(holding: arbiter.state.holdsLid, reasons: arbiter.reasons, battery: battery)
+            journal.lidShut(holding: arbiter.state.holdsLid, reasons: arbiter.reasons, battery: battery, now: now)
         }
         guard !isOpen, arbiter.state.holdsLid, settings.lockWhenShut else { return }
         ScreenLock.lock { [weak self] locked in
@@ -178,7 +179,7 @@ public final class StayAwakeController: ObservableObject {
         return true
     }
 
-    private func macWillSleep() {
+    func macWillSleep() {
         if arbiter.state.holdsLid, arbiter.lidClosed {
             Log.awake.error("the Mac is going to sleep although the lid is held")
             journal.sleptWhileHolding()
