@@ -124,12 +124,40 @@ struct PopoverFooter: View {
                 }
             }
             Spacer()
+            VersionMark()
             QuietButton("Quit", action: model.quit)
                 .keyboardShortcut("q", modifiers: .command)
         }
         .padding(.horizontal, 16)
         .frame(height: 48)
         .onAppear { launchAtLogin = model.launchAtLogin(); automaticUpdates = model.automaticUpdates() }
+    }
+}
+
+/// The version, where someone reporting a problem can find it and nobody else has to look:
+/// small, mono, the faintest ink, beside Quit. A click copies the line a bug report needs
+/// (app version and build, macOS, Mac model) and says so for a moment.
+struct VersionMark: View {
+    var version = InstanceVersion.current
+    @State private var copied = false
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(version.report(), forType: .string)
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { copied = false }
+        } label: {
+            Text(copied ? "Copied" : version.label)
+                .font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary.opacity(copied ? 1 : 0.75))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .focusEffectDisabled()
+        .tunerAnimation(TunerTheme.ease, value: copied)
+        .help("\(version.report())\nClick to copy, for a bug report.")
+        .accessibilityLabel("Shut version \(version.short), build \(version.build). Copies version details.")
     }
 }
 
