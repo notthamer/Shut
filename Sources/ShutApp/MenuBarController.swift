@@ -39,6 +39,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     var togglePopover: ((NSStatusBarButton) -> Void)?
     /// The first switch-on needs the consent sheet, which lives in the panel.
     var showAwakePage: (() -> Void)?
+    /// "What's New…": the card an update shows once, on request.
+    var showWhatsNew: (() -> Void)?
 
     /// Set once by the app. The mark carries a small badge that says what the lid will do,
     /// in the one place that is always on screen: a dot while holding, a ring while winding
@@ -183,6 +185,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(login)
         menu.addItem(.separator())
 
+        // Only in a packaged app: the notes are put there by scripts/build.sh.
+        if WhatsNew.bundled() != nil {
+            let news = NSMenuItem(title: "What’s New in Shut \(InstanceVersion.current.short)…", action: #selector(openWhatsNew), keyEquivalent: "")
+            news.target = self
+            menu.addItem(news)
+        }
         menu.addItem(quitItem)
     }
 
@@ -271,6 +279,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         settings.transitionID = id
     }
     @objc private func toggleLaunchAtLogin() { LaunchAtLogin.toggle() }
+    @objc private func openWhatsNew() { showWhatsNew?() }
     @objc private func letItSleep() { stayAwake?.perform(.letItSleep) }
     @objc private func toggleStayAwake() {
         guard let stayAwake else { return }

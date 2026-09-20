@@ -88,6 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: PopoverController!
     private var mainWindow: MainWindowController!
     private var receiptSlip: ReceiptSlip!
+    private let whatsNew = WhatsNewCard()
     private let welcome = WelcomeWindow()
     private let dock = DockPresence()
     private let updater = Updater()
@@ -235,6 +236,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Zero prompts at launch. Permissions are explained in the popover, only
         // when a chosen style needs them.
+        // Someone who already had Shut, on the first launch of a new version: what changed.
+        whatsNew.anchor = { [weak self] in self?.menuBar.statusButton }
+        whatsNew.showMe = { [weak self] in self?.menuBar.showAwakePage?() }
+        menuBar.showWhatsNew = { [weak self] in
+            if let news = WhatsNew.bundled() { self?.whatsNew.show(news, version: InstanceVersion.current.short) }
+        }
+        let version = InstanceVersion.current.short
+        if WhatsNew.isDue(current: version, lastSeen: settings.lastSeenVersion, hasCompletedFirstRun: settings.hasCompletedFirstRun),
+           let news = WhatsNew.bundled() {
+            // After the menu bar has settled, so the card lands under the icon.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.whatsNew.show(news, version: version) }
+        }
+        settings.lastSeenVersion = version
+
         if !settings.hasCompletedFirstRun {
             welcome.show(capability: capability) { [weak self] in
                 self?.settings.isEnabled = true

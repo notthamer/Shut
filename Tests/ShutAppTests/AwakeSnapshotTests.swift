@@ -174,6 +174,35 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    /// The "What's new" card, with this version's real changelog section.
+    func testTheWhatsNewCardRenders() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let changelog = try String(contentsOf: root.appendingPathComponent("CHANGELOG.md"), encoding: .utf8)
+        var section = "", on = false
+        for line in changelog.components(separatedBy: "\n") {
+            if line.hasPrefix("## ") { if on { break }; on = true; continue }
+            if on { section += line + "\n" }
+        }
+        let news = try XCTUnwrap(WhatsNew.parse(section))
+        let hosting = NSHostingView(rootView: WhatsNewView(news: news, version: "0.3.0"))
+        hosting.appearance = TunerTheme.appearance
+        let size = hosting.fittingSize
+        XCTAssertEqual(size.width, WhatsNewView.width)
+        XCTAssertLessThan(size.height, 520, "a card, not a page")
+        hosting.frame = NSRect(origin: NSPoint(x: 24, y: 24), size: size)
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: size.width + 48, height: size.height + 48))
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1).cgColor
+        container.addSubview(hosting)
+        hosting.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        let rep = try XCTUnwrap(container.bitmapImageRepForCachingDisplay(in: container.bounds))
+        container.cacheDisplay(in: container.bounds, to: rep)
+        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"], let png = rep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("whats-new.png"))
+        }
+    }
+
     func testTheSlipRenders() throws {
         let (_, awake) = try makeModel(on: true, reasons: [])
         for (name, end) in [("finished", HoldState.ready), ("battery", .stopped(.batteryFloor))] {

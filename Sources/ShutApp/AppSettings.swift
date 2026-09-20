@@ -18,6 +18,12 @@ public final class AppSettings: ObservableObject {
     /// appearing just while a window is open.
     @Published public var showInDock: Bool { didSet { defaults.set(showInDock, forKey: "showInDock") } }
     @Published public var hasCompletedFirstRun: Bool { didSet { defaults.set(hasCompletedFirstRun, forKey: "hasCompletedFirstRun") } }
+    /// The last version whose "What's new" has been dealt with (shown, or not needed). nil on
+    /// a copy that has never run a version with the card.
+    public var lastSeenVersion: String? {
+        get { defaults.string(forKey: "lastSeenVersion") }
+        set { defaults.set(newValue, forKey: "lastSeenVersion") }
+    }
 
     public static let defaultBandDegrees = 60.0
     /// The top end is beyond any lid's travel on purpose: the calibration clamps it

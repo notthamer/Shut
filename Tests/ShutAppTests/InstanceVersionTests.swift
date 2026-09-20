@@ -39,4 +39,59 @@ final class InstanceVersionTests: XCTestCase {
         XCTAssertFalse(InstanceVersion.systemString("hw.model").isEmpty, "this Mac has a model")
         XCTAssertEqual(InstanceVersion.systemString("no.such.key"), "")
     }
+
+    // MARK: What's new
+
+    /// The card's words are the changelog's: a bold title with its sentence, then the points
+    /// up to the next heading.
+    func testWhatsNewReadsTheChangelogSection() throws {
+        let section = """
+
+        **Stay awake.** Close the lid while `something` is working.
+
+        - Reasons, not **timers**.
+        - You always know.
+
+        **Also**
+
+        - The main page is rearranged.
+        """
+        let news = try XCTUnwrap(WhatsNew.parse(section))
+        XCTAssertEqual(news.title, "Stay awake")
+        XCTAssertEqual(news.lead, "Close the lid while something is working.")
+        XCTAssertEqual(news.points, ["Reasons, not timers.", "You always know."], "the second section is a click away")
+
+        let fixOnly = try XCTUnwrap(WhatsNew.parse("\n- Fixed: a crash on launch.\n- Fonts load two ways.\n"))
+        XCTAssertEqual(fixOnly.title, "")
+        XCTAssertEqual(fixOnly.lead, "Fixed: a crash on launch.")
+        XCTAssertEqual(fixOnly.points, ["Fonts load two ways."])
+        XCTAssertNil(WhatsNew.parse("Shut 9.9.9"))
+        XCTAssertEqual(WhatsNew.claim(of: "Reasons, not timers. Your Mac stays awake while an app is busy."), "Reasons, not timers.")
+        XCTAssertEqual(WhatsNew.claim(of: "Only on Macs with a lid."), "Only on Macs with a lid.")
+    }
+
+    /// The real 0.3.0 section parses, so the release cannot ship an empty card.
+    func testThisVersionsChangelogMakesACard() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let info = try XCTUnwrap(NSDictionary(contentsOf: root.appendingPathComponent("App/Info.plist")) as? [String: Any])
+        let version = try XCTUnwrap(info["CFBundleShortVersionString"] as? String)
+        let changelog = try String(contentsOf: root.appendingPathComponent("CHANGELOG.md"), encoding: .utf8)
+        var section = "", on = false
+        for line in changelog.components(separatedBy: "\n") {
+            if line.hasPrefix("## ") { on = line == "## \(version)"; continue }
+            if on { section += line + "\n" }
+        }
+        XCTAssertFalse(section.isEmpty, "CHANGELOG.md has no section for \(version)")
+        let news = try XCTUnwrap(WhatsNew.parse(section), "the \(version) section must make a card")
+        XCTAssertFalse(news.lead.isEmpty)
+        XCTAssertGreaterThanOrEqual(news.points.count, 1)
+    }
+
+    /// Once per version, to people who already had Shut; a new install gets the welcome instead.
+    func testWhenWhatsNewIsDue() {
+        XCTAssertFalse(WhatsNew.isDue(current: "0.3.0", lastSeen: nil, hasCompletedFirstRun: false), "a new install")
+        XCTAssertTrue(WhatsNew.isDue(current: "0.3.0", lastSeen: nil, hasCompletedFirstRun: true), "updating from a version before the card existed")
+        XCTAssertTrue(WhatsNew.isDue(current: "0.3.0", lastSeen: "0.2.1", hasCompletedFirstRun: true))
+        XCTAssertFalse(WhatsNew.isDue(current: "0.3.0", lastSeen: "0.3.0", hasCompletedFirstRun: true), "never twice")
+    }
 }

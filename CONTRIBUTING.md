@@ -121,7 +121,10 @@ reasons, and the safety rule. No pixels are ever logged.
 ## Releases
 
 `App/Info.plist` holds the version. Bump `CFBundleShortVersionString` and
-`CFBundleVersion` (Sparkle compares the latter), add a section to `CHANGELOG.md`,
+`CFBundleVersion` (Sparkle compares the latter), add a section to `CHANGELOG.md`
+(it is also the GitHub release notes, the notes in Sparkle's update window and the
+"What's new" card in the app, via `scripts/release-notes.sh`: open it with a
+**bold title.** and its sentence, then points that each start with a short claim),
 and push to `main`. The Release workflow tests, builds, packages a DMG with a
 SHA-256 and opens a *draft* release named `v<version>`. Its DMG is ad-hoc signed
 and cannot be notarized, so the rest happens on a Mac with the Developer ID:
