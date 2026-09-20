@@ -73,7 +73,7 @@ final class PopoverModel: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
     }
 
-    /// The Awake bar's button. The first switch-on opens the page and explains itself.
+    /// The status line's button. The first switch-on opens the page and explains itself.
     func performAwake(_ action: AwakeText.Action) {
         if action == .turnOn, stayAwake.needsConsent {
             page = .awake

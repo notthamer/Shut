@@ -60,14 +60,6 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(badge(.stopped(.userLetItSleep)), .idle, "the user's own choice is not a warning")
     }
 
-    /// The offer is made a few times, then the bar keeps its name and stops asking.
-    func testTheBarStopsOfferingOnceTheOfferHasBeenSeen() {
-        let seen = AwakeText.status(state: .off, reasons: [], conditions: plugged, limits: limits,
-                                    canUndo: false, offerIt: false, now: t0)
-        XCTAssertEqual(seen.sentence, "Stay awake with the lid shut")
-        XCTAssertNil(seen.action)
-    }
-
     /// The trigger row says who is at work, once, with the running time where there is one.
     func testTheLiveLineOfATrigger() {
         let claude = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", tool: "Claude Code", since: t0)
@@ -100,9 +92,42 @@ final class AwakeTextTests: XCTestCase {
                        "Awake until \(AwakeText.clock(until)) · 1 h 12 min left.")
         XCTAssertEqual(AwakeText.manualCaption(stop: stop(60), running: false, until: nil, now: t0),
                        "Until \(AwakeText.clock(t0.addingTimeInterval(3600))).")
-        XCTAssertTrue(AwakeText.manualCaption(stop: 0, running: false, until: nil, now: t0).hasPrefix("Drag to keep"))
+        XCTAssertTrue(AwakeText.manualCaption(stop: 0, running: false, until: nil, now: t0).hasPrefix("Drag to pick"))
         XCTAssertEqual(AwakeText.manualCaption(stop: AwakeText.manualLastStop, running: true, until: nil, now: t0),
                        "Awake until you drag this back to Off.")
+    }
+
+    /// The page's headline is always the answer to "what will closing the lid do?".
+    func testTheHeroAlwaysAnswersWhatTheLidWillDo() {
+        func hero(_ state: HoldState, _ reasons: [HoldReason] = [], watching: Bool = true) -> AwakeText.Hero {
+            AwakeText.hero(state: state, reasons: reasons, conditions: plugged, limits: limits, watchingApps: watching, now: t0)
+        }
+        let sleeps = "Closing the lid will sleep your Mac."
+        let stays = "Closing the lid keeps your Mac awake."
+        XCTAssertEqual(hero(.ready).headline, sleeps)
+        XCTAssertEqual(hero(.ready).detail, "Nothing is keeping it awake right now.")
+        XCTAssertTrue(hero(.ready, watching: false).detail.contains("apps are not being watched"), "the main reason is off: say so")
+        XCTAssertEqual(hero(.holding, [work()]).headline, stays)
+        XCTAssertTrue(hero(.holding, [work()]).detail.hasPrefix("Cursor is working. It sleeps by itself when that ends"))
+        XCTAssertTrue(hero(.holding, [work(), work("Terminal")]).detail.hasPrefix("2 things are keeping it awake."))
+        XCTAssertEqual(hero(.grace(until: t0.addingTimeInterval(240))).headline, "Your Mac will sleep in 4 min.")
+        XCTAssertEqual(hero(.stopped(.tooHot)).headline, sleeps)
+        XCTAssertTrue(hero(.stopped(.tooHot)).detail.hasSuffix("That limit always wins."))
+        XCTAssertEqual(hero(.stopped(.userLetItSleep), [work()]).headline, sleeps)
+        for state in [HoldState.ready, .holding, .stopped(.batteryFloor)] {
+            XCTAssertFalse(hero(state, [work()]).headline.contains("Nothing is working"), "it read like an error")
+        }
+    }
+
+    /// Words under the tabs only when they matter.
+    func testTheStatusLineSpeaksOnlyWhenItMatters() {
+        XCTAssertFalse(status(.off).speaks, "the tab is the offer")
+        XCTAssertFalse(status(.ready).speaks, "it will sleep, as always: nothing to say")
+        XCTAssertTrue(status(.holding, [work()]).speaks)
+        XCTAssertTrue(status(.grace(until: t0.addingTimeInterval(240))).speaks)
+        XCTAssertTrue(status(.stopped(.batteryFloor)).speaks)
+        XCTAssertTrue(AwakeText.pending("Zoom").speaks)
+        XCTAssertTrue(status(.stopped(.userLetItSleep), [work()], canUndo: true).speaks, "Undo is worth offering")
     }
 
     func testLimitsSummarySaysTheOnesWorthKnowing() {

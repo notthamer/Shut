@@ -27,9 +27,6 @@ public final class StayAwakeSettings: ObservableObject {
 
     /// A slip under the menu bar icon on coming back, saying what happened while the lid was shut.
     @Published public var showReceipt: Bool { didSet { defaults.set(showReceipt, forKey: "stayAwake.showReceipt") } }
-    /// How many times the panel has opened on the bar's offer ("Turn on…"). Seen is seen.
-    public var offersSeen: Int { didSet { defaults.set(offersSeen, forKey: "stayAwake.offersSeen") } }
-    public static let offerLimit = 3
     /// How many closes have carried the "Hold ⌥" hint. It teaches, then gets out of the way.
     public var optionHintsShown: Int { didSet { defaults.set(optionHintsShown, forKey: "stayAwake.optionHintsShown") } }
     public static let optionHintLimit = 5
@@ -49,7 +46,6 @@ public final class StayAwakeSettings: ObservableObject {
         respectLowPowerMode = bool("stayAwake.lowPower", true)
         lockWhenShut = bool("stayAwake.lockWhenShut", true)
         showReceipt = bool("stayAwake.showReceipt", true)
-        offersSeen = defaults.integer(forKey: "stayAwake.offersSeen")
         optionHintsShown = defaults.integer(forKey: "stayAwake.optionHintsShown")
     }
 

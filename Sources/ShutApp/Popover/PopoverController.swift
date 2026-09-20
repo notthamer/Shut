@@ -43,7 +43,6 @@ final class PopoverController {
         let panel = self.panel ?? makePanel()
         self.panel = panel
         anchorButton = button
-        model.stayAwake.panelOpened()
         model.preview.followLid = false
         // Always fresh: the desktop behind the panel is what the effect will play on.
         model.preview.capture()

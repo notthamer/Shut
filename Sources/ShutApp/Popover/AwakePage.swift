@@ -99,16 +99,17 @@ private struct AwakeControls: View {
 
     var body: some View {
         ScrollView(showsIndicators: true) {
-            VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
+            VStack(alignment: .leading, spacing: 18) {
                 if isOn { hero } else { pitch }
                 triggers
                 options
             }
-            .padding(.horizontal, 16).padding(.top, 18).padding(.bottom, 16)
+            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 16)
             .tunerAnimation(TunerTheme.ease, value: model.showingAwakeSettings)
             .tunerAnimation(TunerTheme.ease, value: showApps)
             .tunerAnimation(TunerTheme.ease, value: showPicker)
         }
+        .fadesAtTheFold()
     }
 
     private var pitch: some View {
@@ -133,7 +134,7 @@ private struct AwakeControls: View {
             let pending = awake.pendingApp
             let copy = pending.map { AwakeText.pendingHero($0.name) }
                 ?? AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
-                                  limits: arbiter.limits, now: context.date)
+                                  limits: arbiter.limits, watchingApps: settings.whenWorking, now: context.date)
             let status = awake.status
             VStack(alignment: .leading, spacing: 12) {
                 // The face first: open eyes, the Mac stays awake; shut, the lid sleeps it.
@@ -194,7 +195,9 @@ private struct AwakeControls: View {
             return AwakeText.live(reasons.filter { $0.kind == kind }, now: now)
         }
         return VStack(alignment: .leading, spacing: 4) {
-            Eyebrow("Stays awake when").padding(.bottom, 6)
+            // The one thing to do here, straight under the answer: keep it awake, for how long.
+            KeepAwakeDial(awake: awake, now: now).padding(.bottom, 12)
+            Eyebrow("Also keep it awake while").padding(.bottom, 6)
             TriggerRow("An app is busy", about: "Agents, builds, renders, downloads.",
                        live: live(.working), detail: allowedSummary, isOn: bind(\.whenWorking), expanded: $showApps,
                        help: "Hold the lid while an app you allow is asking macOS to stay awake: a coding agent in a terminal, a render, a download.")
@@ -210,7 +213,6 @@ private struct AwakeControls: View {
                        help: "Hold the lid for as long as an app you pick is open.")
             if showPicker { AppPicker(model: model).transition(.blurFade).padding(.bottom, 6) }
 
-            KeepAwakeDial(awake: awake, now: now).padding(.top, 4)
         }
         // Readable before the feature is on (it is the explanation), usable once it is.
         .disabled(!isOn)
@@ -254,7 +256,7 @@ private struct AwakeControls: View {
     }
 }
 
-/// "You say so": one dial instead of four arbitrary buttons. Off on the left, any time from
+/// "Keep awake now": one dial instead of four arbitrary buttons. Off on the left, any time from
 /// five minutes to twelve hours, "until I stop" on the right. The line under it says
 /// the choice whole ("Awake until 6:40 PM · 1 h 12 min left"), and while a hold runs the
 /// thumb drifts back towards Off, so the dial is also the countdown.
@@ -269,18 +271,23 @@ private struct KeepAwakeDial: View {
     var body: some View {
         let stop = dragged.map { Int($0.rounded()) } ?? awake.manualStop(now: now)
         VStack(alignment: .leading, spacing: 0) {
-            FillSliderRow("You say so",
+            FillSliderRow("Keep awake now",
                           value: Binding(get: { dragged ?? Double(awake.manualStop(now: now)) },
                                          set: { dragged = $0; commitSoon() }),
                           in: 0...Double(AwakeText.manualLastStop), step: 1, decimals: 0,
                           help: "Keep the Mac awake with the lid shut for as long as you choose, whatever is running. All the way right: until you drag it back.",
+                          labelWidth: 118,
                           valueText: { AwakeText.manualValue(stop: Int($0.rounded())) },
                           onEditingEnded: commit)
-            Text(AwakeText.manualCaption(stop: stop, running: dragged == nil && awake.manualHold != nil,
-                                         until: awake.manualHold?.until, now: now))
-                .font(TunerTheme.bodySmall)
-                .foregroundStyle(stop > 0 ? theme.ink : theme.inkTertiary)
-                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            // Its line of explanation appears when the dial is the thing to do or is in use;
+            // while something else is keeping the Mac awake, the dial waits quietly.
+            if stop > 0 || !awake.arbiter.state.holdsLid {
+                Text(AwakeText.manualCaption(stop: stop, running: dragged == nil && awake.manualHold != nil,
+                                             until: awake.manualHold?.until, now: now))
+                    .font(TunerTheme.bodySmall)
+                    .foregroundStyle(stop > 0 ? theme.ink : theme.inkTertiary)
+                    .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

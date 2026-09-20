@@ -23,7 +23,7 @@ screen.
   `Resources/eyes.png`, six frames: four gazes, shut, asleep) is the face of the feature: open, the Mac stays awake with the lid shut;
   shut, the lid sleeps it; heavy-lidded while winding down; sound asleep when the
   feature is off. They sit on a small capsule whose colour is the status (Lime,
-  Linen, Saffron) at the start of the Awake bar and, larger, at the top of the Awake
+  Linen, Saffron) in the "Stay awake" tab and, larger, at the top of the Stay awake
   page. While holding they rest on the words beside them, roll once around the other
   corners and blink, on a six-second loop that is a
   pure function of time (`AwakeEyes.frame(_:at:)`); only a face that moves has a
@@ -45,12 +45,22 @@ screen.
   47 min"); a card appears above them only to warn (battery near the floor).
 - **The first switch-on** goes through a Void Black sheet with the eyes asleep at the
   top; "Turn on" opens them, and the sheet leaves a moment later.
-- **The Awake bar**, under the header of the panel, always says what is keeping
-  the Mac awake in one sentence, with the one thing to do about it: "Cursor is
-  working · 47 min · Let it sleep". Once you have switched the feature off it stops
-  offering itself and says "Off · lid sleeps as usual". For someone who has never
-  turned it on, the offer ("Turn on…") is made on the first three opened panels and
-  then the bar keeps its name and stops asking.
+- **Two tabs under the header: "Lid effects" and "Stay awake".** The app has two
+  sections and they look like it. The eyes sit in the "Stay awake" tab, so the state is
+  in view from either one. The header has one switch, in one place, and it belongs to
+  the tab on show; its label says which ("Lid effects" or "Stay awake").
+- **Words only when they matter.** Beside the tabs, on the Lid effects tab, one line of
+  status with its one action appears while the Mac is being kept awake ("Claude Code is
+  working · 47 min · Let it sleep"), while it winds down, when a limit is near or has
+  spoken, when an app is asking, and for an unread receipt. "It will sleep, as always"
+  is not worth a line, and neither is an offer to turn the feature on: the tab is the
+  offer. (It replaced a strip that was a status readout, a link and a button holder at
+  once, and that mostly said "Nothing is working", which read like an error.)
+- **The page answers one question, always in the same words: what will closing the lid
+  do?** "Closing the lid will sleep your Mac." or "Closing the lid keeps your Mac
+  awake.", then why. If "An app is busy" is off it says that agents and builds will not
+  keep the Mac awake. Under the answer sits the one thing to do, the "Keep awake now"
+  dial; then "Also keep it awake while" with the three reasons; then Settings, folded.
 - **The menu bar mark** carries a badge that says what the lid will do, in the one
   place that is always on screen: a dot while holding, a ring while winding down
   after the work ended, Saffron when a limit is near or has stopped the hold. Its

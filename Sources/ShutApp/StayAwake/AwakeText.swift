@@ -12,8 +12,19 @@ enum AwakeText {
     struct Status: Equatable {
         let dot: Dot
         let sentence: String
-        /// The bar's one button, when there is something to do.
+        /// The line's one button, when there is something to do.
         let action: Action?
+
+        /// Worth a line under the tabs. Prominence follows importance: staying awake, winding
+        /// down, a limit, a question and an unread receipt speak; "it will sleep, as always"
+        /// and the offer to turn the feature on do not (the tab itself is the offer).
+        var speaks: Bool {
+            if dot != .idle { return true }
+            switch action {
+            case .allow, .undo, .ok: return true
+            default: return false
+            }
+        }
     }
 
     enum Action: Equatable {
@@ -35,20 +46,17 @@ enum AwakeText {
 
     /// `everTurnedOn`: the user has been through the consent sheet. Someone who switched
     /// the feature off knows what it is; the bar stops offering it and just says so.
-    /// `offerIt`: still worth a button. After a few looks the offer has been seen; the bar
-    /// keeps its place and its name, and stops asking.
     static func status(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
-                       canUndo: Bool, everTurnedOn: Bool = false, offerIt: Bool = true, now: Date) -> Status {
+                       canUndo: Bool, everTurnedOn: Bool = false, now: Date) -> Status {
         if canUndo, !state.holdsLid {
             return Status(dot: .idle, sentence: "Letting it sleep", action: .undo)
         }
         switch state {
         case .off:
             if everTurnedOn { return Status(dot: .idle, sentence: "Off · lid sleeps as usual", action: nil) }
-            if !offerIt { return Status(dot: .idle, sentence: "Stay awake with the lid shut", action: nil) }
             return Status(dot: .idle, sentence: "Keep working with the lid shut", action: .turnOn)
         case .ready:
-            return Status(dot: .idle, sentence: "Nothing is working · lid sleeps as usual", action: nil)
+            return Status(dot: .idle, sentence: "Closing the lid will sleep your Mac", action: nil)
         case .holding:
             if !conditions.onCharger, let percent = conditions.batteryPercent, percent <= limits.batteryFloor + 5 {
                 return Status(dot: .warning, sentence: "On battery \(percent) % · sleeps at \(limits.batteryFloor) %", action: .letItSleep)
@@ -96,43 +104,55 @@ enum AwakeText {
         let showsCards: Bool
     }
 
-    /// The Awake page in two sentences: what is happening, and what the lid will do.
-    static func hero(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits, now: Date) -> Hero {
+    /// The Awake page always answers the one question anyone has about this feature, in the
+    /// same words every time: what will closing the lid do? The headline is the answer, the
+    /// detail is why. ("Nothing is working." was the old headline, and read like an error.)
+    /// `watchingApps`: "An app is busy" is on. When it is not, the page says so, because then
+    /// an agent or a build will not keep the Mac awake and nothing else would mention it.
+    static func hero(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
+                     watchingApps: Bool = true, now: Date) -> Hero {
+        let willSleep = "Closing the lid will sleep your Mac."
+        let staysAwake = "Closing the lid keeps your Mac awake."
         // A no-break space: "20" at the end of one line and "% battery" on the next reads badly.
         let floor = conditions.batteryPercent == nil ? "" : ", or at \(limits.batteryFloor)\u{00A0}% battery"
         switch state {
         case .off:
-            return Hero(headline: "Off.", detail: "The lid sleeps your Mac as usual.", showsCards: false)
+            return Hero(headline: willSleep, detail: "Stay awake is off.", showsCards: false)
         case .ready:
-            return Hero(headline: "Nothing is working.", detail: "Close the lid and your Mac sleeps, as it always has.", showsCards: false)
+            return Hero(headline: willSleep,
+                        detail: watchingApps ? "Nothing is keeping it awake right now."
+                                             : "Nothing is keeping it awake, and apps are not being watched: an agent or a build will not keep it awake until “An app is busy” is on.",
+                        showsCards: false)
         case .grace(let until):
-            return Hero(headline: "Finished.",
-                        detail: "Your Mac sleeps in \(duration(until.timeIntervalSince(now))) unless the work starts again.", showsCards: false)
+            return Hero(headline: "Your Mac will sleep in \(duration(until.timeIntervalSince(now))).",
+                        detail: "The work has ended. It stays awake a little longer in case it starts again.", showsCards: false)
         case .stopped(let reason):
-            return Hero(headline: reason == .userLetItSleep ? "Letting it sleep." : "Not holding the lid.",
-                        detail: reason == .userLetItSleep ? "Close the lid and your Mac sleeps, although something is working."
-                                                          : stopped(reason, conditions: conditions) + ".", showsCards: false)
+            return Hero(headline: willSleep,
+                        detail: reason == .userLetItSleep ? "You chose that for this once, although something is working."
+                                                          : stopped(reason, conditions: conditions) + ". That limit always wins.",
+                        showsCards: false)
         case .holding:
             let low = !conditions.onCharger && (conditions.batteryPercent.map { $0 <= limits.batteryFloor + 5 } ?? false)
-            guard let first = reasons.first else {
-                return Hero(headline: "Staying awake.", detail: "Close the lid and your Mac stays awake.", showsCards: low)
+            guard let first = reasons.first else { return Hero(headline: staysAwake, detail: "", showsCards: low) }
+            if reasons.count == 1, first.kind == .manual {
+                return Hero(headline: staysAwake,
+                            detail: first.until.map { "Until \(clock($0)), because you said so\(floor)." } ?? "Until you let it sleep\(floor).",
+                            showsCards: low)
             }
-            let headline: String
+            let why: String
             if reasons.count > 1 {
-                headline = "\(reasons.count) things are keeping your Mac awake."
+                why = "\(reasons.count) things are keeping it awake"
             } else {
                 switch first.kind {
-                case .working: headline = "\(subject(first)) is working\(first.tool == nil ? "" : " in \(first.title)")."
-                case .display: headline = "\(first.title) is connected."
-                case .appOpen: headline = "\(first.title) is open."
-                case .command: headline = "\(first.title) is running."
-                case .manual: headline = first.until.map { "Awake until \(clock($0))." } ?? "Kept awake by you."
+                case .working: why = "\(subject(first)) is working\(first.tool == nil ? "" : " in \(first.title)")"
+                case .display: why = "\(first.title) is connected"
+                case .appOpen: why = "\(first.title) is open"
+                case .command: why = "\(first.title) is running"
+                case .manual: why = "You said so"
                 }
             }
-            let ends = reasons.count == 1 && first.kind == .manual
-                ? (first.until == nil ? "until you let it sleep" : "until then")
-                : "and sleeps by itself when \(reasons.count > 1 ? "they end" : "that ends")"
-            return Hero(headline: headline, detail: "Close the lid: your Mac stays awake \(ends)\(floor).", showsCards: low)
+            return Hero(headline: staysAwake,
+                        detail: "\(why). It sleeps by itself when \(reasons.count > 1 ? "they end" : "that ends")\(floor).", showsCards: low)
         }
     }
 
@@ -252,7 +272,7 @@ enum AwakeText {
     /// The line under the dial. `stop` is where the thumb is (while dragging, where it would
     /// land); `until` is the running hold's end, nil for none or for "until I stop".
     static func manualCaption(stop: Int, running: Bool, until: Date?, now: Date) -> String {
-        if stop <= 0 { return "Drag to keep your Mac awake with the lid shut, whatever is running." }
+        if stop <= 0 { return "Drag to pick how long, whatever is running." }
         if stop >= manualLastStop { return running ? "Awake until you drag this back to Off." : "Until you drag this back to Off." }
         if running, let until {
             return "Awake until \(clock(until)) · \(duration(until.timeIntervalSince(now))) left."

@@ -44,7 +44,7 @@ extension View {
     /// "there is more" instead of as a mistake. A mask, because the panel is glass: there
     /// is no paper colour to paint over it.
     func fadesAtTheFold() -> some View {
-        mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.95),
+        mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.975),
                                     .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
     }
 }

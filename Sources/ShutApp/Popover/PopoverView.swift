@@ -11,18 +11,17 @@ struct PopoverView: View {
 
     static let width: CGFloat = 640
     static let previewWidth: CGFloat = 290
-    /// 560 before the Awake bar; the bar and its hairline came out of the body so the panel kept its size.
-    static let bodyHeight: CGFloat = 560 - AwakeBar.height - 1
+    /// 560 before the section bar; the bar and its hairline came out of the body so the panel kept its size.
+    static let bodyHeight: CGFloat = 560 - SectionBar.height - 1
 
     var body: some View {
         VStack(spacing: 0) {
             PopoverHeader(model: model, hostedInWindow: hostedInWindow)
             // The one place the spectrum appears: a thin line under the header.
             SpectrumLine(height: 2)
-            // Stay awake does not depend on the lid animation, so its bar sits above
-            // the part that dims when the animation is paused.
+            // The two sections as tabs. A Mac with no lid has only one, so no tabs.
             if model.stayAwake.hasLid {
-                AwakeBar(model: model)
+                SectionBar(model: model)
                 Rectangle().fill(theme.hairline).frame(height: 1)
             }
             ZStack {
@@ -78,7 +77,7 @@ struct PopoverHeader: View {
                 .help(model.statusLine)
             // A coloured dot alone says nothing. When things are ordinary it is enough;
             // when they are not (paused, a style standing in, no sensor) it gets its words.
-            if !model.statusIsOrdinary {
+            if !model.statusIsOrdinary, model.page == .styles {
                 Text(model.statusLine).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1)
                     .transition(.opacity)
             }
@@ -86,12 +85,20 @@ struct PopoverHeader: View {
             if !hostedInWindow {
                 IconButton("macwindow", help: "Open Shut as a window you can move and minimize.", action: model.openWindow)
             }
-            // Named, like the "Stay awake" switch that sits right under it on the Awake page:
-            // two bare switches one above the other left nobody sure which did what.
-            Text("Lid effects").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
-            SmallPill(isOn: model.settings.isEnabled, size: .regular) { model.settings.isEnabled.toggle() }
-                .help(model.settings.isEnabled ? "Stop animating the lid." : "Start animating the lid.")
-                .accessibilityLabel("Lid effects")
+            // One switch, in one place, and it belongs to the tab on show: its name says which.
+            // (There used to be two, one above the other, and nobody could tell them apart.)
+            if model.page == .awake, model.stayAwake.hasLid {
+                let on = model.stayAwake.settings.isOn && model.stayAwake.settings.hasConsented
+                Text("Stay awake").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+                SmallPill(isOn: on, size: .regular) { model.toggleAwake() }
+                    .help("Keep the Mac awake with the lid shut while something is working.")
+                    .accessibilityLabel("Stay awake")
+            } else {
+                Text("Lid effects").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+                SmallPill(isOn: model.settings.isEnabled, size: .regular) { model.settings.isEnabled.toggle() }
+                    .help(model.settings.isEnabled ? "Stop animating the lid." : "Start animating the lid.")
+                    .accessibilityLabel("Lid effects")
+            }
         }
         .padding(.horizontal, 16)
         .frame(height: 56)
