@@ -96,8 +96,18 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(AwakeEyes.frame(.awake, at: 603.2), .upRight)
         XCTAssertEqual(AwakeEyes.frame(.awake, at: 3.6), .upLeft)
         XCTAssertEqual(AwakeEyes.frame(.awake, at: 4.0), .downLeft)
-        XCTAssertEqual(AwakeEyes.frame(.awake, at: 5.5), .shut, "a blink")
-        XCTAssertEqual(AwakeEyes.frame(.drowsy, at: 2), .shut)
+        XCTAssertEqual(AwakeEyes.frame(.awake, at: 5.5), .blink)
+        XCTAssertEqual(AwakeEyes.frame(.drowsy, at: 2), .blink, "winding down is still awake")
+        XCTAssertEqual(AwakeEyes.restingFrame(.shut), .shut)
+        // Brows only on an awake face: open eyes and blinks have them, sleeping eyes do not.
+        func hasBrows(_ frame: AwakeEyes.Frame) -> Bool { AwakeEyes.pixels(frame).contains { $0.y <= 2 } }
+        XCTAssertTrue(hasBrows(.downRight))
+        XCTAssertTrue(hasBrows(.blink))
+        XCTAssertFalse(hasBrows(.shut))
+        XCTAssertFalse(hasBrows(.asleep))
+        XCTAssertEqual(AwakeEyes.pixels(.blink).filter { $0.y <= 2 }, AwakeEyes.pixels(.downRight).filter { $0.y <= 1 },
+                       "a blink keeps the open eyes' brows, so nothing jumps")
+        XCTAssertEqual(AwakeEyes.pixels(.asleep).count, 12)
         XCTAssertEqual(AwakeEyes.restingFrame(.asleep), .asleep)
         XCTAssertEqual(AppAssets.eyes.map(\.count), [64, 64, 64, 64, 20, 20], "inked pixels per frame, counted from the sheet")
         XCTAssertTrue(AppAssets.eyes.allSatisfy { frame in frame.allSatisfy { (0..<16).contains(Int($0.x)) && (0..<12).contains(Int($0.y)) } })
