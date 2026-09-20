@@ -43,7 +43,11 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_16.4.app || true
       - name: Test
         run: swift test
-      - name: Build and package
+      - name: Build app
+        run: scripts/build.sh
+      - name: Smoke test away from the build directory
+        run: scripts/smoke.sh
+      - name: Package
         run: scripts/package-dmg.sh
       - name: Appcast
         # SPARKLE_PRIVATE_KEY: the EdDSA private key from `generate_keys -x`, as a

@@ -20,6 +20,8 @@ jobs:
         run: swift test
       - name: Build app
         run: scripts/build.sh
+      - name: Smoke test away from the build directory
+        run: scripts/smoke.sh
       - name: Package DMG
         run: scripts/package-dmg.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

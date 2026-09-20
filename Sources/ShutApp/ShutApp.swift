@@ -38,6 +38,20 @@ public enum ShutApp {
         return written
     }
 
+    /// `shut --self-check`: confirms that every resource bundle the app needs can be found
+    /// from where this copy is installed, without opening a window. scripts/smoke.sh runs it
+    /// on a copy of Shut.app away from the build directory, which is what a user's Mac looks
+    /// like. Returns the process exit code.
+    public static func selfCheck() -> Int32 {
+        let checks: [(String, Bool)] = [
+            ("fonts (Shut_Tuner.bundle)", TunerFonts.isAvailable),
+            ("shaders (Shut_TransitionKit.bundle)", TransitionRenderer.shaderSourcesArePresent),
+            ("images (Shut_ShutApp.bundle)", AppAssets.logo != nil && AppAssets.mark != nil),
+        ]
+        for (name, passed) in checks { print("\(passed ? "ok  " : "FAIL") \(name)") }
+        return checks.allSatisfy(\.1) ? 0 : 1
+    }
+
     @MainActor
     public static func run() {
         let app = NSApplication.shared

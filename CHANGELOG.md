@@ -6,6 +6,12 @@
 - The closing screen says what will happen ("Staying awake · Cursor is working"), and a short receipt says what happened when you come back. Hold Option while closing to flip the decision once.
 - Limits that always win: a battery floor, heat, eight hours on battery, Low Power Mode. Locks when the lid shuts. Off until you turn it on.
 
+## 0.2.1
+
+- Fixed: Shut quit the moment it opened on every Mac except the one it was built on. It looked for its fonts in a folder that only exists there. 0.1.0 and 0.2.0 are both affected, and because they quit before they can check for updates, this version has to be downloaded by hand.
+- A missing font now falls back to the system font instead of stopping the app.
+- Every build is now tested away from the machine that made it before it is released.
+
 ## 0.2.0
 
 - Speed runs from 20° to 130°, so an effect can begin the moment the lid starts to move. The number is where it really starts on your Mac.

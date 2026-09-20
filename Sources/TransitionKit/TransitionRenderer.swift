@@ -40,6 +40,9 @@ public final class TransitionRenderer {
 
     public enum RendererError: Error { case noDevice, noLibrary, noFunction(String) }
 
+    /// Whether the shader sources ship with this build; see `ShaderLibrary.sourcesArePresent`.
+    public static var shaderSourcesArePresent: Bool { ShaderLibrary.sourcesArePresent }
+
     public init() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw RendererError.noDevice }
         self.device = device
@@ -273,6 +276,14 @@ public final class TransitionRenderer {
 /// runtime compiler. This takes tens of milliseconds once, and behaves identically
 /// whether the app was built by Xcode or by `swift build` + `scripts/build.sh`.
 enum ShaderLibrary {
+    /// True when the `.metal` sources can be found. `shut --self-check` asks this of a
+    /// packaged app, where a missing bundle would otherwise only show at the first close.
+    static var sourcesArePresent: Bool {
+        guard let dir = resourceBundle()?.url(forResource: "Shaders", withExtension: nil) else { return false }
+        let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+        return files.contains { $0.lastPathComponent == "Common.metal" }
+    }
+
     static func load(device: MTLDevice) throws -> MTLLibrary {
         guard let shadersDir = resourceBundle()?.url(forResource: "Shaders", withExtension: nil) else {
             throw TransitionRenderer.RendererError.noLibrary

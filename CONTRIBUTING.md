@@ -111,6 +111,8 @@ Before a release, by hand on a real MacBook:
    style plays on the built-in panel, the external screen is never touched, and
    the Mac keeps running. Open the lid: nothing plays, the panel simply returns.
 7. Fifty quick close/open cycles: nothing stuck, nothing black.
+8. Install the final DMG on a Mac, or a macOS user account, that has never built
+   Shut, and open it. `scripts/smoke.sh` imitates this; do the real thing as well.
 
 Console.app, subsystem `app.shut`, shows every decision: capture, overlay placement
 (and the fallback if macOS put it on the wrong Space), poll rate changes, teardown
@@ -125,7 +127,9 @@ SHA-256 and opens a *draft* release named `v<version>`. Its DMG is ad-hoc signed
 and cannot be notarized, so the rest happens on a Mac with the Developer ID:
 
 1. `SHUT_SIGN_IDENTITY="Developer ID Application: …" scripts/notarize.sh` builds,
-   notarizes and staples the app and the DMG into `build/releases/`.
+   notarizes and staples the app and the DMG into `build/releases/`. It runs
+   `scripts/smoke.sh` first: the app is copied away from the build directory and
+   `Shut --self-check` has to find its fonts, shaders and images from there.
 2. On the draft release, replace the CI DMG and `.sha256` with those two files.
    Do this after the Release workflow has finished, and do not push to `main`
    again before publishing: every push re-runs it and overwrites the assets.
