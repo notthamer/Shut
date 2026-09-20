@@ -15,10 +15,10 @@ import SwiftUI
 /// Nothing has to be installed, and the faces reach CoreText by two separate roads:
 /// inside Shut.app, `ATSApplicationFontsPath` in Info.plist has macOS register them
 /// before any of our code runs; everywhere else (and as the backup in the app) they
-/// register from `Shut_Tuner.bundle` the first time a font is asked for. The system
-/// font is the last resort, there so that a broken install shows plain text rather
-/// than crashing; `shut --self-check` fails a build where any face is missing, so a
-/// release never gets that far.
+/// register from `Shut_Tuner.bundle` the first time a font is asked for. The third
+/// precaution is the system font, face by face: a broken install shows plain text
+/// rather than crashing. `shut --self-check` tests all three and fails a build where
+/// any face is missing, so a release never needs the third.
 public enum TunerFonts {
     public static let bodyFamily = "Apfel Grotezk"
     public static let displayFamily = "Playfair Display"
@@ -91,14 +91,23 @@ public enum TunerFonts {
         return nil
     }
 
+    /// The faces CoreText really has, asked once after registering. Every accessor
+    /// below checks the exact face it wants here, so the third precaution works face
+    /// by face: if one weight is gone, that weight alone is set in the system font
+    /// and the rest of the interface keeps its typefaces.
+    static let availableFaces: Set<String> = {
+        _ = isAvailable
+        return Set(requiredFaces.filter { NSFont(name: $0, size: 12) != nil })
+    }()
+
     /// Body text at a size and weight, with the system font as the fallback.
     public static func font(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        isAvailable ? Font.custom(postScriptName(for: weight), size: size) : Font.system(size: size, weight: weight)
+        font(named: postScriptName(for: weight), size: size, weight: weight)
     }
 
-    /// The serif display face.
+    /// The serif display face, with the system serif as the fallback.
     public static func display(_ size: CGFloat) -> Font {
-        (isAvailable && NSFont(name: displayPostScriptName, size: size) != nil)
+        availableFaces.contains(displayPostScriptName)
             ? Font.custom(displayPostScriptName, size: size)
             : Font.system(size: size, weight: .regular, design: .serif)
     }
@@ -110,11 +119,40 @@ public enum TunerFonts {
 
     /// The AppKit counterpart of `display`.
     public static func nsDisplay(_ size: CGFloat) -> NSFont {
-        (isAvailable ? NSFont(name: displayPostScriptName, size: size) : nil) ?? NSFont.systemFont(ofSize: size, weight: .regular)
+        (availableFaces.contains(displayPostScriptName) ? NSFont(name: displayPostScriptName, size: size) : nil)
+            ?? NSFont.systemFont(ofSize: size, weight: .regular)
     }
 
     /// The AppKit counterpart of `font`, for places that draw with NSFont.
     public static func nsFont(_ size: CGFloat, weight: Font.Weight = .regular) -> NSFont {
-        (isAvailable ? NSFont(name: postScriptName(for: weight), size: size) : nil) ?? NSFont.systemFont(ofSize: size)
+        nsFont(named: postScriptName(for: weight), size: size, weight: weight)
+    }
+
+    // The two below take the face by name so the tests can ask for one that does not exist.
+
+    static func font(named name: String, size: CGFloat, weight: Font.Weight) -> Font {
+        availableFaces.contains(name) ? Font.custom(name, size: size) : Font.system(size: size, weight: weight)
+    }
+
+    static func nsFont(named name: String, size: CGFloat, weight: Font.Weight) -> NSFont {
+        (availableFaces.contains(name) ? NSFont(name: name, size: size) : nil)
+            ?? NSFont.systemFont(ofSize: size, weight: nsWeight(weight))
+    }
+
+    /// The system-font weight that stands in for an Apfel weight.
+    static func nsWeight(_ weight: Font.Weight) -> NSFont.Weight {
+        switch weight {
+        case .ultraLight, .thin, .light, .regular: return .regular
+        case .medium: return .medium
+        case .semibold, .bold: return .bold
+        default: return .black
+        }
+    }
+
+    /// True when asking for a face that is not there gives the system font at the right
+    /// size and weight. `shut --self-check` runs it: the last precaution is tested too.
+    public static var systemFallbackWorks: Bool {
+        let font = nsFont(named: "NoSuchFace-Regular", size: 13, weight: .medium)
+        return font.pointSize == 13 && font.familyName == NSFont.systemFont(ofSize: 13).familyName
     }
 }
