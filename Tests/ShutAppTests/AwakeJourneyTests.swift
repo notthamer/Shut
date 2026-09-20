@@ -16,6 +16,7 @@ final class AwakeJourneyTests: XCTestCase {
 
     final class World {
         var asking: [AssertionAttribution.Owner] = []
+        var displays: [String] = []
         var power = PowerConditions(onCharger: true, batteryPercent: 90)
         let kernel = FakeKernel()
     }
@@ -25,7 +26,7 @@ final class AwakeJourneyTests: XCTestCase {
                                    viaCommandLine: tool != nil, assertionName: "journey", tool: tool)
     }
 
-    private func start(_ world: World, grace: TimeInterval = 0.25) -> StayAwakeController {
+    private func start(_ world: World, grace: TimeInterval = 0.25, hasLid: Bool = true) -> StayAwakeController {
         let settings = StayAwakeSettings(defaults: UserDefaults(suiteName: "AwakeJourney-\(UUID().uuidString)")!)
         settings.hasConsented = true
         settings.isOn = true
@@ -35,8 +36,9 @@ final class AwakeJourneyTests: XCTestCase {
         let marker = ArmedMarker(directory: FileManager.default.temporaryDirectory.appendingPathComponent("AwakeJourney-\(UUID().uuidString)"))
         let arbiter = HoldArbiter(hold: world.kernel, marker: marker,
                                   monitor: PowerSourceMonitor(reader: { world.power }),
-                                  mirror: AssertionMirror(defaults: nil, read: { world.asking }))
-        let awake = StayAwakeController(settings: settings, arbiter: arbiter)
+                                  mirror: AssertionMirror(defaults: nil, read: { world.asking }),
+                                  displays: DisplayConnected(read: { world.displays }))
+        let awake = StayAwakeController(settings: settings, arbiter: arbiter, hasLid: hasLid)
         awake.start()
         spin(0.05)   // settings reach the arbiter on the next main-queue turn
         return awake
@@ -215,6 +217,34 @@ final class AwakeJourneyTests: XCTestCase {
         XCTAssertEqual(awake.arbiter.reasons.map(\.kind), [.working])
         XCTAssertNotEqual(world.kernel.lidCalls.last, false, "the lid was never let go")
         awake.shutDown()
+    }
+
+    // MARK: 7. A Mac with no lid: a monitor is not a reason, and nothing is ever held
+
+    /// Found on GitHub's headless runner, whose only screen is not built in: a Mac mini with
+    /// a monitor would have "held the lid" it does not have.
+    func testAMacWithNoLidNeverHolds() throws {
+        let world = World()
+        world.displays = ["Studio Display"]
+        world.asking = [owner("com.todesktop.230313mzl4w4u92", "Cursor", developerTool: true, tool: "Claude Code")]
+        let desktop = start(world, hasLid: false)
+        desktop.settings.whenDisplayConnected = true
+        spin(0.1)
+        XCTAssertEqual(desktop.arbiter.state, .off)
+        XCTAssertTrue(world.kernel.lidCalls.isEmpty, "the kernel is never touched")
+        desktop.setManualHold(stop: AwakeText.manualLastStop)
+        XCTAssertEqual(desktop.arbiter.state, .off, "not even by hand")
+        desktop.shutDown()
+
+        // The same world on a MacBook: both reasons count.
+        let laptopWorld = World()
+        laptopWorld.displays = ["Studio Display"]
+        let laptop = start(laptopWorld)
+        laptop.settings.whenDisplayConnected = true
+        spin(0.1)
+        XCTAssertEqual(laptop.arbiter.state, .holding)
+        XCTAssertEqual(laptop.arbiter.reasons.map(\.title), ["Studio Display"])
+        laptop.shutDown()
     }
 
     // MARK: 5. Switching the feature off and on with the lid shut must not lose the lid

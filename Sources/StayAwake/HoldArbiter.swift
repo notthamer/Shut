@@ -48,7 +48,7 @@ public final class HoldArbiter: ObservableObject {
     /// The optional parts default to the real system; tests pass stand-ins.
     public init(limits: HoldLimits = HoldLimits(), hold: LidHolding = LidHold(), marker: ArmedMarker = ArmedMarker(),
                 monitor: PowerSourceMonitor? = nil, mirror: AssertionMirror? = nil,
-                apps: AppsOpen? = nil, now: @escaping () -> Date = Date.init) {
+                apps: AppsOpen? = nil, displays: DisplayConnected? = nil, now: @escaping () -> Date = Date.init) {
         self.limits = limits
         self.hold = hold
         self.marker = marker
@@ -57,7 +57,7 @@ public final class HoldArbiter: ObservableObject {
         self.apps = apps ?? AppsOpen()
         self.now = now
         manual = ManualHold()
-        displays = DisplayConnected()
+        self.displays = displays ?? DisplayConnected()
     }
 
     // MARK: Lifecycle

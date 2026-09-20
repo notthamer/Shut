@@ -222,6 +222,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             awakeStatusItem.isHidden = !on
             letItSleepItem.isHidden = status.action != .letItSleep
             stayAwakeItem.state = on ? .on : .off
+            stayAwakeItem.isHidden = !stayAwake.hasLid
         }
         presetMenu.removeAllItems()
         let items = presetMenuProvider?() ?? []

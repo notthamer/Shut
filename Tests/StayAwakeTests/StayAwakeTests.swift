@@ -277,7 +277,8 @@ final class HoldArbiterTests: XCTestCase {
         // that this Mac is at 19 % or that something on it is working.
         let arbiter = HoldArbiter(limits: HoldLimits(isOn: true), hold: hold, marker: marker,
                                   monitor: PowerSourceMonitor(reader: { PowerConditions(onCharger: true, batteryPercent: 90) }),
-                                  mirror: AssertionMirror(defaults: nil, read: { [] }))
+                                  mirror: AssertionMirror(defaults: nil, read: { [] }),
+                                  displays: DisplayConnected(read: { [] }))
         arbiter.setEnabled(.working, false)
         arbiter.setEnabled(.display, false)
         return (arbiter, marker)

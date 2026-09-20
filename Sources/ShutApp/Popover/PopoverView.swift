@@ -21,8 +21,10 @@ struct PopoverView: View {
             SpectrumLine(height: 2)
             // Stay awake does not depend on the lid animation, so its bar sits above
             // the part that dims when the animation is paused.
-            AwakeBar(model: model)
-            Rectangle().fill(theme.hairline).frame(height: 1)
+            if model.stayAwake.hasLid {
+                AwakeBar(model: model)
+                Rectangle().fill(theme.hairline).frame(height: 1)
+            }
             ZStack {
                 switch model.page {
                 case .styles:

@@ -54,8 +54,12 @@ public final class DisplayConnected: HoldSource {
     public private(set) var reasons: [HoldReason] = []
     public var onChange: (() -> Void)?
     private var observer: NSObjectProtocol?
+    /// The names of the external displays. The real answer asks AppKit; the tests give their
+    /// own (a headless CI Mac's only screen is not built in, and looked like a monitor).
+    private let read: () -> [String]
 
-    public init() {}
+    public init() { read = { DisplayConnected.externalDisplayNames() } }
+    init(read: @escaping () -> [String]) { self.read = read }
 
     public func start() {
         guard observer == nil else { return }
@@ -75,7 +79,7 @@ public final class DisplayConnected: HoldSource {
     private func refresh() {
         // Two identical monitors share a name; one reason covers both.
         var seen = Set<String>()
-        let names = Self.externalDisplayNames().filter { seen.insert($0).inserted }
+        let names = read().filter { seen.insert($0).inserted }
         guard names != reasons.map(\.title) else { return }
         let existing = Dictionary(reasons.map { ($0.title, $0.since) }, uniquingKeysWith: { first, _ in first })
         reasons = names.map { HoldReason(id: "display:\($0)", kind: .display, title: $0, since: existing[$0] ?? Date()) }

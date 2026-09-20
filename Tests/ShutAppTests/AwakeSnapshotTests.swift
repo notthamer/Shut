@@ -36,8 +36,9 @@ final class AwakeSnapshotTests: XCTestCase {
         awakeSettings.whenDisplayConnected = false
         let marker = ArmedMarker(directory: FileManager.default.temporaryDirectory.appendingPathComponent("AwakeSnapshot-\(UUID().uuidString)"))
         let plugged = PowerSourceMonitor(reader: { PowerConditions(onCharger: true, batteryPercent: 90) })
-        let arbiter = HoldArbiter(hold: FakeHold(), marker: marker, monitor: plugged, mirror: AssertionMirror(defaults: nil, read: { asking ?? [] }))
-        let awake = StayAwakeController(settings: awakeSettings, arbiter: arbiter)
+        let arbiter = HoldArbiter(hold: FakeHold(), marker: marker, monitor: plugged, mirror: AssertionMirror(defaults: nil, read: { asking ?? [] }),
+                                  displays: DisplayConnected(read: { [] }))
+        let awake = StayAwakeController(settings: awakeSettings, arbiter: arbiter, hasLid: true)
         awake.start()
         if !reasons.isEmpty { arbiter.add(FixedSource(reasons)) }
 

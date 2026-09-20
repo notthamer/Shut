@@ -33,7 +33,12 @@ public final class StayAwakeController: ObservableObject {
     private var sessionActive = true
     private var cancellables = Set<AnyCancellable>()
 
-    public init(settings: StayAwakeSettings? = nil, arbiter: HoldArbiter? = nil) {
+    /// A Mac mini, an iMac, a Studio: no lid to hold. The feature is not offered and never
+    /// arms there (their monitor would otherwise count as "a display is connected").
+    let hasLid: Bool
+
+    public init(settings: StayAwakeSettings? = nil, arbiter: HoldArbiter? = nil, hasLid: Bool = LidStateProvider.isAvailable()) {
+        self.hasLid = hasLid
         self.settings = settings ?? StayAwakeSettings()
         journal = HoldJournal(defaults: settings == nil ? .standard : UserDefaults(suiteName: "StayAwakeJournal-\(UUID().uuidString)") ?? .standard)
         self.arbiter = arbiter ?? HoldArbiter(hold: LidHold(log: { Log.awake.error("\($0, privacy: .public)") }))
@@ -83,7 +88,7 @@ public final class StayAwakeController: ObservableObject {
 
     private func applySettings() {
         var limits = settings.limits
-        if !sessionActive { limits.isOn = false }
+        if !sessionActive || !hasLid { limits.isOn = false }
         // Which reasons count comes first: switching the feature on starts every
         // enabled source, and a source the user switched off must never get a look.
         arbiter.setEnabled(.working, settings.whenWorking)
