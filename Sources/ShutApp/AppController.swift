@@ -86,7 +86,11 @@ public final class AppController: ObservableObject {
     /// The overlay is about to appear. Stay awake reads the Option key here (it
     /// flips the decision for this one close) and then supplies the caption.
     var onCloseBeginning: (() -> Void)?
-    var closingCaption: (() -> String?)?
+    /// `beginning`: the first request of a close, as opposed to one after Option was pressed.
+    var closingCaption: ((_ beginning: Bool) -> AwakeText.Caption?)?
+    /// Option went down while the lid was coming down. True when the decision changed.
+    var onOptionWhileClosing: (() -> Bool)?
+    private var optionWasDown = false
 
     /// Set by the Tuner host so the panel can hide while a real transition plays.
     public var onTransitionVisibilityChanged: ((Bool) -> Void)?
@@ -328,7 +332,8 @@ public final class AppController: ObservableObject {
         overlay?.metalView.context = context
         overlay?.metalView.progress = driver.progress
         onCloseBeginning?()
-        overlay?.setCaption(closingCaption?())
+        optionWasDown = NSEvent.modifierFlags.contains(.option)
+        overlay?.setCaption(closingCaption?(true))
         overlay?.setCaptionProgress(driver.progress)
         overlay?.metalView.render()
         let placement = overlay?.show(on: screen) ?? .offActiveSpace
@@ -396,6 +401,16 @@ public final class AppController: ObservableObject {
                 Log.lid.error("sensor watchdog: no sample for \(Int(gap * 1000)) ms; hiding overlay")
                 teardown(reason: "sensor watchdog")
                 return
+            }
+        }
+
+        // Option can flip the decision at any point on the way down. Read on frames that
+        // are being drawn anyway: no timer, no event tap, no permission.
+        if state == .closing {
+            let optionDown = NSEvent.modifierFlags.contains(.option)
+            if optionDown != optionWasDown {
+                optionWasDown = optionDown
+                if optionDown, onOptionWhileClosing?() == true { overlay.setCaption(closingCaption?(false), animated: true) }
             }
         }
 

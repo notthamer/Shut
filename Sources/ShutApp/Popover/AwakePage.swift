@@ -43,7 +43,8 @@ private struct AwakeStage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PreviewWindow(preview: preview, caption: model.stayAwake.caption ?? sampleCaption)
+            PreviewWindow(preview: preview, caption: model.stayAwake.closingCaption(beginning: false)
+                          ?? AwakeText.Caption(text: sampleCaption, warning: false, hint: nil))
             HStack {
                 Text(model.stayAwake.caption == nil ? "What closing looks like when something is working" : "What closing will look like")
                     .foregroundStyle(theme.inkTertiary)

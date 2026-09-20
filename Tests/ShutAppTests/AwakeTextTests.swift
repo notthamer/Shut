@@ -84,6 +84,22 @@ final class AwakeTextTests: XCTestCase {
                        "Sleeping · battery is at 18 %")
     }
 
+    /// Bad news is marked so it can be set in Saffron; the Option hint only rides on a
+    /// caption that says the Mac will stay awake, and only while it is still being taught.
+    func testTheClosingCaptionKnowsBadNewsAndWhenToTeachOption() {
+        let holding = AwakeText.closingCaption(state: .holding, reasons: [work()], conditions: plugged, teachOption: true)
+        XCTAssertEqual(holding, AwakeText.Caption(text: "Staying awake · Cursor is working", warning: false,
+                                                  hint: "Hold ⌥ to let it sleep instead"))
+        XCTAssertNil(AwakeText.closingCaption(state: .holding, reasons: [work()], conditions: plugged, teachOption: false)?.hint)
+        let low = AwakeText.closingCaption(state: .stopped(.batteryFloor), reasons: [work()],
+                                           conditions: PowerConditions(onCharger: false, batteryPercent: 18), teachOption: true)
+        XCTAssertEqual(low?.warning, true)
+        XCTAssertNil(low?.hint, "nothing to flip: the limit wins")
+        XCTAssertEqual(AwakeText.closingCaption(state: .stopped(.userLetItSleep), reasons: [work()], conditions: plugged,
+                                                teachOption: true)?.warning, false, "the user's own choice is not bad news")
+        XCTAssertNil(AwakeText.closingCaption(state: .ready, reasons: [], conditions: plugged, teachOption: true))
+    }
+
     func testDurations() {
         XCTAssertEqual(AwakeText.duration(20), "<1 min")
         XCTAssertEqual(AwakeText.duration(47 * 60), "47 min")

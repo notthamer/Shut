@@ -23,7 +23,9 @@ public final class StayAwakeController: ObservableObject {
 
     let journal: HoldJournal
     private let commands = CommandHold()
-    private var flippedToSleep = false
+    /// What Option did to this one close, so a second press can take it back.
+    private enum Flip { case toSleep, toAwake }
+    private var flip: Flip?
     private var lidEdges: LidStateProvider?
     private var sessionActive = true
     private var cancellables = Set<AnyCancellable>()
@@ -109,7 +111,8 @@ public final class StayAwakeController: ObservableObject {
         if isOpen {
             journal.lidOpened(battery: battery)
             // Option flipped this one close to "sleep"; the next close decides afresh.
-            if flippedToSleep { flippedToSleep = false; arbiter.undoLetItSleep() }
+            if flip == .toSleep { arbiter.undoLetItSleep() }
+            flip = nil
             objectWillChange.send()
         } else {
             journal.lidShut(holding: arbiter.state.holdsLid, reasons: arbiter.reasons, battery: battery)
@@ -137,14 +140,31 @@ public final class StayAwakeController: ObservableObject {
     /// From `AppController`, as the overlay is about to appear. Holding Option flips
     /// the decision for this one close; the caption then says which way it went.
     func closeBeginning() {
-        guard arbiter.limits.isOn, settings.optionFlips, NSEvent.modifierFlags.contains(.option) else { return }
-        if arbiter.state.holdsLid {
-            flippedToSleep = true
-            arbiter.letItSleep()
-        } else {
-            arbiter.manual.begin(for: 3600)
+        flip = nil
+        if NSEvent.modifierFlags.contains(.option) { flipDecision() }
+    }
+
+    /// Option went down, at the start of a close or during it. The first press flips the
+    /// decision for this one close, a second takes it back. True when something changed,
+    /// so the caption on screen can be set again.
+    @discardableResult
+    func flipDecision() -> Bool {
+        guard arbiter.limits.isOn, settings.optionFlips else { return false }
+        switch flip {
+        case nil:
+            if arbiter.state.holdsLid { flip = .toSleep; arbiter.letItSleep() }
+            else { flip = .toAwake; arbiter.manual.begin(for: 3600) }
+        case .toSleep:
+            flip = nil
+            arbiter.undoLetItSleep()
+        case .toAwake:
+            flip = nil
+            arbiter.manual.end()
         }
-        Log.awake.info("Option held while closing: decision flipped")
+        // Whoever has used it has learned it.
+        settings.optionHintsShown = StayAwakeSettings.optionHintLimit
+        Log.awake.info("Option while closing: decision \(self.flip == nil ? "restored" : "flipped", privacy: .public)")
+        return true
     }
 
     private func macWillSleep() {
@@ -174,6 +194,16 @@ public final class StayAwakeController: ObservableObject {
     /// push a working status off the bar.
     var pendingApp: SeenApp? {
         arbiter.state == .ready ? arbiter.pendingApps.first : nil
+    }
+
+    /// The caption for the real close. `beginning` is the one call per close that may
+    /// spend one of the five "Hold ⌥" hints.
+    func closingCaption(beginning: Bool) -> AwakeText.Caption? {
+        let teach = settings.optionFlips && settings.optionHintsShown < StayAwakeSettings.optionHintLimit
+        let caption = AwakeText.closingCaption(state: arbiter.state, reasons: arbiter.reasons,
+                                               conditions: arbiter.conditions, teachOption: teach)
+        if beginning, caption?.hint != nil { settings.optionHintsShown += 1 }
+        return caption
     }
 
     var caption: String? {

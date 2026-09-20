@@ -177,6 +177,25 @@ enum AwakeText {
         }
     }
 
+    /// What the closing transition shows: the line, whether it is bad news (set in
+    /// Saffron), and, the first few times, how to change the decision.
+    struct Caption: Equatable {
+        let text: String
+        let warning: Bool
+        let hint: String?
+    }
+
+    static func closingCaption(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, teachOption: Bool) -> Caption? {
+        guard let text = caption(state: state, reasons: reasons, conditions: conditions) else { return nil }
+        let warning: Bool
+        switch state {
+        case .stopped(.batteryFloor), .stopped(.tooHot): warning = true
+        default: warning = false
+        }
+        return Caption(text: text, warning: warning,
+                       hint: teachOption && state.holdsLid ? "Hold ⌥ to let it sleep instead" : nil)
+    }
+
     static func stopped(_ reason: StopReason, conditions: PowerConditions) -> String {
         switch reason {
         case .batteryFloor: return "Battery at \(conditions.batteryPercent ?? 0) % · letting the Mac sleep"

@@ -71,7 +71,7 @@ struct PreviewColumn: View {
 /// it, so the user sees the close exactly as it will look.
 struct PreviewWindow: View {
     @ObservedObject var preview: PreviewModel
-    var caption: String? = nil
+    var caption: AwakeText.Caption? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -89,8 +89,7 @@ struct PreviewWindow: View {
                     ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 if let caption {
-                    ClosingCaption(text: caption, progress: preview.progress, scale: 0.36)
-                        .padding(.leading, 12).padding(.bottom, 10)
+                    ClosingCaption(caption: caption, progress: preview.progress, scale: 0.36)
                 }
             }
             .frame(height: 150)
@@ -109,25 +108,39 @@ struct PreviewWindow: View {
 /// working". Low on the panel, where a closing lid is still readable. It fades
 /// in as the effect begins and never moves.
 struct ClosingCaption: View {
-    let text: String
+    let caption: AwakeText.Caption
     /// 0 = open, 1 = shut.
     let progress: Double
     /// 1 on the real display; smaller inside the preview.
     var scale: CGFloat = 1
 
     var body: some View {
-        let parts = text.components(separatedBy: " · ")
+        let parts = caption.text.components(separatedBy: " · ")
         VStack(alignment: .leading, spacing: 2 * scale) {
             ForEach(Array(parts.enumerated()), id: \.offset) { index, part in
                 Text(part)
                     .font(TunerTheme.display(index == 0 ? 44 * scale : 30 * scale))
                     .tracking(-0.8 * scale)
-                    .foregroundStyle(.white.opacity(index == 0 ? 1 : 0.82))
+                    .foregroundStyle(index == 0 ? (caption.warning ? TunerTheme.saffron : .white) : .white.opacity(0.86))
+            }
+            if let hint = caption.hint {
+                Text(hint).font(TunerTheme.font(17 * scale)).foregroundStyle(.white.opacity(0.8)).padding(.top, 6 * scale)
             }
         }
         .shadow(color: .black.opacity(0.55), radius: 10 * scale, y: 2 * scale)
+        .padding(.leading, 33 * scale).padding(.bottom, 28 * scale)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+        // The same dark gradient the real overlay lays under its caption.
+        .background(alignment: .bottom) {
+            GeometryReader { proxy in
+                LinearGradient(stops: ClosingCaptionView.scrimStops.map { .init(color: .black.opacity($0.alpha), location: $0.location) },
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(height: proxy.size.height * ClosingCaptionView.scrimHeight)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+            }
+        }
         .opacity(min(max((progress - 0.04) / 0.18, 0), 1))
         .allowsHitTesting(false)
-        .accessibilityLabel(text)
+        .accessibilityLabel([caption.text, caption.hint ?? ""].filter { !$0.isEmpty }.joined(separator: ". "))
     }
 }

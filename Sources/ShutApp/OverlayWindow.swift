@@ -51,7 +51,11 @@ final class OverlayWindow: NSPanel {
     /// The line Stay awake sets into the close: "Staying awake · Cursor is working".
     /// nil clears it. It never moves and never delays a frame: two text layers
     /// whose opacity follows the lid.
-    func setCaption(_ text: String?) { captionView.text = text }
+    /// `animated`: the caption changed while on screen (Option was pressed), so crossfade.
+    func setCaption(_ caption: AwakeText.Caption?, animated: Bool = false) {
+        captionView.crossfadesNextChange = animated
+        captionView.caption = caption
+    }
     func setCaptionProgress(_ progress: Double) { captionView.progress = progress }
 
     override var canBecomeKey: Bool { false }
@@ -100,13 +104,24 @@ final class OverlayWindow: NSPanel {
     }
 }
 
-/// Low on the panel, where a closing lid is still readable. Playfair, white, a soft
-/// shadow so it holds over any desktop. Fades in as the effect begins.
+/// Low on the panel, where a closing lid is still readable. Playfair, white, over a
+/// soft dark gradient of its own so it holds on any wallpaper, a white one included.
+/// Bad news is set in Saffron. Fades in as the effect begins.
 final class ClosingCaptionView: NSView {
+    private let scrim = CAGradientLayer()
     private let first = CATextLayer()
     private let second = CATextLayer()
+    private let hint = CATextLayer()
+    private var lines: [CATextLayer] { [first, second, hint] }
+    /// How strongly each layer shows once fully faded in.
+    private let strength: [Float] = [1, 0.86, 0.8]
 
-    var text: String? { didSet { if text != oldValue { needsLayout = true } } }
+    /// Top of the band to the bottom edge; shared with the preview's SwiftUI caption.
+    static let scrimStops: [(location: Double, alpha: Double)] = [(0, 0), (0.45, 0.36), (0.8, 0.62), (1, 0.72)]
+    static let scrimHeight = 0.42
+
+    var caption: AwakeText.Caption? { didSet { if caption != oldValue { needsLayout = true } } }
+    var crossfadesNextChange = false
     /// 0 = open, 1 = shut.
     var progress: Double = 0 {
         didSet {
@@ -114,8 +129,8 @@ final class ClosingCaptionView: NSView {
             guard alpha != first.opacity else { return }
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            first.opacity = alpha
-            second.opacity = alpha * 0.82
+            for (line, strength) in zip(lines, strength) { line.opacity = alpha * strength }
+            scrim.opacity = caption == nil ? 0 : alpha
             CATransaction.commit()
         }
     }
@@ -123,8 +138,16 @@ final class ClosingCaptionView: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
-        for line in [first, second] {
-            line.foregroundColor = NSColor.white.cgColor
+        // Clear at the top of its band, about half black behind the headline and deeper
+        // under the small hint: measured against a plain white desktop, where white type
+        // needs at least that much to stay readable.
+        scrim.colors = ClosingCaptionView.scrimStops.map { NSColor.black.withAlphaComponent($0.alpha).cgColor }
+        scrim.locations = ClosingCaptionView.scrimStops.map { NSNumber(value: $0.location) }
+        scrim.startPoint = CGPoint(x: 0.5, y: 1)
+        scrim.endPoint = CGPoint(x: 0.5, y: 0)
+        scrim.opacity = 0
+        layer?.addSublayer(scrim)
+        for line in lines {
             line.shadowColor = NSColor.black.cgColor
             line.shadowOpacity = 0.55
             line.shadowRadius = 10
@@ -142,23 +165,36 @@ final class ClosingCaptionView: NSView {
 
     override func layout() {
         super.layout()
-        let parts = (text ?? "").components(separatedBy: " · ")
+        let parts = (caption?.text ?? "").components(separatedBy: " · ")
+        let strings = [parts.first ?? "", parts.count > 1 ? parts[1] : "", caption?.hint ?? ""]
         // Sized against a 14-inch panel (982 pt tall) and scaled with the display.
         let scale = max(bounds.height / 982, 0.6)
         let margin = bounds.width * 0.07
-        let sizes: [CGFloat] = [44 * scale, 30 * scale]
+        let fonts = [TunerFonts.nsDisplay(44 * scale), TunerFonts.nsDisplay(30 * scale), TunerFonts.nsFont(17 * scale)]
+        let colors = [caption?.warning == true ? NSColor(TunerTheme.saffron) : .white, NSColor.white, .white]
+        // From the bottom up: the hint, the second line, the headline.
+        let base = bounds.height * 0.12
+        let ys = [base + 30 * scale * 1.4, base, base - 17 * scale * 2.1]
+
+        if crossfadesNextChange {
+            let fade = CATransition()
+            fade.type = .fade
+            fade.duration = 0.2
+            lines.forEach { $0.add(fade, forKey: "caption") }
+            crossfadesNextChange = false
+        }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for (index, line) in [first, second].enumerated() {
-            let string = index < parts.count ? parts[index] : ""
-            let font = TunerFonts.nsDisplay(sizes[index])
-            line.string = NSAttributedString(string: string, attributes: [
-                .font: font, .foregroundColor: NSColor.white, .kern: -0.8 * scale])
+        scrim.frame = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height * Self.scrimHeight)
+        scrim.isHidden = caption == nil
+        for (index, line) in lines.enumerated() {
+            let font = fonts[index]
+            line.string = NSAttributedString(string: strings[index], attributes: [
+                .font: font, .foregroundColor: colors[index], .kern: (index == 2 ? 0 : -0.8) * scale])
             line.contentsScale = window?.backingScaleFactor ?? 2
             let height = ceil(font.ascender - font.descender) + 4
-            let y = index == 0 ? bounds.height * 0.12 + sizes[1] * 1.4 : bounds.height * 0.12
-            line.frame = CGRect(x: margin, y: y, width: bounds.width - margin * 2, height: height)
-            line.isHidden = string.isEmpty
+            line.frame = CGRect(x: margin, y: ys[index], width: bounds.width - margin * 2, height: height)
+            line.isHidden = strings[index].isEmpty
         }
         CATransaction.commit()
     }

@@ -140,7 +140,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         stayAwake = StayAwakeController()
         controller.onLidStartedClosing = { [weak self] in self?.stayAwake.lidStartedClosing() }
         controller.onCloseBeginning = { [weak self] in self?.stayAwake.closeBeginning() }
-        controller.closingCaption = { [weak self] in self?.stayAwake.caption }
+        controller.closingCaption = { [weak self] beginning in self?.stayAwake.closingCaption(beginning: beginning) }
+        controller.onOptionWhileClosing = { [weak self] in self?.stayAwake.flipDecision() ?? false }
         stayAwake.onLockedWhileShut = { [weak self] in self?.controller.holdBlackUntilUnlock() }
         stayAwake.start()
         menuBar = MenuBarController(controller: controller, settings: settings, registry: registry)

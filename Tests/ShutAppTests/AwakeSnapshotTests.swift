@@ -89,6 +89,46 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    /// Option flips the decision for one close, and a second press takes it back.
+    func testOptionFlipsAndFlipsBack() throws {
+        let cursor = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", since: Date())
+        let (_, working) = try makeModel(on: true, reasons: [cursor])
+        XCTAssertEqual(working.closingCaption(beginning: false)?.text, "Staying awake · Cursor is working")
+        XCTAssertTrue(working.flipDecision())
+        XCTAssertEqual(working.arbiter.state, .stopped(.userLetItSleep))
+        XCTAssertEqual(working.closingCaption(beginning: false)?.text, "Sleeping this time")
+        XCTAssertTrue(working.flipDecision())
+        XCTAssertEqual(working.arbiter.state, .holding)
+        working.shutDown()
+
+        let (_, idle) = try makeModel(on: true, reasons: [])
+        XCTAssertNil(idle.closingCaption(beginning: false))
+        idle.flipDecision()
+        XCTAssertEqual(idle.arbiter.state, .holding, "nothing was working: Option keeps it awake for an hour")
+        idle.flipDecision()
+        XCTAssertEqual(idle.arbiter.state, .ready)
+        idle.shutDown()
+
+        let (_, off) = try makeModel(on: false, reasons: [cursor])
+        XCTAssertFalse(off.flipDecision(), "off is off")
+        off.shutDown()
+    }
+
+    /// The hint teaches for five closes, or until Option is used once.
+    func testTheOptionHintGetsOutOfTheWay() throws {
+        let cursor = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", since: Date())
+        let (_, awake) = try makeModel(on: true, reasons: [cursor])
+        for _ in 0..<StayAwakeSettings.optionHintLimit { XCTAssertNotNil(awake.closingCaption(beginning: true)?.hint) }
+        XCTAssertNil(awake.closingCaption(beginning: true)?.hint)
+        awake.shutDown()
+
+        let (_, learner) = try makeModel(on: true, reasons: [cursor])
+        XCTAssertNotNil(learner.closingCaption(beginning: true)?.hint)
+        learner.flipDecision(); learner.flipDecision()
+        XCTAssertNil(learner.closingCaption(beginning: true)?.hint, "used once is learned")
+        learner.shutDown()
+    }
+
     /// Nothing holds the lid and Zoom is asking: the bar and the page ask once, and
     /// either answer puts the ordinary status back.
     func testAnAppAskingToStayAwake() throws {
