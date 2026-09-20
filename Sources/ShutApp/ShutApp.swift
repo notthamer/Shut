@@ -41,6 +41,7 @@ public enum ShutApp {
         let checks: [(String, Bool)] = [
             ("fonts registered by macOS (ATSApplicationFontsPath)", bySystem || !inApp),
             ("fonts, every face\(missing.isEmpty ? "" : ": missing " + missing.joined(separator: ", "))", missing.isEmpty),
+            ("fonts, system font stands in for a missing face", TunerFonts.systemFallbackWorks),
             ("shaders (Shut_TransitionKit.bundle)", TransitionRenderer.shaderSourcesArePresent),
             ("images (Shut_ShutApp.bundle)", AppAssets.logo != nil && AppAssets.mark != nil),
         ]
