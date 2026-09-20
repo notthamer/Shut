@@ -114,6 +114,8 @@ final class PopoverModel: ObservableObject {
     /// Set once "Allow…" has opened System Settings: from then on the card's next step is
     /// the restart macOS needs before the permission counts.
     @Published var askedForScreenRecording = false
+    /// The folded Settings on the Awake page.
+    @Published var showingAwakeSettings = false
 
     var needsPermissionCard: Bool {
         registry.current.needsSnapshot && !registry.captureAvailable

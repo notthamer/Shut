@@ -19,12 +19,13 @@ screen.
 
 ## What you see
 
-- **The eyes.** A pair of pixel eyes (sixteen by eight, `Resources/eyes.png`, five
-  frames) is the face of the feature: open, the Mac stays awake with the lid shut;
+- **The eyes.** A pair of cartoon pixel eyes with brows (sixteen by twelve,
+  `Resources/eyes.png`, six frames: four gazes, shut, asleep) is the face of the feature: open, the Mac stays awake with the lid shut;
   shut, the lid sleeps it; heavy-lidded while winding down; sound asleep when the
   feature is off. They sit on a small capsule whose colour is the status (Lime,
   Linen, Saffron) at the start of the Awake bar and, larger, at the top of the Awake
-  page. While holding they glance around and blink on a six-second loop that is a
+  page. While holding they rest on the words beside them, roll once around the other
+  corners and blink, on a six-second loop that is a
   pure function of time (`AwakeEyes.frame(_:at:)`); only a face that moves has a
   clock, only while it is on screen, and Reduce Motion stills it.
 - **The Awake page answers "when?" without a click.** Under the headline, "Stays
@@ -32,7 +33,11 @@ screen.
   an app is busy (apps that ask macOS to stay awake), a display is connected, an app
   is open (apps you pick), you say so. The trigger at work right now says who, in ink
   with a Lime dot ("Claude Code, now"). The lists of apps unfold from their rows;
-  only the limits, which are safe defaults, stay folded, with a one-line summary.
+  only **Settings** stays folded, with a one-line summary. Opened, it is two groups in
+  plain words, every row with a line under its name saying what it does: "Protects
+  your Mac" (sleep when battery reaches, stay awake on any power or the charger only,
+  then sleep after, lock the screen, follow Low Power Mode) and "Extras" (tell me what
+  happened, Option key changes its mind, terminal command).
   Who is keeping the Mac awake is said once, in those rows ("Claude Code in Cursor ·
   47 min"); a card appears above them only to warn (battery near the floor).
 - **The first switch-on** goes through a Void Black sheet with the eyes asleep at the

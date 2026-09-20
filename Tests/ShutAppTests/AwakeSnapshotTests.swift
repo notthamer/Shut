@@ -262,6 +262,20 @@ final class AwakeSnapshotTests: XCTestCase {
         ready.page = .awake
         XCTAssertEqual(readyAwake.arbiter.state, .ready)
         try render(ready, name: "page-ready")
+        // The folded Settings, by themselves: inside the panel they sit below the fold.
+        let settingsView = NSHostingView(rootView: AwakeLimits(model: ready).padding(16)
+            .frame(width: PopoverView.width - PopoverView.previewWidth - 1).tunerThemed())
+        settingsView.appearance = TunerTheme.appearance
+        settingsView.frame = NSRect(origin: .zero, size: settingsView.fittingSize)
+        settingsView.wantsLayer = true
+        settingsView.layer?.backgroundColor = NSColor(red: 0.96, green: 0.95, blue: 0.92, alpha: 1).cgColor
+        settingsView.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        let settingsRep = try XCTUnwrap(settingsView.bitmapImageRepForCachingDisplay(in: settingsView.bounds))
+        settingsView.cacheDisplay(in: settingsView.bounds, to: settingsRep)
+        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"], let png = settingsRep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("awake-settings.png"))
+        }
         readyAwake.shutDown()
 
         let (off, offAwake) = try makeModel(on: false, reasons: [])

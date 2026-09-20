@@ -52,7 +52,7 @@ public enum ShutApp {
             ("fonts, every face\(missing.isEmpty ? "" : ": missing " + missing.joined(separator: ", "))", missing.isEmpty),
             ("fonts, system font stands in for a missing face", TunerFonts.systemFallbackWorks),
             ("shaders (Shut_TransitionKit.bundle)", TransitionRenderer.shaderSourcesArePresent),
-            ("images (Shut_ShutApp.bundle)", AppAssets.logo != nil && AppAssets.mark != nil && AppAssets.eyes.count == 5),
+            ("images (Shut_ShutApp.bundle)", AppAssets.logo != nil && AppAssets.mark != nil && AppAssets.eyes.count == 6),
         ]
         for (name, passed) in checks { print("\(passed ? "ok  " : "FAIL") \(name)") }
         return checks.allSatisfy(\.1) ? 0 : 1

@@ -92,15 +92,15 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(AwakeEyes.Mood(.winding, isOn: true), .drowsy)
         XCTAssertEqual(AwakeEyes.Mood(.idle, isOn: true), .shut)
         XCTAssertEqual(AwakeEyes.Mood(.idle, isOn: false), .asleep)
-        XCTAssertEqual(AwakeEyes.frame(.awake, at: 1), .open)
-        XCTAssertEqual(AwakeEyes.frame(.awake, at: 603.2), .left)
-        XCTAssertEqual(AwakeEyes.frame(.awake, at: 4.0), .right)
+        XCTAssertEqual(AwakeEyes.frame(.awake, at: 1), .downRight, "resting: looking at the words")
+        XCTAssertEqual(AwakeEyes.frame(.awake, at: 603.2), .upRight)
+        XCTAssertEqual(AwakeEyes.frame(.awake, at: 3.6), .upLeft)
+        XCTAssertEqual(AwakeEyes.frame(.awake, at: 4.0), .downLeft)
         XCTAssertEqual(AwakeEyes.frame(.awake, at: 5.5), .shut, "a blink")
         XCTAssertEqual(AwakeEyes.frame(.drowsy, at: 2), .shut)
         XCTAssertEqual(AwakeEyes.restingFrame(.asleep), .asleep)
-        XCTAssertEqual(AppAssets.eyes.count, 5, "five frames cut from the sheet")
-        XCTAssertEqual(AppAssets.eyes.map(\.count), [44, 44, 44, 10, 14], "inked pixels per frame, counted from the sheet")
-        XCTAssertTrue(AppAssets.eyes.allSatisfy { frame in frame.allSatisfy { (0..<16).contains(Int($0.x)) && (0..<8).contains(Int($0.y)) } })
+        XCTAssertEqual(AppAssets.eyes.map(\.count), [64, 64, 64, 64, 20, 20], "inked pixels per frame, counted from the sheet")
+        XCTAssertTrue(AppAssets.eyes.allSatisfy { frame in frame.allSatisfy { (0..<16).contains(Int($0.x)) && (0..<12).contains(Int($0.y)) } })
     }
 
     func testBatteryWarningBeforeTheFloor() {

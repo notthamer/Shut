@@ -87,7 +87,6 @@ private struct AwakeControls: View {
     @Environment(\.tunerTheme) private var theme
     @State private var showApps = false
     @State private var showPicker = false
-    @State private var showOptions = false
 
     private var awake: StayAwakeController { model.stayAwake }
     private var settings: StayAwakeSettings { awake.settings }
@@ -102,7 +101,7 @@ private struct AwakeControls: View {
                 options
             }
             .padding(.horizontal, 16).padding(.top, 18).padding(.bottom, 16)
-            .tunerAnimation(TunerTheme.ease, value: showOptions)
+            .tunerAnimation(TunerTheme.ease, value: model.showingAwakeSettings)
             .tunerAnimation(TunerTheme.ease, value: showApps)
             .tunerAnimation(TunerTheme.ease, value: showPicker)
         }
@@ -110,7 +109,7 @@ private struct AwakeControls: View {
 
     private var pitch: some View {
         VStack(alignment: .leading, spacing: 12) {
-            AwakeFace(dot: .idle, isOn: false, pixel: 3).padding(.bottom, 2)
+            AwakeFace(dot: .idle, isOn: false, pixel: 2.5).padding(.bottom, 2)
             Text("Keep working\nwith the lid shut.")
                 .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
             Text("Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done.")
@@ -136,7 +135,7 @@ private struct AwakeControls: View {
                 // The face first: open eyes, the Mac stays awake; shut, the lid sleeps it.
                 // Beside it, who it is staying awake for, when that is one app.
                 HStack(spacing: 10) {
-                    AwakeFace(dot: pending == nil ? status.dot : .idle, isOn: true, pixel: 3)
+                    AwakeFace(dot: pending == nil ? status.dot : .idle, isOn: true, pixel: 2.5)
                     if let pending {
                         AppIconView(bundleID: pending.bundleID, size: 32)
                     } else if arbiter.state.holdsLid, arbiter.reasons.count == 1, let reason = arbiter.reasons.first {
@@ -219,50 +218,31 @@ private struct AwakeControls: View {
         .opacity(isOn ? 1 : 0.5)
     }
 
-    /// The rest, folded: the limits that always win, and the command-line trigger.
+    /// The rest, folded: what protects the Mac, and the extras. Safe defaults, so they can
+    /// stay out of the way; the summary says the two worth knowing without opening it.
     private var options: some View {
         VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
-            Button { showOptions.toggle() } label: {
+            Button { model.showingAwakeSettings.toggle() } label: {
                 HStack(spacing: 8) {
-                    Eyebrow("Limits")
-                    Image(systemName: showOptions ? "chevron.down" : "chevron.right")
+                    Eyebrow("Settings")
+                    Image(systemName: model.showingAwakeSettings ? "chevron.down" : "chevron.right")
                         .font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.inkTertiary)
                     Spacer()
-                    if !showOptions {
+                    if !model.showingAwakeSettings {
                         Text(optionsSummary).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1)
                     }
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(PressStyle())
-            .help("The limits that always win, whatever is keeping your Mac awake.")
+            .help("Battery, power and lock limits, and a few extras.")
 
-            if showOptions {
-                VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
-                    AwakeLimits(model: model)
-                    commandRow
-                }
-                .transition(.blurFade)
-            }
+            if model.showingAwakeSettings { AwakeLimits(model: model).transition(.blurFade) }
         }
     }
 
     private var optionsSummary: String {
         AwakeText.limitsSummary(batteryFloor: settings.batteryFloor, lockWhenShut: settings.lockWhenShut, chargerOnly: settings.chargerOnly)
-    }
-
-    private var commandRow: some View {
-        HStack(spacing: 8) {
-            Text("From a terminal").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
-            Spacer(minLength: 4)
-            if awake.commandLineInstalled {
-                Text("shut hold -- <command>").font(TunerTheme.value).foregroundStyle(theme.inkTertiary)
-            } else {
-                QuietButton("Install shut…") { awake.installCommandLineTool() }
-            }
-        }
-        .frame(height: TunerTheme.rowHeight)
-        .help("For anything Shut cannot see by itself. In a terminal: shut hold -- npm run build holds the lid while that command runs. Install puts a link to Shut in ~/.local/bin.")
     }
 
     private var allowedSummary: String {
@@ -496,33 +476,92 @@ private struct AppPicker: View {
     }
 }
 
-private struct AwakeLimits: View {
+/// The folded part of the page, in two groups and in plain words. Every row says what it
+/// does in a line under its name: a tooltip is no place for the only explanation, and
+/// "Battery floor" or "⌥ flips the decision" explained nothing by themselves.
+struct AwakeLimits: View {
     @ObservedObject var model: PopoverModel
+    @Environment(\.tunerTheme) private var theme
 
     var body: some View {
         let settings = model.stayAwake.settings
-        VStack(spacing: TunerTheme.rowGap) {
-            SegmentedRow("Power", options: ["Any", "Charger only"],
-                         selection: Binding(get: { settings.chargerOnly ? 1 : 0 }, set: { settings.chargerOnly = $0 == 1 }),
-                         help: "Charger only: on battery the lid sleeps your Mac as usual.")
-            SegmentedRow("After work stops", options: ["1", "5", "15", "30 min"],
-                         selection: Binding(get: { HoldLimits.graceChoices.firstIndex(of: settings.grace) ?? 1 },
-                                            set: { settings.grace = HoldLimits.graceChoices[$0] }),
-                         help: "How long to wait before letting the Mac sleep, in case the work starts again. An agent between two steps looks finished for a moment.")
-            FillSliderRow("Battery floor",
-                          value: Binding(get: { Double(settings.batteryFloor) }, set: { settings.batteryFloor = Int($0) }),
-                          in: Double(HoldLimits.batteryFloorRange.lowerBound)...Double(HoldLimits.batteryFloorRange.upperBound),
-                          step: 5, decimals: 0, unit: " %",
-                          help: "On battery, at this charge Shut lets your Mac sleep whatever is working.")
-            ToggleRow("Lock when shut", isOn: Binding(get: { settings.lockWhenShut }, set: { settings.lockWhenShut = $0 }),
-                      help: "A Mac that never slept is unlocked for whoever opens it next. On: Shut locks the screen as the lid shuts.")
-            ToggleRow("Receipt when I come back", isOn: Binding(get: { settings.showReceipt }, set: { settings.showReceipt = $0 }),
-                      help: "When you open the lid after your Mac stayed awake, a small note under the menu bar icon says what happened: how long, how it ended, the battery it used. It fades by itself.")
-            ToggleRow("Pause in Low Power Mode", isOn: Binding(get: { settings.respectLowPowerMode }, set: { settings.respectLowPowerMode = $0 }),
-                      help: "While macOS Low Power Mode is on, the lid sleeps your Mac as usual.")
-            ToggleRow("⌥ flips the decision", isOn: Binding(get: { settings.optionFlips }, set: { settings.optionFlips = $0 }),
-                      help: "Hold Option as you close the lid to do the opposite this once: sleep although something is working, or stay awake for an hour although nothing is.")
+        VStack(alignment: .leading, spacing: 4) {
+            Eyebrow("Protects your Mac").padding(.bottom, 6)
+            Explained("On battery your Mac goes to sleep at this charge, whatever is working.") {
+                FillSliderRow("Sleep when battery reaches",
+                              value: Binding(get: { Double(settings.batteryFloor) }, set: { settings.batteryFloor = Int($0) }),
+                              in: Double(HoldLimits.batteryFloorRange.lowerBound)...Double(HoldLimits.batteryFloorRange.upperBound),
+                              step: 5, decimals: 0, unit: "%",
+                              help: "On battery, at this charge Shut lets your Mac sleep whatever is working.",
+                              labelWidth: 170)
+            }
+            Explained("Charger only: on battery the lid sleeps your Mac, as it always has.") {
+                SegmentedRow("Stay awake on", options: ["Any power", "Charger only"],
+                             selection: Binding(get: { settings.chargerOnly ? 1 : 0 }, set: { settings.chargerOnly = $0 == 1 }),
+                             help: "Charger only: on battery the lid sleeps your Mac as usual.")
+            }
+            Explained("How long to wait after the work ends, in case it starts again.") {
+                SegmentedRow("Then sleep after", options: ["1", "5", "15", "30 min"],
+                             selection: Binding(get: { HoldLimits.graceChoices.firstIndex(of: settings.grace) ?? 1 },
+                                                set: { settings.grace = HoldLimits.graceChoices[$0] }),
+                             help: "How long to wait before letting the Mac sleep, in case the work starts again. An agent between two steps looks finished for a moment.")
+            }
+            TriggerRow("Lock the screen", about: "A Mac that stays awake stays unlocked. This locks it as the lid shuts.",
+                       live: nil, detail: nil, isOn: Binding(get: { settings.lockWhenShut }, set: { settings.lockWhenShut = $0 }), expanded: nil,
+                       help: "A Mac that never slept is unlocked for whoever opens it next. On: Shut locks the screen as the lid shuts.")
+            TriggerRow("Follow Low Power Mode", about: "While Low Power Mode is on, the lid sleeps your Mac.",
+                       live: nil, detail: nil, isOn: Binding(get: { settings.respectLowPowerMode }, set: { settings.respectLowPowerMode = $0 }), expanded: nil,
+                       help: "While macOS Low Power Mode is on, the lid sleeps your Mac as usual.")
+
+            Eyebrow("Extras").padding(.top, TunerTheme.sectionGap - 4).padding(.bottom, 6)
+            TriggerRow("Tell me what happened", about: "A short note under the menu bar icon when you open the lid again.",
+                       live: nil, detail: nil, isOn: Binding(get: { settings.showReceipt }, set: { settings.showReceipt = $0 }), expanded: nil,
+                       help: "When you open the lid after your Mac stayed awake, a small note under the menu bar icon says what happened: how long, how it ended, the battery it used. It fades by itself.")
+            TriggerRow("Option key changes its mind", about: "Hold ⌥ while closing the lid to do the opposite, just that once.",
+                       live: nil, detail: nil, isOn: Binding(get: { settings.optionFlips }, set: { settings.optionFlips = $0 }), expanded: nil,
+                       help: "Hold Option as you close the lid to do the opposite this once: sleep although something is working, or stay awake for an hour although nothing is.")
+            commandRow
         }
+    }
+
+    /// For anything Shut cannot see by itself: a command that holds the lid while it runs.
+    private var commandRow: some View {
+        let awake = model.stayAwake
+        return HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Terminal command").font(TunerTheme.body).foregroundStyle(theme.ink)
+                Text(awake.commandLineInstalled ? "shut hold -- npm run build  keeps your Mac awake while that runs."
+                                                : "Adds a shut command that keeps your Mac awake while another one runs.")
+                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+                    .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 6)
+            if awake.commandLineInstalled {
+                Text("Installed").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+            } else {
+                CapsuleButton("Install…") { awake.installCommandLineTool() }
+            }
+        }
+        .padding(.vertical, 5)
+        .help("For anything Shut cannot see by itself. In a terminal: shut hold -- npm run build holds the lid while that command runs. Install puts a link to Shut in ~/.local/bin.")
+    }
+}
+
+/// A slider or a segmented row with its one line of explanation underneath.
+private struct Explained<Row: View>: View {
+    let caption: String
+    let row: Row
+    @Environment(\.tunerTheme) private var theme
+
+    init(_ caption: String, @ViewBuilder row: () -> Row) { self.caption = caption; self.row = row() }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            row
+            Text(caption).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.bottom, 8)
     }
 }
 
@@ -549,7 +588,7 @@ private struct AwakeConsent: View {
         ZStack {
             TunerTheme.voidBlack
             VStack(alignment: .leading, spacing: 18) {
-                AwakeEyes(mood: awake ? .awake : .asleep, pixel: 4, tint: awake ? TunerTheme.limeWash : .white.opacity(0.7))
+                AwakeEyes(mood: awake ? .awake : .asleep, pixel: 3.5, tint: awake ? TunerTheme.limeWash : .white.opacity(0.7))
                     .padding(.bottom, 4)
                     .tunerAnimation(TunerTheme.ease, value: awake)
                 Text("Your Mac will stay awake\nwith the lid shut.")

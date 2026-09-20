@@ -9,10 +9,11 @@ enum AppAssets {
         return NSImage(contentsOf: url)
     }()
 
-    /// The Stay awake eyes: five 16 × 8 frames cut from one sheet (see `AwakeEyes`), each
+    /// The Stay awake eyes: six 16 × 12 frames cut from one sheet (see `AwakeEyes`), each
     /// as the list of its inked pixels. Kept as pixels rather than images because SwiftUI
     /// smooths a scaled template image whatever `interpolation` says; squares drawn one
     /// by one stay squares at any size.
+    static let eyesFrameWidth = 16
     static let eyes: [[CGPoint]] = {
         guard let url = resourceBundle()?.url(forResource: "Resources/eyes", withExtension: "png")
                 ?? resourceBundle()?.url(forResource: "eyes", withExtension: "png"),
@@ -23,7 +24,7 @@ enum AppAssets {
                                       space: CGColorSpaceCreateDeviceRGB(),
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return [] }
         context.draw(sheet, in: CGRect(x: 0, y: 0, width: w, height: h))
-        let side = h * 2   // a frame is two eyes wide
+        let side = eyesFrameWidth
         return stride(from: 0, to: w, by: side).map { left in
             var inked: [CGPoint] = []
             for y in 0..<h { for x in 0..<side where pixels[(y * w + left + x) * 4 + 3] > 127 {
