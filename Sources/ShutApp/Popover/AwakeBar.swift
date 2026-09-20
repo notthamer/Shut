@@ -29,7 +29,7 @@ struct AwakeBar: View {
                     SmallPill(isOn: model.stayAwake.settings.isOn && model.stayAwake.settings.hasConsented, size: .regular) { model.toggleAwake() }
                         .help("Keep the Mac awake with the lid shut while something is working.")
                 } else {
-                    AwakeDot(dot: status.dot)
+                    AwakeFace(dot: status.dot, isOn: model.stayAwake.settings.isOn && model.stayAwake.settings.hasConsented)
                     Text("AWAKE").font(TunerTheme.eyebrow).tracking(TunerTheme.eyebrowTracking).foregroundStyle(theme.inkTertiary)
                     if status.action == .allow, let pending = model.stayAwake.pendingApp {
                         AppIconView(bundleID: pending.bundleID, size: 16)

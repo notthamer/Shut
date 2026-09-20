@@ -273,9 +273,12 @@ final class HoldArbiterTests: XCTestCase {
     private func make(_ hold: FakeHold) -> (HoldArbiter, ArmedMarker) {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("StayAwakeTests-\(UUID().uuidString)")
         let marker = ArmedMarker(directory: directory)
+        // Neither the real battery nor the real list of busy apps: a test must not care
+        // that this Mac is at 19 % or that something on it is working.
         let arbiter = HoldArbiter(limits: HoldLimits(isOn: true), hold: hold, marker: marker,
-                                  mirror: AssertionMirror(defaults: nil))
-        arbiter.setEnabled(.working, false)   // no real system reads in tests
+                                  monitor: PowerSourceMonitor(reader: { PowerConditions(onCharger: true, batteryPercent: 90) }),
+                                  mirror: AssertionMirror(defaults: nil, read: { [] }))
+        arbiter.setEnabled(.working, false)
         arbiter.setEnabled(.display, false)
         return (arbiter, marker)
     }

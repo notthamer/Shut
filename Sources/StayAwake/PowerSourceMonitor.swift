@@ -14,11 +14,16 @@ public final class PowerSourceMonitor {
     private var runLoopSource: CFRunLoopSource?
     private var observers: [NSObjectProtocol] = []
 
-    public init() {}
+    /// The real answer is `read()`; the tests give their own, so none of them depends on
+    /// how charged this Mac happens to be.
+    private let reader: () -> PowerConditions
+
+    public init() { reader = { PowerSourceMonitor.read() } }
+    init(reader: @escaping () -> PowerConditions) { self.reader = reader }
 
     public func start() {
         guard runLoopSource == nil else { return }
-        conditions = Self.read()
+        conditions = reader()
         let context = Unmanaged.passUnretained(self).toOpaque()
         if let source = IOPSNotificationCreateRunLoopSource({ context in
             guard let context else { return }
@@ -44,7 +49,7 @@ public final class PowerSourceMonitor {
     }
 
     private func refresh(always: Bool) {
-        let now = Self.read()
+        let now = reader()
         guard always || now != conditions else { return }
         conditions = now
         onChange?()

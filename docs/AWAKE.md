@@ -19,6 +19,20 @@ screen.
 
 ## What you see
 
+- **The eyes.** A pair of pixel eyes (sixteen by eight, `Resources/eyes.png`, five
+  frames) is the face of the feature: open, the Mac stays awake with the lid shut;
+  shut, the lid sleeps it; heavy-lidded while winding down; sound asleep when the
+  feature is off. They sit on a small capsule whose colour is the status (Lime,
+  Linen, Saffron) at the start of the Awake bar and, larger, at the top of the Awake
+  page. While holding they glance around and blink on a six-second loop that is a
+  pure function of time (`AwakeEyes.frame(_:at:)`); only a face that moves has a
+  clock, only while it is on screen, and Reduce Motion stills it.
+- **The Awake page answers "when?" without a click.** Under the headline, "Stays
+  awake when" lists the four triggers, each with one line about it and its switch:
+  an app is busy (apps that ask macOS to stay awake), a display is connected, an app
+  is open (apps you pick), you say so. The trigger at work right now says who, in ink
+  with a Lime dot ("Claude Code, now"). The lists of apps unfold from their rows;
+  only the limits, which are safe defaults, stay folded, with a one-line summary.
 - **The Awake bar**, under the header of the panel, always says what is keeping
   the Mac awake in one sentence, with the one thing to do about it: "Cursor is
   working · 47 min · Let it sleep". Once you have switched the feature off it stops

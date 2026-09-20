@@ -98,9 +98,10 @@ private struct AwakeControls: View {
         ScrollView(showsIndicators: true) {
             VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
                 if isOn { hero } else { pitch }
+                triggers
                 options
             }
-            .padding(.horizontal, 16).padding(.top, 22).padding(.bottom, 16)
+            .padding(.horizontal, 16).padding(.top, 18).padding(.bottom, 16)
             .tunerAnimation(TunerTheme.ease, value: showOptions)
             .tunerAnimation(TunerTheme.ease, value: showApps)
             .tunerAnimation(TunerTheme.ease, value: showPicker)
@@ -109,6 +110,7 @@ private struct AwakeControls: View {
 
     private var pitch: some View {
         VStack(alignment: .leading, spacing: 12) {
+            AwakeFace(dot: .idle, isOn: false, pixel: 3).padding(.bottom, 2)
             Text("Keep working\nwith the lid shut.")
                 .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
             Text("Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done.")
@@ -131,11 +133,17 @@ private struct AwakeControls: View {
                                   limits: arbiter.limits, now: context.date)
             let status = awake.status
             VStack(alignment: .leading, spacing: 12) {
-                if let pending {
-                    AppIconView(bundleID: pending.bundleID, size: 40).padding(.bottom, 2)
-                } else if arbiter.state.holdsLid, arbiter.reasons.count == 1, let reason = arbiter.reasons.first {
-                    AppIconView(bundleID: AppIcons.bundleID(for: reason), size: 40).padding(.bottom, 2)
+                // The face first: open eyes, the Mac stays awake; shut, the lid sleeps it.
+                // Beside it, who it is staying awake for, when that is one app.
+                HStack(spacing: 10) {
+                    AwakeFace(dot: pending == nil ? status.dot : .idle, isOn: true, pixel: 3)
+                    if let pending {
+                        AppIconView(bundleID: pending.bundleID, size: 32)
+                    } else if arbiter.state.holdsLid, arbiter.reasons.count == 1, let reason = arbiter.reasons.first {
+                        AppIconView(bundleID: AppIcons.bundleID(for: reason), size: 32)
+                    }
                 }
+                .padding(.bottom, 2)
                 Text(copy.headline)
                     .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
                     .fixedSize(horizontal: false, vertical: true)
@@ -165,11 +173,51 @@ private struct AwakeControls: View {
         }
     }
 
+    /// What keeps the Mac awake, always in view: the page answers "when?" without a
+    /// click. Four rows, one line of explanation each; the one at work right now says so
+    /// in ink with a Lime dot. Lists of apps stay folded until asked for.
+    private var triggers: some View {
+        let reasons = awake.arbiter.reasons
+        func live(_ kind: HoldReason.Kind) -> String? {
+            let mine = reasons.filter { $0.kind == kind }
+            guard isOn, let first = mine.first else { return nil }
+            let who = kind == .working ? AwakeText.subject(first) : first.title
+            return mine.count > 1 ? "\(who) and \(mine.count - 1) more, now" : "\(who), now"
+        }
+        return VStack(alignment: .leading, spacing: 4) {
+            Eyebrow("Stays awake when").padding(.bottom, 6)
+            TriggerRow("An app is busy", about: "Agents, builds, renders, downloads.",
+                       live: live(.working), detail: allowedSummary, isOn: bind(\.whenWorking), expanded: $showApps,
+                       help: "Hold the lid while an app you allow is asking macOS to stay awake: a coding agent in a terminal, a render, a download.")
+            if showApps { AllowedApps(model: model).transition(.blurFade).padding(.bottom, 6) }
+
+            TriggerRow("A display is connected", about: "Keep working on an external monitor.",
+                       live: live(.display), detail: nil, isOn: bind(\.whenDisplayConnected), expanded: nil,
+                       help: "Close the lid and keep working on an external display, even on battery and without a keyboard or mouse attached.")
+
+            TriggerRow("An app is open", about: "While apps you pick are open.",
+                       live: live(.appOpen), detail: settings.pickedApps.isEmpty ? "Pick" : (settings.pickedApps.count == 1 ? "1 app" : "\(settings.pickedApps.count) apps"),
+                       isOn: bind(\.whenAppsOpen), expanded: $showPicker,
+                       help: "Hold the lid for as long as an app you pick is open.")
+            if showPicker { AppPicker(model: model).transition(.blurFade).padding(.bottom, 6) }
+
+            SegmentedRow("You say so", options: ["Off", "1 h", "4 h", "∞"],
+                         selection: Binding(get: { awake.manualChoice.rawValue },
+                                            set: { awake.setManualHold(StayAwakeController.ManualChoice(rawValue: $0) ?? .off) }),
+                         help: "Keep the Mac awake with the lid shut for an hour, four hours, or until you switch this off.")
+                .padding(.top, 4)
+        }
+        // Readable before the feature is on (it is the explanation), usable once it is.
+        .disabled(!isOn)
+        .opacity(isOn ? 1 : 0.5)
+    }
+
+    /// The rest, folded: the limits that always win, and the command-line trigger.
     private var options: some View {
         VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
             Button { showOptions.toggle() } label: {
                 HStack(spacing: 8) {
-                    Eyebrow("Options")
+                    Eyebrow("Limits")
                     Image(systemName: showOptions ? "chevron.down" : "chevron.right")
                         .font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.inkTertiary)
                     Spacer()
@@ -180,13 +228,12 @@ private struct AwakeControls: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(PressStyle())
-            .help("What keeps your Mac awake, and the limits that always win.")
+            .help("The limits that always win, whatever is keeping your Mac awake.")
 
             if showOptions {
-                reasonsSection.transition(.blurFade)
                 VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
-                    Eyebrow("Limits").padding(.bottom, 2)
                     AwakeLimits(model: model)
+                    commandRow
                 }
                 .transition(.blurFade)
             }
@@ -194,49 +241,26 @@ private struct AwakeControls: View {
     }
 
     private var optionsSummary: String {
-        AwakeText.optionsSummary(working: settings.whenWorking, display: settings.whenDisplayConnected,
-                                 apps: settings.whenAppsOpen && !settings.pickedApps.isEmpty, batteryFloor: settings.batteryFloor)
+        AwakeText.limitsSummary(batteryFloor: settings.batteryFloor, lockWhenShut: settings.lockWhenShut, chargerOnly: settings.chargerOnly)
     }
 
-    private var reasonsSection: some View {
-        VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
-            Eyebrow("Stay awake when").padding(.bottom, 2)
-            ReasonRow("Something is working", detail: allowedSummary, isOn: bind(\.whenWorking), expanded: $showApps,
-                      help: "Hold the lid while an app you allow is asking macOS to stay awake: a coding agent in a terminal, a render, a download.")
-            if showApps { AllowedApps(model: model).transition(.blurFade) }
-
-            ReasonRow("A display is connected", detail: nil, isOn: bind(\.whenDisplayConnected), expanded: nil,
-                      help: "Close the lid and keep working on an external display, even on battery and without a keyboard or mouse attached.")
-
-            ReasonRow("These apps are open", detail: settings.pickedApps.isEmpty ? "none" : "\(settings.pickedApps.count)",
-                      isOn: bind(\.whenAppsOpen), expanded: $showPicker,
-                      help: "Hold the lid for as long as an app you pick is open.")
-            if showPicker { AppPicker(model: model).transition(.blurFade) }
-
-            SegmentedRow("I say so", options: ["Off", "1 h", "4 h", "∞"],
-                         selection: Binding(get: { awake.manualChoice.rawValue },
-                                            set: { awake.setManualHold(StayAwakeController.ManualChoice(rawValue: $0) ?? .off) }),
-                         help: "Keep the Mac awake with the lid shut for an hour, four hours, or until you switch this off.")
-                .disabled(!(settings.isOn && settings.hasConsented))
-                .opacity(settings.isOn && settings.hasConsented ? 1 : 0.45)
-
-            HStack(spacing: 8) {
-                Text("A command says so").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
-                Spacer(minLength: 4)
-                if awake.commandLineInstalled {
-                    Text("shut hold -- <command>").font(TunerTheme.value).foregroundStyle(theme.inkTertiary)
-                } else {
-                    QuietButton("Install shut…") { awake.installCommandLineTool() }
-                }
+    private var commandRow: some View {
+        HStack(spacing: 8) {
+            Text("From a terminal").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
+            Spacer(minLength: 4)
+            if awake.commandLineInstalled {
+                Text("shut hold -- <command>").font(TunerTheme.value).foregroundStyle(theme.inkTertiary)
+            } else {
+                QuietButton("Install shut…") { awake.installCommandLineTool() }
             }
-            .frame(height: TunerTheme.rowHeight)
-            .help("For anything Shut cannot see by itself. In a terminal: shut hold -- npm run build holds the lid while that command runs. Install puts a link to Shut in ~/.local/bin.")
         }
+        .frame(height: TunerTheme.rowHeight)
+        .help("For anything Shut cannot see by itself. In a terminal: shut hold -- npm run build holds the lid while that command runs. Install puts a link to Shut in ~/.local/bin.")
     }
 
     private var allowedSummary: String {
         let count = awake.arbiter.mirror.seenApps.filter(\.allowed).count
-        return count == 1 ? "1 app" : "\(count) apps"
+        return count == 0 ? "Apps" : (count == 1 ? "1 app" : "\(count) apps")
     }
 
     private func bind(_ keyPath: ReferenceWritableKeyPath<StayAwakeSettings, Bool>) -> Binding<Bool> {
@@ -244,30 +268,48 @@ private struct AwakeControls: View {
     }
 }
 
-/// One reason: a label, an optional "3 apps ›" disclosure, and its switch.
-private struct ReasonRow: View {
+/// One trigger: its name, one line about it (or, when it is the one at work, who and
+/// "now"), an optional "3 apps ›" disclosure, and its switch.
+private struct TriggerRow: View {
     let label: String
+    let about: String
+    let live: String?
     let detail: String?
     @Binding var isOn: Bool
     let expanded: Binding<Bool>?
     let help: String
     @Environment(\.tunerTheme) private var theme
 
-    init(_ label: String, detail: String?, isOn: Binding<Bool>, expanded: Binding<Bool>?, help: String) {
-        self.label = label; self.detail = detail; _isOn = isOn; self.expanded = expanded; self.help = help
+    init(_ label: String, about: String, live: String?, detail: String?, isOn: Binding<Bool>, expanded: Binding<Bool>?, help: String) {
+        self.label = label; self.about = about; self.live = live; self.detail = detail
+        _isOn = isOn; self.expanded = expanded; self.help = help
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(label).font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineLimit(1)
-            Spacer(minLength: 4)
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(TunerTheme.body).foregroundStyle(isOn ? theme.ink : theme.inkLabel).lineLimit(1)
+                HStack(spacing: 5) {
+                    if live != nil, isOn {
+                        Circle().fill(TunerTheme.limeWash).overlay(Circle().strokeBorder(theme.ink, lineWidth: 1))
+                            .frame(width: 7, height: 7)
+                    }
+                    Text(isOn ? (live ?? about) : about)
+                        .font(TunerTheme.bodySmall)
+                        .foregroundStyle(live != nil && isOn ? theme.ink : theme.inkTertiary)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 6)
             if let expanded, let detail {
                 QuietButton(expanded.wrappedValue ? "Done" : "\(detail) ›") { expanded.wrappedValue.toggle() }
             }
             SmallPill(isOn: isOn, size: .regular) { isOn.toggle() }
         }
-        .frame(height: TunerTheme.rowHeight)
+        .padding(.vertical, 5)
         .help(help)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(label). \(live ?? about)")
     }
 }
 

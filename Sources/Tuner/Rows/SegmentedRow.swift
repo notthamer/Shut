@@ -30,6 +30,8 @@ public struct SegmentedRow: View {
                         Text(name)
                             .font(TunerTheme.body)
                             .foregroundStyle(index == selection ? theme.ink : theme.inkLabel)
+                            // Short words that must never become "…": the label gives way, not these.
+                            .lineLimit(1).fixedSize()
                             .padding(.horizontal, 12)
                             .padding(.vertical, 5)
                             .background {

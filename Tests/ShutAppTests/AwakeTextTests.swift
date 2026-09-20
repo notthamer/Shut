@@ -60,11 +60,27 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(badge(.stopped(.userLetItSleep)), .idle, "the user's own choice is not a warning")
     }
 
-    func testOptionsSummaryLeadsWithTheReasonsThatAreOn() {
-        XCTAssertEqual(AwakeText.optionsSummary(working: true, display: true, apps: false, batteryFloor: 20),
-                       "Working · display · sleeps at 20 %")
-        XCTAssertEqual(AwakeText.optionsSummary(working: false, display: false, apps: false, batteryFloor: 30),
-                       "Only when you say so · sleeps at 30 %")
+    func testLimitsSummarySaysTheOnesWorthKnowing() {
+        XCTAssertEqual(AwakeText.limitsSummary(batteryFloor: 20, lockWhenShut: true, chargerOnly: false),
+                       "Sleeps at 20 % battery · locks when shut")
+        XCTAssertEqual(AwakeText.limitsSummary(batteryFloor: 20, lockWhenShut: false, chargerOnly: true), "Charger only")
+    }
+
+    /// Open eyes mean the Mac stays awake; the little performance is a pure function of time.
+    func testTheEyesSayWhatTheLidWillDo() {
+        XCTAssertEqual(AwakeEyes.Mood(.holding, isOn: true), .awake)
+        XCTAssertEqual(AwakeEyes.Mood(.warning, isOn: true), .awake)
+        XCTAssertEqual(AwakeEyes.Mood(.winding, isOn: true), .drowsy)
+        XCTAssertEqual(AwakeEyes.Mood(.idle, isOn: true), .shut)
+        XCTAssertEqual(AwakeEyes.Mood(.idle, isOn: false), .asleep)
+        XCTAssertEqual(AwakeEyes.frame(.awake, at: 1), .open)
+        XCTAssertEqual(AwakeEyes.frame(.awake, at: 603.2), .left)
+        XCTAssertEqual(AwakeEyes.frame(.awake, at: 4.0), .right)
+        XCTAssertEqual(AwakeEyes.frame(.awake, at: 5.5), .shut, "a blink")
+        XCTAssertEqual(AwakeEyes.frame(.drowsy, at: 2), .shut)
+        XCTAssertEqual(AwakeEyes.restingFrame(.asleep), .asleep)
+        XCTAssertEqual(AppAssets.eyes.count, 5, "five frames cut from the sheet")
+        XCTAssertEqual(AppAssets.eyes.first?.size, NSSize(width: 16, height: 8))
     }
 
     func testBatteryWarningBeforeTheFloor() {

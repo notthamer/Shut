@@ -35,7 +35,8 @@ final class AwakeSnapshotTests: XCTestCase {
         awakeSettings.whenWorking = asking != nil  // on only with a stand-in for the system read
         awakeSettings.whenDisplayConnected = false
         let marker = ArmedMarker(directory: FileManager.default.temporaryDirectory.appendingPathComponent("AwakeSnapshot-\(UUID().uuidString)"))
-        let arbiter = HoldArbiter(hold: FakeHold(), marker: marker, mirror: AssertionMirror(defaults: nil, read: { asking ?? [] }))
+        let plugged = PowerSourceMonitor(reader: { PowerConditions(onCharger: true, batteryPercent: 90) })
+        let arbiter = HoldArbiter(hold: FakeHold(), marker: marker, monitor: plugged, mirror: AssertionMirror(defaults: nil, read: { asking ?? [] }))
         let awake = StayAwakeController(settings: awakeSettings, arbiter: arbiter)
         awake.start()
         if !reasons.isEmpty { arbiter.add(FixedSource(reasons)) }
@@ -234,7 +235,8 @@ final class AwakeSnapshotTests: XCTestCase {
         let started = Date().addingTimeInterval(-47 * 60)
         let cursor = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", tool: "Claude Code",
                                 bundleID: "com.todesktop.230313mzl4w4u92", since: started)
-        let (one, oneAwake) = try makeModel(on: true, reasons: [cursor])
+        let (one, oneAwake) = try makeModel(on: true, reasons: [cursor], asking: [])
+        oneAwake.settings.whenDisplayConnected = false
         one.page = .awake
         try render(one, name: "page-holding")
         oneAwake.shutDown()
@@ -245,7 +247,7 @@ final class AwakeSnapshotTests: XCTestCase {
         try render(holding, name: "page-two")
         awake.shutDown()
 
-        let (ready, readyAwake) = try makeModel(on: true, reasons: [])
+        let (ready, readyAwake) = try makeModel(on: true, reasons: [], asking: [])
         ready.page = .awake
         XCTAssertEqual(readyAwake.arbiter.state, .ready)
         try render(ready, name: "page-ready")

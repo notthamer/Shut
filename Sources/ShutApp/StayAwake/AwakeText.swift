@@ -220,14 +220,11 @@ enum AwakeText {
         return what + ", or at \(limits.batteryFloor) % battery."
     }
 
-    /// The collapsed Options row: the reasons that are on, then the limit that matters most.
-    static func optionsSummary(working: Bool, display: Bool, apps: Bool, batteryFloor: Int) -> String {
-        var reasons: [String] = []
-        if working { reasons.append("working") }
-        if display { reasons.append("display") }
-        if apps { reasons.append("apps") }
-        let first = reasons.isEmpty ? "Only when you say so" : reasons.joined(separator: " · ").capitalizedFirst
-        return first + " · sleeps at \(batteryFloor) %"
+    /// The folded Limits row: the ones most worth knowing without opening it.
+    static func limitsSummary(batteryFloor: Int, lockWhenShut: Bool, chargerOnly: Bool) -> String {
+        var parts = [chargerOnly ? "Charger only" : "Sleeps at \(batteryFloor) % battery"]
+        if lockWhenShut { parts.append("locks when shut") }
+        return parts.joined(separator: " · ")
     }
 
     /// "<1 min", "47 min", "2 h 5 min"
@@ -247,8 +244,4 @@ enum AwakeText {
         // for it and sets "3:23PM". An ordinary no-break space keeps the two together.
         return formatter.string(from: date).replacingOccurrences(of: "\u{202F}", with: "\u{00A0}")
     }
-}
-
-private extension String {
-    var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
 }

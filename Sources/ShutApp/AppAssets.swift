@@ -9,6 +9,21 @@ enum AppAssets {
         return NSImage(contentsOf: url)
     }()
 
+    /// The Stay awake eyes: five 16 × 8 frames cut from one sheet (see `AwakeEyes`).
+    static let eyes: [NSImage] = {
+        guard let url = resourceBundle()?.url(forResource: "Resources/eyes", withExtension: "png")
+                ?? resourceBundle()?.url(forResource: "eyes", withExtension: "png"),
+              let sheet = NSImage(contentsOf: url)?.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return [] }
+        let side = sheet.height * 2
+        return stride(from: 0, to: sheet.width, by: side).compactMap { x in
+            sheet.cropping(to: CGRect(x: x, y: 0, width: side, height: sheet.height)).map {
+                let frame = NSImage(cgImage: $0, size: NSSize(width: 16, height: 8))
+                frame.isTemplate = true
+                return frame
+            }
+        }
+    }()
+
     /// The clean mark (a black glyph on transparency), for the menu bar.
     static let mark: NSImage? = {
         guard let url = resourceBundle()?.url(forResource: "Resources/mark", withExtension: "png")
