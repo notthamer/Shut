@@ -144,7 +144,8 @@ final class ReceiptSlip {
     }
 }
 
-/// The slip itself: a headline in Playfair, the rest in Apfel, the spectrum line on top.
+/// The slip itself: how long in Playfair, the clock times under it, why and the battery last;
+/// the spectrum line on top.
 /// A hold that a limit cut short gets the Saffron wash, like the cards on the Awake page.
 struct ReceiptSlipView: View {
     let receipt: HoldReceipt
@@ -154,30 +155,27 @@ struct ReceiptSlipView: View {
 
     static let width: CGFloat = 340
 
-    private var cutShort: Bool {
-        switch receipt.end {
-        case .batteryFloor, .tooHot, .timeCap, .sleptAnyway: return true
-        default: return false
-        }
-    }
-
     var body: some View {
-        let lines = AwakeText.receipt(receipt)
+        let slip = AwakeText.slip(receipt)
         VStack(alignment: .leading, spacing: 0) {
             SpectrumLine()
-            VStack(alignment: .leading, spacing: 8) {
-                Eyebrow("While you were away")
-                Text(lines.first ?? "")
-                    .font(TunerTheme.display(19)).tracking(-0.4).foregroundStyle(theme.ink).lineSpacing(2)
+            VStack(alignment: .leading, spacing: 6) {
+                Eyebrow("While the lid was shut")
+                // How long, first and largest; then the clock times by themselves.
+                Text(slip?.headline ?? "")
+                    .font(TunerTheme.display(24)).tracking(-0.6).foregroundStyle(theme.ink)
+                Text(slip?.span ?? "")
+                    .font(TunerTheme.body).foregroundStyle(theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                ForEach(lines.dropFirst(), id: \.self) { line in
-                    Text(line).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                if let footnote = slip?.footnote, !footnote.isEmpty {
+                    Text(footnote).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
                 }
             }
             .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(cutShort ? theme.washSaffron : .clear)
+            .background(slip?.cutShort == true ? theme.washSaffron : .clear)
         }
         .frame(width: Self.width)
         .contentShape(Rectangle())

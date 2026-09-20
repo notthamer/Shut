@@ -60,8 +60,9 @@ screen.
   (measured against a plain white desktop), and a limit that lets the Mac sleep
   ("Sleeping · battery is at 18 %") is set in Saffron.
 - **When you come back**, the receipt is handed over: a slip of paper under the menu
-  bar icon, once the lid is open and the screen unlocked, saying how long it stayed
-  awake and for what, when it slept, how much battery went. If a hold was cut short
+  bar icon, once the lid is open and the screen unlocked. The time comes first: how
+  long as the headline ("Awake for 1 h 34 min"), the clock times on their own line
+  ("9:25 PM → 10:59 PM, then it slept"), then for what and how much battery went. If a hold was cut short
   it says why, on Saffron. It never takes focus, fades after seven seconds (hovering
   keeps it), and a click opens the Awake page, which keeps it under "Last time".
   "Receipt when I come back" in Options switches it off; with Shut's panel already

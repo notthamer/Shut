@@ -220,6 +220,31 @@ final class HoldJournalTests: XCTestCase {
         XCTAssertTrue(AwakeText.receipt(try XCTUnwrap(raced.last))[0].contains("although Shut was holding it"), "a failed hold is said, not hidden")
     }
 
+    /// The slip says the time first: how long, then from when to when.
+    func testTheSlipPutsTheTimeFirst() throws {
+        let shut = t0, ended = t0.addingTimeInterval(4 * 60 + 9), opened = t0.addingTimeInterval(5 * 60 + 30)
+        var receipt = HoldReceipt(closedAt: shut, openedAt: opened, titles: ["You"], batteryAtClose: 99, batteryAtOpen: 98,
+                                  endedAt: ended, end: .finished)
+        var slip = try XCTUnwrap(AwakeText.slip(receipt))
+        XCTAssertEqual(slip.headline, "Awake for 4 min")
+        XCTAssertEqual(slip.span, "\(AwakeText.clock(shut)) → \(AwakeText.clock(ended)), then it slept")
+        XCTAssertEqual(slip.footnote, "Because you said so · Battery 99 → 98\u{00A0}%")
+        XCTAssertFalse(slip.cutShort)
+
+        receipt = HoldReceipt(closedAt: shut, openedAt: opened, titles: ["Claude Code", "Zoom"], batteryAtClose: 60, batteryAtOpen: 60)
+        slip = try XCTUnwrap(AwakeText.slip(receipt))
+        XCTAssertEqual(slip.headline, "Awake for 5 min")
+        XCTAssertEqual(slip.span, "\(AwakeText.clock(shut)) → \(AwakeText.clock(opened)), until you opened the lid")
+        XCTAssertEqual(slip.footnote, "For Claude Code and Zoom")
+
+        receipt = HoldReceipt(closedAt: shut, openedAt: opened, titles: ["Cursor"], batteryAtClose: 60, batteryAtOpen: 19,
+                              endedAt: ended, end: .batteryFloor)
+        slip = try XCTUnwrap(AwakeText.slip(receipt))
+        XCTAssertEqual(slip.headline, "Stopped after 4 min")
+        XCTAssertTrue(slip.span.hasSuffix(", the battery was low"))
+        XCTAssertTrue(slip.cutShort)
+    }
+
     /// A hold with no named reason (the lid shut while winding down) has no "who".
     func testAReceiptWithNobodyToName() {
         let receipt = HoldReceipt(closedAt: t0, openedAt: t0.addingTimeInterval(180), titles: [], batteryAtClose: 72, batteryAtOpen: 72)

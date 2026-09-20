@@ -23,6 +23,7 @@ public final class StayAwakeController: ObservableObject {
 
     let journal: HoldJournal
     private let commands = CommandHold()
+    private var lastLidWasOpen: Bool?
     /// The lid opened on a receipt nobody has read yet: the moment for the slip.
     var onReturn: ((HoldReceipt) -> Void)?
     /// What Option did to this one close, so a second press can take it back.
@@ -111,6 +112,9 @@ public final class StayAwakeController: ObservableObject {
 
     /// Internal, with the time as a parameter, so the journey tests can shut and open the lid.
     func lidEdge(isOpen: Bool, now: Date = Date()) {
+        // macOS has been seen to deliver the same edge twice, 8 ms apart.
+        guard isOpen != lastLidWasOpen else { return }
+        lastLidWasOpen = isOpen
         arbiter.refreshPower()
         arbiter.lidChanged(closed: !isOpen)
         let battery = arbiter.conditions.batteryPercent

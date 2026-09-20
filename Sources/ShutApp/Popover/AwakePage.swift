@@ -59,11 +59,15 @@ private struct AwakeStage: View {
             .padding(.top, 14)
             .padding(.horizontal, 2)
 
-            if let receipt = model.stayAwake.journal.last {
-                VStack(alignment: .leading, spacing: 6) {
-                    Eyebrow("Last time")
-                    ForEach(AwakeText.receipt(receipt), id: \.self) { line in
-                        Text(line).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(3)
+            if let receipt = model.stayAwake.journal.last, let slip = AwakeText.slip(receipt) {
+                // The same three lines as the slip, in the same order: how long, when, why.
+                VStack(alignment: .leading, spacing: 4) {
+                    Eyebrow("Last time").padding(.bottom, 2)
+                    Text(slip.headline).font(TunerTheme.heading).tracking(TunerTheme.headingTracking).foregroundStyle(theme.ink)
+                    Text(slip.span).font(TunerTheme.bodySmall).foregroundStyle(theme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !slip.footnote.isEmpty {
+                        Text(slip.footnote).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

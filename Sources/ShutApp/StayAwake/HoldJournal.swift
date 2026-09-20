@@ -145,6 +145,44 @@ extension AwakeText {
         return lines
     }
 
+    /// The slip, with the time where the eye lands first: how long as the headline, the
+    /// clock times on a line of their own, then why and what it cost.
+    struct Slip: Equatable {
+        /// "Awake for 4 min" · "Stopped after 1 h 20 min"
+        let headline: String
+        /// "11:31 PM → 11:36 PM, then it slept"
+        let span: String
+        /// "Because you said so · Battery 99 → 98 %"
+        let footnote: String
+        let cutShort: Bool
+    }
+
+    static func slip(_ receipt: HoldReceipt) -> Slip? {
+        guard let stoppedAt = receipt.endedAt ?? receipt.openedAt else { return nil }
+        let length = duration(stoppedAt.timeIntervalSince(receipt.closedAt))
+        let from = clock(receipt.closedAt), to = clock(stoppedAt)
+        let cutShort: Bool
+        let headline: String, ending: String
+        switch receipt.end {
+        case nil: (cutShort, headline, ending) = (false, "Awake for \(length)", "until you opened the lid")
+        case .finished: (cutShort, headline, ending) = (false, "Awake for \(length)", "then it slept")
+        case .userLetItSleep: (cutShort, headline, ending) = (false, "Awake for \(length)", "then you let it sleep")
+        case .batteryFloor: (cutShort, headline, ending) = (true, "Stopped after \(length)", "the battery was low")
+        case .tooHot: (cutShort, headline, ending) = (true, "Stopped after \(length)", "your Mac was hot")
+        case .timeCap: (cutShort, headline, ending) = (true, "Stopped after \(length)", "8 hours on battery")
+        case .lowPowerMode: (cutShort, headline, ending) = (true, "Stopped after \(length)", "Low Power Mode came on")
+        case .chargerOnly: (cutShort, headline, ending) = (true, "Stopped after \(length)", "the charger was unplugged")
+        case .sleptAnyway: (cutShort, headline, ending) = (true, "Slept after \(length)", "macOS slept it although Shut was holding")
+        }
+        var notes: [String] = []
+        if receipt.titles == ["You"] { notes.append("Because you said so") }
+        else if !receipt.titles.isEmpty { notes.append("For \(list(receipt.titles))") }
+        if let before = receipt.batteryAtClose, let after = receipt.batteryAtOpen, before != after {
+            notes.append("Battery \(before) → \(after)\u{00A0}%")
+        }
+        return Slip(headline: headline, span: "\(from) → \(to), \(ending)", footnote: notes.joined(separator: " · "), cutShort: cutShort)
+    }
+
     static func missed(_ moment: MissedMoment) -> String {
         "\(moment.app) was working when you shut the lid at \(clock(moment.at)), and your Mac slept"
     }
