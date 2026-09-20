@@ -1,5 +1,6 @@
 import AppKit
 import CoreText
+import os
 import SwiftUI
 
 /// The three voices of the interface:
@@ -11,9 +12,13 @@ import SwiftUI
 /// - **Mono**: the system monospaced face for eyebrows, chapter numbers and
 ///   values, all-caps with wide tracking for the eyebrows.
 ///
-/// The bundled faces register for this process the first time a font is asked
-/// for, so nothing has to be installed. A missing bundle falls back to the
-/// system font.
+/// Nothing has to be installed, and the faces reach CoreText by two separate roads:
+/// inside Shut.app, `ATSApplicationFontsPath` in Info.plist has macOS register them
+/// before any of our code runs; everywhere else (and as the backup in the app) they
+/// register from `Shut_Tuner.bundle` the first time a font is asked for. The system
+/// font is the last resort, there so that a broken install shows plain text rather
+/// than crashing; `shut --self-check` fails a build where any face is missing, so a
+/// release never gets that far.
 public enum TunerFonts {
     public static let bodyFamily = "Apfel Grotezk"
     public static let displayFamily = "Playfair Display"
@@ -31,12 +36,30 @@ public enum TunerFonts {
 
     static let displayPostScriptName = "PlayfairDisplay-Regular"
 
+    /// Every face the interface asks for by name.
+    static let requiredFaces = ["ApfelGrotezk-Regular", "ApfelGrotezk-Mittel", "ApfelGrotezk-Fett", "ApfelGrotezk-Satt", displayPostScriptName]
+
+    /// The faces CoreText cannot find, after registering. Empty in a healthy build.
+    public static var missingFaces: [String] {
+        _ = isAvailable
+        return requiredFaces.filter { NSFont(name: $0, size: 12) == nil }
+    }
+
+    /// True when macOS had already registered every face before we did anything
+    /// (the `ATSApplicationFontsPath` road). Read it before `isAvailable`.
+    public static let registeredBySystem: Bool = requiredFaces.allSatisfy { NSFont(name: $0, size: 12) != nil }
+
     /// True once the faces are available to CoreText.
-    public static let isAvailable: Bool = register()
+    public static let isAvailable: Bool = {
+        _ = registeredBySystem
+        let registered = register()
+        if !registered { Logger(subsystem: "app.shut", category: "fonts").fault("Bundled fonts missing; using the system font") }
+        return registered
+    }()
 
     @discardableResult
     static func register() -> Bool {
-        if NSFont(name: "ApfelGrotezk-Regular", size: 12) != nil, NSFont(name: displayPostScriptName, size: 12) != nil { return true }
+        if requiredFaces.allSatisfy({ NSFont(name: $0, size: 12) != nil }) { return true }
         guard let bundle = resourceBundle() else { return false }
         let urls = (bundle.urls(forResourcesWithExtension: "otf", subdirectory: "Fonts") ?? [])
             + (bundle.urls(forResourcesWithExtension: "ttf", subdirectory: "Fonts") ?? [])

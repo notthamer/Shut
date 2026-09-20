@@ -3,7 +3,7 @@
 ## 0.2.1
 
 - Fixed: Shut quit the moment it opened on every Mac except the one it was built on. It looked for its fonts in a folder that only exists there. 0.1.0 and 0.2.0 are both affected, and because they quit before they can check for updates, this version has to be downloaded by hand.
-- A missing font now falls back to the system font instead of stopping the app.
+- The fonts now reach the app two separate ways (macOS loads them at launch, and Shut loads them itself as a backup), and a build where any of them is missing cannot be released.
 - Every build is now tested away from the machine that made it before it is released.
 
 ## 0.2.0
