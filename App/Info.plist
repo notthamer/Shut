@@ -18,6 +18,8 @@
 	<string>Shut</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>ATSApplicationFontsPath</key>
+	<string>Shut_Tuner.bundle/Fonts</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.2.1</string>
 	<key>CFBundleVersion</key>

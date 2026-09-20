@@ -28,6 +28,13 @@ for bundle in $BUNDLES; do
 done
 cp App/Shut.icns "$APP/Contents/Resources/Shut.icns"
 
+# The typefaces are part of the product. Every font in the source tree has to be in
+# the app, at the path Info.plist's ATSApplicationFontsPath points macOS to.
+FONTS="$APP/Contents/Resources/$(/usr/libexec/PlistBuddy -c 'Print :ATSApplicationFontsPath' App/Info.plist)"
+for font in Sources/Tuner/Fonts/*.otf Sources/Tuner/Fonts/*.ttf; do
+  [ -f "$FONTS/$(basename "$font")" ] || { echo "build: $(basename "$font") did not reach $FONTS" >&2; exit 1; }
+done
+
 # Sparkle (in-app updates) is a dynamic framework; the executable looks for it in
 # Contents/Frameworks (rpath set in Package.swift).
 SPARKLE=$(ls -d .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-*/Sparkle.framework | head -1)

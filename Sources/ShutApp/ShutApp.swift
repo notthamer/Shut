@@ -43,8 +43,13 @@ public enum ShutApp {
     /// on a copy of Shut.app away from the build directory, which is what a user's Mac looks
     /// like. Returns the process exit code.
     public static func selfCheck() -> Int32 {
+        // Order matters: the first asks what macOS did before we registered anything.
+        let bySystem = TunerFonts.registeredBySystem
+        let missing = TunerFonts.missingFaces
+        let inApp = Bundle.main.bundleURL.pathExtension == "app"
         let checks: [(String, Bool)] = [
-            ("fonts (Shut_Tuner.bundle)", TunerFonts.isAvailable),
+            ("fonts registered by macOS (ATSApplicationFontsPath)", bySystem || !inApp),
+            ("fonts, every face\(missing.isEmpty ? "" : ": missing " + missing.joined(separator: ", "))", missing.isEmpty),
             ("shaders (Shut_TransitionKit.bundle)", TransitionRenderer.shaderSourcesArePresent),
             ("images (Shut_ShutApp.bundle)", AppAssets.logo != nil && AppAssets.mark != nil),
         ]
