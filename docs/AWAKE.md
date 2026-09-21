@@ -112,7 +112,11 @@ does it while it works). Shut reads those requests and walks each one up the
 process tree to the app it belongs to, so `caffeinate <- claude <- zsh <- Cursor`
 is "Cursor". Apps seen asking appear in **Allowed apps** by themselves; developer
 tools and anything run from a terminal are allowed by default, a music player is
-not. You decide, and you are asked where you are already looking: while nothing is
+not. The list never outgrows the page: it shows six and a half rows and scrolls inside
+itself beyond that, grows a filter past eight apps, puts the apps keeping the Mac awake
+right now first (then the ones asking that may not, then the ones switched on), and
+forgets an app that was never switched on, never decided about and not seen for two
+months. You decide, and you are asked where you are already looking: while nothing is
 holding the lid, an app that is asking and has never been decided about turns the
 bar and the Awake page into one question, "Zoom is asking to stay awake", with
 **Allow** and **Not this app**. Either answer is remembered and the question is

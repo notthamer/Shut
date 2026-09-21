@@ -252,6 +252,24 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    /// Fourteen apps have asked to stay awake. The list scrolls inside itself and grows a
+    /// filter; the rows under it stay where they were.
+    func testALongListOfAppsStaysInItsWell() throws {
+        let names = ["App Store", "Blender", "Cursor", "Dia", "Docker", "Final Cut Pro", "Logic Pro", "Messages",
+                     "Phone", "Safari", "Spotify", "Terminal", "Xcode", "Zoom"]
+        let owners = names.map { name in
+            AssertionAttribution.Owner(app: .init(bundleID: "test.\(name)", name: name, isDeveloperTool: ["Cursor", "Terminal", "Xcode"].contains(name)),
+                                       viaCommandLine: false, assertionName: "test", tool: nil)
+        }
+        let (model, awake) = try makeModel(on: true, reasons: [], asking: owners)
+        XCTAssertEqual(awake.arbiter.mirror.orderedApps.prefix(3).map(\.name), ["Cursor", "Terminal", "Xcode"],
+                       "asking now and allowed come first")
+        model.showingAllowedApps = true
+        model.page = .awake
+        try render(model, name: "page-many-apps")
+        awake.shutDown()
+    }
+
     /// The fullest the status column gets: a hold, a battery warning, the dial counting down
     /// and a receipt. It must fit or scroll inside its frame, never slide over the header.
     func testTheBusiestPage() throws {

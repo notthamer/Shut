@@ -124,6 +124,8 @@ final class PopoverModel: ObservableObject {
     /// Set once "Allow…" has opened System Settings: from then on the card's next step is
     /// the restart macOS needs before the permission counts.
     @Published var askedForScreenRecording = false
+    /// The list of apps under "An app is busy".
+    @Published var showingAllowedApps = false
     /// The folded Settings on the Awake page.
     @Published var showingAwakeSettings = false
 

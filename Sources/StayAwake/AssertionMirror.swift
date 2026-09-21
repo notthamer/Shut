@@ -148,6 +148,36 @@ public final class AssertionMirror: HoldSource {
     /// Bundle IDs that were asking macOS to stay awake at the last read.
     public private(set) var askingNow: Set<String> = []
 
+    /// The list as the interface shows it: the apps keeping the Mac awake now, then the ones
+    /// asking that may not, then the ones switched on, then the rest; by name within each. Twenty apps in alphabetical order put the one that
+    /// matters wherever its name happens to fall.
+    public var orderedApps: [SeenApp] { Self.ordered(seenApps, askingNow: askingNow) }
+
+    static func ordered(_ apps: [SeenApp], askingNow: Set<String>) -> [SeenApp] {
+        // Keeping the Mac awake right now; asking but not allowed (a decision to make);
+        // allowed but quiet; everything else.
+        func rank(_ app: SeenApp) -> Int {
+            switch (askingNow.contains(app.bundleID), app.allowed) {
+            case (true, true): return 0
+            case (true, false): return 1
+            case (false, true): return 2
+            case (false, false): return 3
+            }
+        }
+        return apps.sorted {
+            let (a, b) = (rank($0), rank($1))
+            return a != b ? a < b : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+    }
+
+    /// An app that asked once, months ago, was never switched on and never decided about is
+    /// noise. Anything the user touched, or that may hold the lid, is kept for good.
+    static let forgetAfter: TimeInterval = 60 * 24 * 3600
+
+    static func pruned(_ apps: [SeenApp], now: Date) -> [SeenApp] {
+        apps.filter { $0.allowed || $0.decided || now.timeIntervalSince($0.lastSeen) < forgetAfter }
+    }
+
     /// Apps asking right now that may not hold the lid and that nobody has decided about.
     /// The interface asks once, where the user is already looking; this is how an app
     /// that is not a developer tool (a call, a render, a download) gets found at all.
@@ -169,7 +199,7 @@ public final class AssertionMirror: HoldSource {
             AssertionAttribution.owners(of: Self.readAssertions(), ownPID: ProcessInfo.processInfo.processIdentifier,
                                         lookup: Self.lookup)
         }
-        seenApps = defaults?.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([SeenApp].self, from: $0) } ?? []
+        seenApps = Self.pruned(defaults?.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([SeenApp].self, from: $0) } ?? [], now: Date())
     }
 
     init(defaults: UserDefaults?, read: @escaping () -> [AssertionAttribution.Owner]) {

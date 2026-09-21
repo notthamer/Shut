@@ -252,6 +252,23 @@ final class PendingAppTests: XCTestCase {
         XCTAssertEqual(mirror.seenApps.first { $0.name == "Zoom" }?.allowed, true)
     }
 
+    /// Thirty apps in alphabetical order bury the one that matters; and a list that never
+    /// forgets only grows.
+    func testTheListPutsWhatMattersFirstAndForgetsTheRest() {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        func app(_ name: String, allowed: Bool = false, decided: Bool = false, daysAgo: Double = 1) -> SeenApp {
+            SeenApp(bundleID: "id.\(name)", name: name, allowed: allowed, lastSeen: now.addingTimeInterval(-daysAgo * 86400), decided: decided)
+        }
+        let apps = [app("Xcode", allowed: true), app("App Store"), app("Zoom"), app("Cursor", allowed: true), app("Safari")]
+        XCTAssertEqual(AssertionMirror.ordered(apps, askingNow: ["id.Zoom"]).map(\.name),
+                       ["Zoom", "Cursor", "Xcode", "App Store", "Safari"], "asking now, then switched on, then the rest, by name")
+
+        let old = [app("Once", daysAgo: 90), app("Declined", decided: true, daysAgo: 400),
+                   app("Allowed", allowed: true, daysAgo: 400), app("Recent", daysAgo: 10)]
+        XCTAssertEqual(AssertionMirror.pruned(old, now: now).map(\.name), ["Declined", "Allowed", "Recent"],
+                       "only what was never touched and not seen for two months is forgotten")
+    }
+
     func testAListSavedBeforeTheQuestionExistedStillLoads() throws {
         let old = #"[{"bundleID":"us.zoom.xos","name":"Zoom","allowed":false,"lastSeen":700000000}]"#
         let apps = try JSONDecoder().decode([SeenApp].self, from: Data(old.utf8))

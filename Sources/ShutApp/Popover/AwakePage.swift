@@ -210,7 +210,6 @@ private struct AwakeStatusColumn: View {
 private struct AwakeControls: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
-    @State private var showApps = false
     @State private var showPicker = false
 
     private var awake: StayAwakeController { model.stayAwake }
@@ -226,7 +225,7 @@ private struct AwakeControls: View {
             }
             .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 20)
             .tunerAnimation(TunerTheme.ease, value: model.showingAwakeSettings)
-            .tunerAnimation(TunerTheme.ease, value: showApps)
+            .tunerAnimation(TunerTheme.ease, value: model.showingAllowedApps)
             .tunerAnimation(TunerTheme.ease, value: showPicker)
         }
         .fadesAtTheFold()
@@ -251,9 +250,9 @@ private struct AwakeControls: View {
         return VStack(alignment: .leading, spacing: 4) {
             Eyebrow("Keep it awake while").padding(.bottom, 8)
             TriggerRow("An app is busy", about: "Agents, builds, renders.",
-                       live: live(.working), detail: allowedSummary, isOn: bind(\.whenWorking), expanded: $showApps,
+                       live: live(.working), detail: allowedSummary, isOn: bind(\.whenWorking), expanded: $model.showingAllowedApps,
                        help: "Hold the lid while an app you allow is asking macOS to stay awake: a coding agent in a terminal, a render, a download.")
-            if showApps { AllowedApps(model: model).transition(.blurFade).padding(.bottom, 6) }
+            if model.showingAllowedApps { AllowedApps(model: model).transition(.blurFade).padding(.bottom, 6) }
 
             TriggerRow("A display is connected", about: "Keep working on an external monitor.",
                        live: live(.display), detail: nil, isOn: bind(\.whenDisplayConnected), expanded: nil,
@@ -512,80 +511,125 @@ struct AwakeWarnings: View {
 
 // MARK: - Disclosures
 
-/// Apps Shut has seen asking macOS to stay awake. New tools appear here by
-/// themselves, so there is no list of agents to keep up to date.
-private struct AllowedApps: View {
-    @ObservedObject var model: PopoverModel
+/// A list of apps with a switch each, in a well that never outgrows the page. It shows six
+/// and a half rows (the half says "there is more") and scrolls inside itself beyond that;
+/// past eight apps it grows a filter. Unbounded, seven apps already pushed the rows below
+/// it off the page, and a list of thirty would have been the page.
+private struct AppList: View {
+    struct Item: Identifiable { let id: String; let name: String; let isOn: Bool; var note: String? = nil }
+
+    let intro: String
+    let empty: String
+    let items: [Item]
+    let toggle: (Item) -> Void
+    @State private var filter = ""
     @Environment(\.tunerTheme) private var theme
 
+    static let rowHeight: CGFloat = 34
+    static let visibleRows: CGFloat = 6.5
+    static let filterFrom = 9
+
+    private var shown: [Item] {
+        let query = filter.trimmingCharacters(in: .whitespaces)
+        return query.isEmpty ? items : items.filter { $0.name.localizedCaseInsensitiveContains(query) }
+    }
+
     var body: some View {
-        let mirror = model.stayAwake.arbiter.mirror
         VStack(alignment: .leading, spacing: 0) {
-            Text("Apps that asked macOS to stay awake. Switch on the ones that may hold the lid.")
+            Text(intro)
                 .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(12)
-            if mirror.seenApps.isEmpty {
+            if items.count >= Self.filterFrom {
                 Rectangle().fill(theme.hairline).frame(height: 1)
-                Text("None yet. They appear here by themselves.")
-                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).padding(12)
-            }
-            ForEach(mirror.seenApps) { app in
-                Rectangle().fill(theme.hairline).frame(height: 1)
-                HStack(spacing: 8) {
-                    AppIconView(bundleID: app.bundleID, size: 18)
-                    Text(app.name).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
-                    Spacer()
-                    SmallPill(isOn: app.allowed) { mirror.setAllowed(app.bundleID, !app.allowed); model.objectWillChange.send() }
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass").font(.system(size: 10, weight: .medium)).foregroundStyle(theme.inkTertiary)
+                    TextField("Filter \(items.count) apps", text: $filter)
+                        .textFieldStyle(.plain).font(TunerTheme.bodySmall)
                 }
-                .padding(.horizontal, 12).frame(height: 34)
+                .padding(.horizontal, 12).frame(height: 30)
+            }
+            if items.isEmpty {
+                Rectangle().fill(theme.hairline).frame(height: 1)
+                Text(empty).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).padding(12)
+            } else if shown.isEmpty {
+                Rectangle().fill(theme.hairline).frame(height: 1)
+                Text("No app called “\(filter)”.").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).padding(12)
+            }
+            let rows = VStack(spacing: 0) {
+                ForEach(shown) { item in
+                    Rectangle().fill(theme.hairline).frame(height: 1)
+                    HStack(spacing: 8) {
+                        AppIconView(bundleID: item.id, size: 18)
+                        Text(item.name).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
+                        if let note = item.note {
+                            Text(note).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineLimit(1)
+                        }
+                        Spacer()
+                        SmallPill(isOn: item.isOn) { toggle(item) }
+                    }
+                    .padding(.horizontal, 12).frame(height: Self.rowHeight - 1)
+                }
+            }
+            if CGFloat(shown.count) > Self.visibleRows {
+                ScrollView(showsIndicators: true) { rows }
+                    .frame(height: Self.rowHeight * Self.visibleRows)
+            } else {
+                rows
             }
         }
         .surface(.well, radius: TunerTheme.wellRadius)
+        .clipShape(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous))
     }
 }
 
-/// Regular apps that are open now, plus any already picked.
+/// Apps Shut has seen asking macOS to stay awake. New tools appear here by themselves, so
+/// there is no list of agents to keep up to date. Asking now first, then the ones switched on.
+private struct AllowedApps: View {
+    @ObservedObject var model: PopoverModel
+
+    var body: some View {
+        let mirror = model.stayAwake.arbiter.mirror
+        AppList(intro: "Apps that asked macOS to stay awake. Switch on the ones that may keep your Mac awake.",
+                empty: "None yet. They appear here by themselves.",
+                items: mirror.orderedApps.map {
+                    .init(id: $0.bundleID, name: $0.name, isOn: $0.allowed,
+                          note: mirror.askingNow.contains($0.bundleID) ? "asking now" : nil)
+                }) { item in
+            mirror.setAllowed(item.id, !item.isOn)
+            model.objectWillChange.send()
+        }
+    }
+}
+
+/// Regular apps that are open now, plus any already picked. Picked first.
 private struct AppPicker: View {
     @ObservedObject var model: PopoverModel
-    @Environment(\.tunerTheme) private var theme
 
-    private struct Candidate: Identifiable { let id: String; let name: String }
-
-    private var candidates: [Candidate] {
+    private var items: [AppList.Item] {
+        let picked = model.stayAwake.settings.pickedApps
         var seen = Set<String>()
-        let running = NSWorkspace.shared.runningApplications.compactMap { app -> Candidate? in
+        let running = NSWorkspace.shared.runningApplications.compactMap { app -> AppList.Item? in
             guard app.activationPolicy == .regular, let id = app.bundleIdentifier, id != Bundle.main.bundleIdentifier,
                   seen.insert(id).inserted else { return nil }
-            return Candidate(id: id, name: app.localizedName ?? id)
+            return .init(id: id, name: app.localizedName ?? id, isOn: picked.contains(id))
         }
-        let picked = model.stayAwake.settings.pickedApps.filter { seen.insert($0).inserted }.map { id in
-            Candidate(id: id, name: NSWorkspace.shared.urlForApplication(withBundleIdentifier: id)?
-                .deletingPathExtension().lastPathComponent ?? id)
+        let closed = picked.filter { seen.insert($0).inserted }.map { id in
+            AppList.Item(id: id, name: NSWorkspace.shared.urlForApplication(withBundleIdentifier: id)?
+                .deletingPathExtension().lastPathComponent ?? id, isOn: true, note: "not open")
         }
-        return (running + picked).sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return (running + closed).sorted {
+            $0.isOn != $1.isOn ? $0.isOn : $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
     }
 
     var body: some View {
         let settings = model.stayAwake.settings
-        VStack(alignment: .leading, spacing: 0) {
-            Text("Open apps. Switch on the ones your Mac should stay awake for.")
-                .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).padding(12)
-            ForEach(candidates) { app in
-                Rectangle().fill(theme.hairline).frame(height: 1)
-                HStack(spacing: 8) {
-                    AppIconView(bundleID: app.id, size: 18)
-                    Text(app.name).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
-                    Spacer()
-                    SmallPill(isOn: settings.pickedApps.contains(app.id)) {
-                        if let index = settings.pickedApps.firstIndex(of: app.id) { settings.pickedApps.remove(at: index) }
-                        else { settings.pickedApps.append(app.id) }
-                    }
-                }
-                .padding(.horizontal, 12).frame(height: 34)
-            }
+        AppList(intro: "Open apps. Switch on the ones your Mac should stay awake for.",
+                empty: "No apps are open.", items: items) { item in
+            if let index = settings.pickedApps.firstIndex(of: item.id) { settings.pickedApps.remove(at: index) }
+            else { settings.pickedApps.append(item.id) }
         }
-        .surface(.well, radius: TunerTheme.wellRadius)
     }
 }
 
