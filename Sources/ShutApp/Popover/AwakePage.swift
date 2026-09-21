@@ -216,7 +216,8 @@ private struct AwakeBand: View {
                 // Who is keeping it awake is said once, in the rows under "Stays awake when".
                 // A card appears here only to warn.
                 if copy.showsCards {
-                    AwakeWarnings(state: arbiter.state, conditions: arbiter.conditions, limits: arbiter.limits, now: context.date)
+                    AwakeWarnings(state: arbiter.state, conditions: arbiter.conditions, limits: arbiter.limits, now: context.date,
+                                  changeLevel: model.showingAwakeSettings ? nil : { model.showingAwakeSettings = true })
                 }
                 actions(status.action, who: pending?.name
                         ?? arbiter.reasons.first { $0.kind == .working || $0.kind == .command }.map(AwakeText.subject))
@@ -396,7 +397,7 @@ private struct KeepAwakeMode: View {
                 settle?.cancel(); dragged = nil
                 if index == 1 { awake.startTimedHold() } else { awake.returnToAutomatic() }
             }
-            if timed { dial } else {
+            if timed { dial } else if !holders.isEmpty { holding } else {
                 Text(AwakeText.automaticSummary(working: settings.whenWorking, display: settings.whenDisplayConnected,
                                                 pickedApps: settings.whenAppsOpen ? settings.pickedApps.count : 0))
                     .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
@@ -404,6 +405,41 @@ private struct KeepAwakeMode: View {
             }
         }
         .tunerAnimation(TunerTheme.ease, value: timed)
+    }
+
+    /// What the rules have found, while they are the ones keeping the Mac awake.
+    private var holders: [HoldReason] {
+        awake.arbiter.state.holdsLid ? awake.arbiter.reasons.filter { $0.kind != .manual } : []
+    }
+
+    /// Automatic, and at work: who is keeping it awake right now, in the same box as the choice.
+    private var holding: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Keeping it awake now").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                .padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 4)
+            ForEach(Array(holders.prefix(AwakeText.holdersShown).enumerated()), id: \.element.id) { _, reason in
+                let line = AwakeText.holder(reason, now: now)
+                HStack(spacing: 8) {
+                    if let bundleID = AppIcons.bundleID(for: reason) {
+                        AppIconView(bundleID: bundleID, size: 18)
+                    } else {
+                        Circle().fill(theme.ink).frame(width: 6, height: 6).frame(width: 18, height: 18)
+                    }
+                    Text(line.name).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink).lineLimit(1).truncationMode(.middle)
+                    Spacer(minLength: 6)
+                    Text(line.detail).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineLimit(1).fixedSize()
+                }
+                .padding(.horizontal, 12).frame(height: 30)
+                .accessibilityElement(children: .combine)
+            }
+            if let more = AwakeText.moreHolders(holders.count) {
+                Text(more).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                    .padding(.horizontal, 12).padding(.bottom, 4)
+            }
+            Spacer(minLength: 0).frame(height: 6)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .surface(.card, radius: TunerTheme.cardRadius)
     }
 
     private var dial: some View {
@@ -544,6 +580,8 @@ struct AwakeWarnings: View {
     let conditions: PowerConditions
     let limits: HoldLimits
     let now: Date
+    /// Opens Settings at the battery level; nil while Settings is already open.
+    var changeLevel: (() -> Void)? = nil
     @Environment(\.tunerTheme) private var theme
 
     var body: some View {
@@ -559,13 +597,19 @@ struct AwakeWarnings: View {
                         Text(row.title).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink).lineLimit(1)
                         Text(row.subtitle).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                             .fixedSize(horizontal: false, vertical: true)
-                        if let meter = row.meter { BatteryMeter(percent: meter.percent, floor: meter.floor).padding(.top, 6) }
+                        if let meter = row.meter {
+                            BatteryMeter(percent: meter.percent, floor: meter.floor).padding(.top, 6)
+                            // The level is the user's own: a way straight to it, unless it is already showing.
+                            if let changeLevel {
+                                SecondaryButton(AwakeText.BatteryTooLow.changeLevel, action: changeLevel).padding(.top, 8)
+                            }
+                        }
                     }
                     Spacer(minLength: 8)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 11)
                 .background(row.warning ? theme.washSaffron : .clear)
-                .accessibilityElement(children: .ignore)
+                .accessibilityElement(children: row.meter == nil ? .ignore : .contain)
                 .accessibilityLabel([row.warning ? "Warning." : "", row.title, row.subtitle].filter { !$0.isEmpty }.joined(separator: ", "))
             }
         }

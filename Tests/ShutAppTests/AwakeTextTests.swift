@@ -106,6 +106,20 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertTrue(AwakeText.automaticSummary(working: false, display: false, pickedApps: 0).hasPrefix("No rule is switched on"))
     }
 
+    /// Under Automatically, the box names who is keeping the Mac awake.
+    func testTheBoxNamesWhoIsKeepingItAwake() {
+        let now = t0.addingTimeInterval(47 * 60)
+        let agent = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", tool: "Claude Code", since: t0)
+        XCTAssertEqual(AwakeText.holder(agent, now: now), .init(name: "Claude Code in Cursor", detail: "busy · 47 min"))
+        XCTAssertEqual(AwakeText.holder(work("Xcode"), now: now), .init(name: "Xcode", detail: "busy · 47 min"))
+        let display = HoldReason(id: "display:x", kind: .display, title: "Studio Display", since: t0)
+        XCTAssertEqual(AwakeText.holder(display, now: now), .init(name: "Studio Display", detail: "connected"))
+        let open = HoldReason(id: "app:x", kind: .appOpen, title: "Final Cut Pro", since: t0)
+        XCTAssertEqual(AwakeText.holder(open, now: now), .init(name: "Final Cut Pro", detail: "open"))
+        XCTAssertNil(AwakeText.moreHolders(3))
+        XCTAssertEqual(AwakeText.moreHolders(5), "and 2 more")
+    }
+
     /// 18 % with the level at 20 %: every surface says the battery is under it, with both numbers.
     func testABatteryUnderTheLevelIsSaidPlainly() {
         let low = PowerConditions(onCharger: false, batteryPercent: 18)

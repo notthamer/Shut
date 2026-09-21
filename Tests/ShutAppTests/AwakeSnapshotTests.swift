@@ -271,6 +271,20 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    /// Automatic and at work: the box under the choice says who is keeping the Mac awake.
+    func testAutomaticShowsWhoIsWorking() throws {
+        let since = Date().addingTimeInterval(-47 * 60)
+        let reasons = [HoldReason(id: "working:cursor", kind: .working, title: "Cursor", tool: "Claude Code", since: since),
+                       HoldReason(id: "working:xcode", kind: .working, title: "Xcode", since: since),
+                       HoldReason(id: "display:x", kind: .display, title: "Studio Display", since: since),
+                       HoldReason(id: "app:fcp", kind: .appOpen, title: "Final Cut Pro", since: since)]
+        let (model, awake) = try makeModel(on: true, reasons: reasons, asking: [])
+        model.page = .awake
+        XCTAssertEqual(awake.arbiter.state, .holding)
+        try render(model, name: "page-automatic-working")
+        awake.shutDown()
+    }
+
     /// 18 % on battery with the level at 20 %: a set time cannot hold, and the page says why.
     func testABatteryUnderTheLevel() throws {
         let (model, awake) = try makeModel(on: true, reasons: [], asking: [], power: PowerConditions(onCharger: false, batteryPercent: 18))
@@ -278,6 +292,10 @@ final class AwakeSnapshotTests: XCTestCase {
         XCTAssertEqual(awake.arbiter.state, .ready)
         XCTAssertEqual(awake.status.sentence, "Battery 18 % is under your 20 % limit · lid will sleep your Mac")
         try render(model, name: "page-battery-low")
+        // The card's button opens Settings, where the level is; with Settings open it is not offered.
+        model.showingAwakeSettings = true
+        try render(model, name: "page-battery-low-settings")
+        model.showingAwakeSettings = false
         awake.startTimedHold()
         XCTAssertEqual(awake.arbiter.state, .stopped(.batteryFloor))
         try render(model, name: "page-battery-low-set-time")

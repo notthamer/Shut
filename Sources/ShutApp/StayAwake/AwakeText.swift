@@ -67,6 +67,7 @@ enum AwakeText {
         let floor: Int
         var title: String { "Battery \(percent) % · too low" }
         var rule: String { "It stays awake only above \(floor) %." }
+        static let changeLevel = "Change the level"
         var tab: String { "Battery \(percent) % · too low" }
         /// Under the battery slider, in place of its usual explanation.
         var setting: String { "Your battery is at \(percent) % now, under this level, so the lid sleeps your Mac." }
@@ -341,6 +342,30 @@ enum AwakeText {
         guard !rules.isEmpty else { return "No rule is switched on below, so nothing keeps it awake by itself." }
         let list = rules.count == 1 ? rules[0] : rules.dropLast().joined(separator: ", ") + " or " + rules[rules.count - 1]
         return "Stays awake while \(list), and sleeps by itself when that ends."
+    }
+
+    /// One line of "Keeping it awake now", under Automatically: who, and how long or what.
+    struct Holder: Equatable {
+        let name: String
+        let detail: String
+    }
+
+    static func holder(_ reason: HoldReason, now: Date) -> Holder {
+        switch reason.kind {
+        case .working:
+            return Holder(name: reason.tool.map { "\($0) in \(reason.title)" } ?? reason.title,
+                          detail: "busy · " + duration(now.timeIntervalSince(reason.since)))
+        case .command: return Holder(name: reason.title, detail: "running · " + duration(now.timeIntervalSince(reason.since)))
+        case .display: return Holder(name: reason.title, detail: "connected")
+        case .appOpen: return Holder(name: reason.title, detail: "open")
+        case .manual: return Holder(name: "You said so", detail: reason.until.map { "until " + clock($0) } ?? "until you stop it")
+        }
+    }
+
+    /// At most three lines fit the box; the rest are counted.
+    static let holdersShown = 3
+    static func moreHolders(_ count: Int) -> String? {
+        count > holdersShown ? "and \(count - holdersShown) more" : nil
     }
 
     // MARK: The "You say so" dial

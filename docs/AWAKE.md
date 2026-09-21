@@ -62,7 +62,9 @@ screen.
   has, always in the same words ("Closing the lid will sleep your Mac." / "Closing the
   lid keeps your Mac awake."), then why, with the icon of the app it is about, and the
   one action (Let it sleep, Allow). Top right: "Keep it awake" with the two ways side by side,
-  "Automatically" (the rules below decide; one sentence says which are on) and "For a set
+  "Automatically" (the rules below decide; one sentence says which are on, and while they are
+  keeping the Mac awake a box under the choice, "Keeping it awake now", lists who with
+  icon and time, three at most and "and N more") and "For a set
   time" (one click starts the time last used, a dial under it changes it from 5 min to
   12 h or until stopped; when it runs out the page is automatic again), so going from one
   to the other is one click either way, and, only while
@@ -73,7 +75,7 @@ screen.
   strip in small type. On battery at or under the chosen level the page says so with both
   numbers, wherever it speaks: the tab ("Battery 18 % · too low"), the answer, a Saffron
   card with a bar filled to now and a tick at the level ("now 18 %", "needs more than
-  20 %"), the line under the battery slider, and the set-time dial ("Not right now: the
+  20 %") and, while Settings is folded, a "Change the level" button that opens it, the line under the battery slider, and the set-time dial ("Not right now: the
   battery is too low."). If "An app is busy" is off the answer says that agents and builds
   will not keep the Mac awake.
 - **One panel size.** Both sections have the same height, whatever their state. (For a
