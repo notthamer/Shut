@@ -19,9 +19,6 @@ final class PopoverModel: ObservableObject {
     /// Actions supplied by the app; tests pass no-ops.
     var openTuner: () -> Void = {}
     var openWindow: () -> Void = {}
-    // TEMPORARY (remove before 0.3.0 ships), with the two buttons behind the gear.
-    var replayWelcome: () -> Void = {}
-    var replayWhatsNew: () -> Void = {}
     var quit: () -> Void = { DispatchQueue.main.async { NSApp.terminate(nil) } }
     var allowScreenRecording: () -> Void = {}
     var relaunch: () -> Void = {}

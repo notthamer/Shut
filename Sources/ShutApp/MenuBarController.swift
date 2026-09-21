@@ -186,7 +186,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         // Only in a packaged app: the notes are put there by scripts/build.sh.
-        if WhatsNew.bundled() != nil {
+        if WhatsNew.bundled() != nil || WhatsNewTour.slides(for: InstanceVersion.current.short) != nil {
             let news = NSMenuItem(title: "What’s New in Shut \(InstanceVersion.current.short)…", action: #selector(openWhatsNew), keyEquivalent: "")
             news.target = self
             menu.addItem(news)

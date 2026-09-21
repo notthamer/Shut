@@ -240,7 +240,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         whatsNew.anchor = { [weak self] in self?.menuBar.statusButton }
         whatsNew.showMe = { [weak self] in self?.menuBar.showAwakePage?() }
         menuBar.showWhatsNew = { [weak self] in
-            if let news = WhatsNew.bundled() { self?.whatsNew.show(news, version: InstanceVersion.current.short) }
+            // A tour needs no notes, so it shows in a run from Xcode too (the notes are put in by scripts/build.sh).
+            let version = InstanceVersion.current.short
+            if let news = WhatsNew.bundled() ?? (WhatsNewTour.slides(for: version) != nil ? WhatsNew(title: "", lead: "", points: []) : nil) {
+                self?.whatsNew.show(news, version: version)
+            }
         }
         let version = InstanceVersion.current.short
         if WhatsNew.isDue(current: version, lastSeen: settings.lastSeenVersion, hasCompletedFirstRun: settings.hasCompletedFirstRun),
@@ -249,21 +253,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.whatsNew.show(news, version: version) }
         }
         settings.lastSeenVersion = version
-
-        // TEMPORARY (remove before 0.3.0 ships): the two review buttons behind the gear. The
-        // welcome is the real flow (a style picked there is picked), but Start only closes it.
-        popoverModel.replayWelcome = { [weak self] in
-            guard let self else { return }
-            self.popover.close()
-            self.welcome.show(capability: capability, model: self.popoverModel) {}
-        }
-        popoverModel.replayWhatsNew = { [weak self] in
-            self?.popover.close()
-            // A run from Xcode carries no notes (scripts/build.sh puts them in); the tour needs none.
-            let news = WhatsNew.bundled() ?? WhatsNew(title: "", lead: "", points: [])
-            let version = InstanceVersion.current.short
-            self?.whatsNew.show(news, version: WhatsNewTour.slides(for: version) != nil ? version : "0.3.0")
-        }
 
         if !settings.hasCompletedFirstRun {
             welcome.show(capability: capability, model: popoverModel) { [weak self] in
