@@ -26,6 +26,10 @@ struct AwakePage: View {
     /// The left column under the band. (The right one holds Settings, whose segmented rows
     /// cannot shrink; a test measures them against what is left.)
     static let statusWidth: CGFloat = 320
+    /// The answer's band is one height in every state, so the rules under it never move. It
+    /// fits the tallest ordinary state (a question with two buttons; three apps in the box);
+    /// anything rarer scrolls inside its cell.
+    static let bandHeight: CGFloat = 320
     var body: some View {
         VStack(spacing: 0) {
             AwakeBand(model: model)
@@ -60,8 +64,10 @@ private struct AwakeLastTime: View {
                     Eyebrow("Last time", number: "03").fixedSize()
                     (Text(slip.headline).foregroundStyle(theme.ink).font(TunerTheme.bodyMedium)
                      + Text("  ·  \(slip.span)" + (slip.footnote.isEmpty ? "" : "  ·  \(slip.footnote)")).foregroundStyle(theme.inkLabel))
-                        .font(TunerTheme.bodySmall).lineSpacing(2)
-                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                        .font(TunerTheme.bodySmall)
+                        // One line, always: the strip is a footnote. The whole of it is in the tooltip.
+                        .lineLimit(1).truncationMode(.tail)
+                        .help([slip.headline, slip.span, slip.footnote].filter { !$0.isEmpty }.joined(separator: " · "))
                     Spacer(minLength: 0)
                     // Read once is enough for most: it goes until the next time there is one.
                     IconButton("xmark", help: "Remove this note. The next time your Mac stays awake leaves a new one.") {
@@ -99,6 +105,7 @@ private struct AwakeBand: View {
         // the rule runs unbroken from the header down to "Last time".
         HStack(alignment: .top, spacing: 0) {
             // Top left, where the eye lands: the face, and under it what it is saying.
+            ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
                 TimelineView(.periodic(from: .now, by: 30)) { _ in
                     let dot = awake.pendingApp == nil ? awake.status.dot : .idle
@@ -109,6 +116,8 @@ private struct AwakeBand: View {
             }
             .padding(.horizontal, 20).padding(.vertical, 22)
             .frame(width: AwakePage.statusWidth, alignment: .topLeading)
+            }
+            .frame(width: AwakePage.statusWidth)
             .frame(maxHeight: .infinity, alignment: .topLeading)
 
             Rectangle().fill(theme.hairline).frame(width: 1)
@@ -121,7 +130,7 @@ private struct AwakeBand: View {
                 }
                 .disabled(!isOn)
                 .opacity(isOn ? 1 : 0.5)
-                if isOn, awake.arbiter.state.holdsLid, let caption = awake.closingCaption(beginning: false) {
+                if isOn, awake.arbiter.state.holdsLid, roomForThePreview, let caption = awake.closingCaption(beginning: false) {
                     HStack(alignment: .center, spacing: 12) {
                         PreviewWindow(preview: preview, caption: caption, compact: true).frame(width: 120)
                         VStack(alignment: .leading, spacing: 2) {
@@ -138,7 +147,15 @@ private struct AwakeBand: View {
             .frame(width: PopoverView.width - AwakePage.statusWidth - 1, alignment: .topLeading)
             .frame(maxHeight: .infinity, alignment: .topLeading)
         }
-        .fixedSize(horizontal: false, vertical: true)
+        .frame(height: AwakePage.bandHeight)
+        .clipped()
+    }
+
+    /// The small preview of the close is a nicety, shown when the cell has room for it: with a
+    /// set time, or with at most one app in the "Keeping it awake now" box.
+    private var roomForThePreview: Bool {
+        let reasons = awake.arbiter.reasons
+        return reasons.contains { $0.kind == .manual } || reasons.count <= 1
     }
 
     /// The action under the answer shows where it leads before it is pressed. Keeping the Mac
@@ -830,7 +847,7 @@ struct AwakeLimits: View {
                               in: Double(HoldLimits.batteryFloorRange.lowerBound)...Double(HoldLimits.batteryFloorRange.upperBound),
                               step: 5)
             }
-            Explained("Stay awake on any power, or only on the charger.") { Self.powerRow(settings) }
+            Explained("") { Self.powerRow(settings) }   // its own words say it
             Explained("Minutes to wait after the work ends, in case it starts again.") { Self.graceRow(settings) }
             TriggerRow("Lock the screen", about: "A Mac that stays awake stays unlocked. This locks it as the lid shuts.",
                        live: nil, detail: nil, isOn: Binding(get: { settings.lockWhenShut }, set: { settings.lockWhenShut = $0 }), expanded: nil,
@@ -855,7 +872,7 @@ struct AwakeLimits: View {
     // The two segmented rows cannot shrink (their words never become "…"), so they are built
     // here where a test can measure them against the column they have to fit.
     static func powerRow(_ settings: StayAwakeSettings) -> SegmentedRow {
-        SegmentedRow("Power", options: ["Any", "Charger only"],
+        SegmentedRow("Works on", options: ["Any power", "Charger only"],
                      selection: Binding(get: { settings.chargerOnly ? 1 : 0 }, set: { settings.chargerOnly = $0 == 1 }))
     }
 

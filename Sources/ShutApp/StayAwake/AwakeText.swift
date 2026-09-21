@@ -162,7 +162,7 @@ enum AwakeText {
 
     static func pendingHero(_ app: String) -> Hero {
         Hero(headline: "\(app) is asking to stay awake.",
-             detail: "Shut is not keeping your Mac awake for it yet: nobody has said whether it may.",
+             detail: "Shut is not keeping your Mac awake for it yet.",
              showsCards: false)
     }
 

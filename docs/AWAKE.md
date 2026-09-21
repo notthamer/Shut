@@ -280,3 +280,11 @@ since (powerd rewrites it, another keep-awake app can clear it).
   stages can be played with; their state is the slide's own and touches no setting. One height
   for every slide, Later on every slide, "Show me" on the last. A release without a tour falls
   back to the text card.
+
+## Layout rules of the page
+
+- The answer's band is one height in every state (`AwakePage.bandHeight`), so "01 / 02" never
+  move. Its left cell scrolls if a rare state outgrows it. The small close preview shows only
+  when its cell has room: with a set time, or with at most one app in the box.
+- "03 Last time" is one line, truncated, whole in its tooltip, with an × to remove it.
+- The eyes sprite (`Resources/eyes.png`) was generated with Claude for this app; no third-party licence applies.
