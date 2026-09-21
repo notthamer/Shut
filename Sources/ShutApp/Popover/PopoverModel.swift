@@ -19,6 +19,8 @@ final class PopoverModel: ObservableObject {
     /// Actions supplied by the app; tests pass no-ops.
     var openTuner: () -> Void = {}
     var openWindow: () -> Void = {}
+    /// "What's new" behind the gear: the same card the menu bar menu opens.
+    var showWhatsNew: () -> Void = {}
     var quit: () -> Void = { DispatchQueue.main.async { NSApp.terminate(nil) } }
     var allowScreenRecording: () -> Void = {}
     var relaunch: () -> Void = {}

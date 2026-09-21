@@ -187,6 +187,12 @@ final class AssertionAttributionTests: XCTestCase {
         // The npm build of Codex runs a binary named after its platform.
         XCTAssertEqual(AssertionAttribution.toolName(processName: "codex-aarch64-apple-darwin", path: nil), "Codex")
         XCTAssertEqual(AssertionAttribution.toolName(processName: "cursor-agent", path: nil), "Cursor Agent")
+        // Cursor's command-line tool is a script under a folder named after its version, run by
+        // a node that may be its own or Homebrew's: the name comes from the script's path.
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "node", path: "/opt/homebrew/bin/node",
+                                                     script: "/Users/me/.local/share/cursor-agent/versions/2026.08.15-922a05a/index.js"), "Cursor Agent")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "node", path: "/Users/me/.local/share/cursor-agent/versions/2026.08.15-922a05a/node",
+                                                     script: "/Users/me/.local/share/cursor-agent/versions/2026.08.15-922a05a/index.js"), "Cursor Agent")
         XCTAssertEqual(AssertionAttribution.toolName(processName: "codexy", path: nil), "codexy", "a prefix is not a match without its separator")
         // A tool that is a script is named after the script, not after node.
         XCTAssertEqual(AssertionAttribution.toolName(processName: "node", path: "/opt/homebrew/bin/node",

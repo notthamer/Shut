@@ -124,9 +124,11 @@ public enum AssertionAttribution {
             name = ([stem] + parts.dropLast().reversed()).first { !$0.isEmpty && !generic.contains($0.lowercased()) && !$0.hasPrefix("@") } ?? name
         }
         let looksLikeVersion = name.first?.isNumber == true && name.contains(".")
-        if looksLikeVersion, let path {
+        // The script's own path says more than the runtime's: Cursor's tool is
+        // "node …/cursor-agent/versions/2026.08.15-abc/index.js", and node may be anyone's.
+        if looksLikeVersion, let location = (interpreters.contains(processName.lowercased()) ? script : nil) ?? path {
             let skip: Set<String> = ["versions", "bin", "libexec", "current"]
-            name = path.split(separator: "/").dropLast().reversed()
+            name = location.split(separator: "/").dropLast().reversed()
                 .first { !skip.contains($0.lowercased()) && !($0.first?.isNumber ?? true) }.map(String.init) ?? name
         }
         return friendly(name)

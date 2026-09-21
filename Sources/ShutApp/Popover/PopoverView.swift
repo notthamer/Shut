@@ -143,6 +143,10 @@ struct PopoverFooter: View {
                     }
                 }
                 Spacer()
+                // The tour again, for whoever pressed Later (it is in the menu bar menu too).
+                if WhatsNewTour.slides(for: InstanceVersion.current.short) != nil || WhatsNew.bundled() != nil {
+                    QuietButton("What’s new") { model.showWhatsNew() }
+                }
                 QuietButton("Done") { showingSettings = false }
             } else {
                 IconButton("gearshape", help: "Open at login, Dock icon, updates.") { showingSettings = true }

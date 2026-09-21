@@ -239,6 +239,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Someone who already had Shut, on the first launch of a new version: what changed.
         whatsNew.anchor = { [weak self] in self?.menuBar.statusButton }
         whatsNew.showMe = { [weak self] in self?.menuBar.showAwakePage?() }
+        popoverModel.showWhatsNew = { [weak self] in
+            self?.popover.close()
+            self?.menuBar.showWhatsNew?()
+        }
         menuBar.showWhatsNew = { [weak self] in
             // A tour needs no notes, so it shows in a run from Xcode too (the notes are put in by scripts/build.sh).
             let version = InstanceVersion.current.short
