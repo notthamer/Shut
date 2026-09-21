@@ -78,6 +78,9 @@ enum AwakeText {
         var sentence: String { "Battery \(percent) % is under your \(floor) % limit · lid will sleep your Mac" }
     }
 
+    /// The link beside it: the level just under the charge, one click. It says the number it sets.
+    static func useLevel(_ level: Int) -> String { "Use \(level) %, just under it" }
+
     /// Under the battery slider: the charge right now, so the level is chosen against it.
     static func batteryNow(_ conditions: PowerConditions) -> String {
         conditions.batteryPercent.map { "Your battery is at \($0) % now." } ?? ""

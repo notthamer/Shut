@@ -6,7 +6,7 @@ import StayAwake
 /// so the feature can be read, tested and removed as one piece.
 @MainActor
 public final class StayAwakeSettings: ObservableObject {
-    private let defaults: UserDefaults
+    let defaults: UserDefaults
 
     /// The master switch. Off until the user has read what it does (`hasConsented`).
     @Published public var isOn: Bool { didSet { defaults.set(isOn, forKey: "stayAwake.isOn") } }

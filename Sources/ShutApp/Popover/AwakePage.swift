@@ -815,7 +815,10 @@ struct AwakeLimits: View {
         VStack(alignment: .leading, spacing: 4) {
             Eyebrow("Protects your Mac").padding(.bottom, 12)
             Explained(AwakeText.batteryTooLow(conditions: model.stayAwake.arbiter.conditions, limits: model.stayAwake.arbiter.limits)?.setting
-                      ?? AwakeText.batteryNow(model.stayAwake.arbiter.conditions)) {   // where the charge is against the level
+                      ?? AwakeText.batteryNow(model.stayAwake.arbiter.conditions),   // where the charge is against the level
+                      link: model.stayAwake.levelFromTheCharge.map { level in
+                          (AwakeText.useLevel(level), { model.stayAwake.setTheBatteryLevelFromTheCharge() })
+                      }) {
                 StackedSlider("Sleep when battery reaches", valueText: "\(settings.batteryFloor) %",
                               value: Binding(get: { Double(settings.batteryFloor) }, set: { settings.batteryFloor = Int($0) }),
                               in: Double(HoldLimits.batteryFloorRange.lowerBound)...Double(HoldLimits.batteryFloorRange.upperBound),
@@ -860,10 +863,14 @@ struct AwakeLimits: View {
 /// A slider or a segmented row with its one line of explanation underneath.
 private struct Explained<Row: View>: View {
     let caption: String
+    /// One quiet thing to do about the caption, at its end ("Use 60 %").
+    let link: (title: String, action: () -> Void)?
     let row: Row
     @Environment(\.tunerTheme) private var theme
 
-    init(_ caption: String, @ViewBuilder row: () -> Row) { self.caption = caption; self.row = row() }
+    init(_ caption: String, link: (title: String, action: () -> Void)? = nil, @ViewBuilder row: () -> Row) {
+        self.caption = caption; self.link = link; self.row = row()
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -872,6 +879,15 @@ private struct Explained<Row: View>: View {
                 Text(caption).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
                     .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
+            }
+            if let link {
+                // Right under a caption in the same small type, a plain quiet link would read as
+                // more caption: ink and an underline say it can be pressed.
+                Button(action: link.action) {
+                    Text(link.title).font(TunerTheme.bodySmall).underline().foregroundStyle(theme.ink)
+                        .padding(.vertical, 4).contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle())
             }
         }
         .padding(.bottom, 20)

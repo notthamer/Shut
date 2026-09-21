@@ -279,6 +279,20 @@ public final class StayAwakeController: ObservableObject {
         settings.batteryFloor = Self.levelJustUnder(percent)
     }
 
+    /// The level the charge right now suggests, when it is not the one already set: what the
+    /// "Use 60 %" link under the slider offers. Saved like any other change to the level.
+    var levelFromTheCharge: Int? {
+        guard let percent = arbiter.conditions.batteryPercent else { return nil }
+        let level = Self.levelJustUnder(percent)
+        return level == settings.batteryFloor ? nil : level
+    }
+
+    func setTheBatteryLevelFromTheCharge() {
+        guard let level = levelFromTheCharge else { return }
+        settings.batteryLevelSeeded = true
+        settings.batteryFloor = level
+    }
+
     static func levelJustUnder(_ percent: Int) -> Int {
         let range = HoldLimits.batteryFloorRange
         return min(max((percent - 1) / 5 * 5, range.lowerBound), range.upperBound)

@@ -302,6 +302,15 @@ final class AwakeSnapshotTests: XCTestCase {
         model.showingAwakeSettings = false
         model.showingAwakeSettings = true
         XCTAssertEqual(awake.settings.batteryFloor, 30, "the level is the user's from then on")
+        // The link under the slider offers the charge's level again, and it is saved like any other.
+        XCTAssertEqual(awake.levelFromTheCharge, 60)
+        XCTAssertEqual(AwakeText.useLevel(60), "Use 60 %, just under it")
+        model.page = .awake
+        try render(model, name: "settings-use-level")
+        awake.setTheBatteryLevelFromTheCharge()
+        XCTAssertEqual(awake.settings.batteryFloor, 60)
+        XCTAssertNil(awake.levelFromTheCharge, "nothing to offer once it is set")
+        XCTAssertEqual(StayAwakeSettings(defaults: awake.settings.defaults).batteryFloor, 60, "kept for the next session")
         awake.shutDown()
     }
 

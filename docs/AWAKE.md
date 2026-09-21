@@ -210,7 +210,7 @@ Apple menu → Sleep still sleeps the Mac.
 
 ## Limits, which always win
 
-- **Battery floor** (20 % until the Stay awake page is first opened, when it starts once from the step just under the charge, 65 % → 60 %, so nobody has to work out a number; adjustable 5–100 %; the line under the slider says the charge right now): on battery, at the floor the Mac is
+- **Battery floor** (20 % until the Stay awake page is first opened, when it starts once from the step just under the charge, 65 % → 60 %, so nobody has to work out a number; adjustable 5–100 %; the line under the slider says the charge right now, with a link, "Use 60 %, just under it", whenever the level is not that one; every change is saved): on battery, at the floor the Mac is
   allowed to sleep whatever is working.
 - **Heat**: at thermal state *serious* with the lid shut, *critical* always.
 - **8 hours on battery.** On a charger a desk setup can run all day.
