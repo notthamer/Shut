@@ -187,28 +187,48 @@ public struct PressScaleStyle: ButtonStyle {
 ///
 /// They used to be three separate styles that all drew the same white pill, so nothing on
 /// a page said "this one".
-public struct PrimaryButton: View {
+public struct PrimaryButton<Icon: View>: View {
+    /// `dark`: the thing to do, whatever it is. `lime`: the thing to do, and it switches
+    /// something on (Lime Wash is the colour of "on" and "selected" everywhere else).
+    public enum Tone { case dark, lime }
+
     let title: String
+    let tone: Tone
     let onDark: Bool
     let action: () -> Void
+    let icon: Icon
     @Environment(\.tunerTheme) private var theme
     @State private var hover = false
 
-    public init(_ title: String, onDark: Bool = false, action: @escaping () -> Void) {
-        self.title = title; self.onDark = onDark; self.action = action
+    public init(_ title: String, tone: Tone = .dark, onDark: Bool = false, action: @escaping () -> Void,
+                @ViewBuilder icon: () -> Icon) {
+        self.title = title; self.tone = tone; self.onDark = onDark; self.action = action; self.icon = icon()
+    }
+
+    private var fill: Color {
+        if onDark { return .white }
+        return tone == .lime ? TunerTheme.limeWash : theme.buttonDark
+    }
+
+    private var ink: Color {
+        if onDark { return .black }
+        return tone == .lime ? theme.ink : theme.card
     }
 
     public var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(TunerTheme.bodyMedium)
-                .foregroundStyle(onDark ? Color.black : theme.card)
-                .lineLimit(1).fixedSize()
-                .padding(.horizontal, 20)
-                .frame(height: 32)
-                .background(Capsule().fill(onDark ? Color.white : theme.buttonDark).opacity(hover ? 0.86 : 1))
-                .contentShape(Capsule())
-                .contentShape(.focusEffect, Capsule())
+            HStack(spacing: 8) {
+                icon
+                Text(title).font(TunerTheme.bodyMedium).lineLimit(1).fixedSize()
+            }
+            .foregroundStyle(ink)
+            .padding(.horizontal, 20)
+            .frame(height: 32)
+            .background(Capsule().fill(fill).opacity(hover ? 0.86 : 1))
+            // Lime is pale: an ink edge gives it the weight the dark one has by itself.
+            .overlay(Capsule().strokeBorder(theme.ink.opacity(tone == .lime && !onDark ? 0.85 : 0), lineWidth: 1))
+            .contentShape(Capsule())
+            .contentShape(.focusEffect, Capsule())
         }
         .buttonStyle(PressStyle())
         .onHover { hover = $0 }
@@ -216,30 +236,50 @@ public struct PrimaryButton: View {
     }
 }
 
+public extension PrimaryButton where Icon == EmptyView {
+    init(_ title: String, tone: Tone = .dark, onDark: Bool = false, action: @escaping () -> Void) {
+        self.init(title, tone: tone, onDark: onDark, action: action) { EmptyView() }
+    }
+}
+
 /// Tier two: the outlined capsule, as wide as its words.
-public struct SecondaryButton: View {
+public struct SecondaryButton<Icon: View>: View {
     let title: String
+    let prominent: Bool
     let action: () -> Void
+    let icon: Icon
     @Environment(\.tunerTheme) private var theme
     @State private var hover = false
-    public init(_ title: String, action: @escaping () -> Void) { self.title = title; self.action = action }
+
+    /// `prominent`: the size of a primary, for when it is the view's only button but is not
+    /// the thing we would have the user do (letting a working Mac sleep).
+    public init(_ title: String, prominent: Bool = false, action: @escaping () -> Void, @ViewBuilder icon: () -> Icon) {
+        self.title = title; self.prominent = prominent; self.action = action; self.icon = icon()
+    }
 
     public var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(TunerTheme.bodySmall)
-                .foregroundStyle(theme.ink)
-                .lineLimit(1).fixedSize()
-                .padding(.horizontal, 14)
-                .frame(height: 28)
-                .background(Capsule().fill(hover ? theme.linen : theme.card))
-                .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
-                .contentShape(Capsule())
-                .contentShape(.focusEffect, Capsule())
+            HStack(spacing: 8) {
+                icon
+                Text(title).font(prominent ? TunerTheme.bodyMedium : TunerTheme.bodySmall).lineLimit(1).fixedSize()
+            }
+            .foregroundStyle(theme.ink)
+            .padding(.horizontal, prominent ? 20 : 14)
+            .frame(height: prominent ? 32 : 28)
+            .background(Capsule().fill(hover ? theme.linen : theme.card))
+            .overlay(Capsule().strokeBorder(prominent ? theme.ink.opacity(0.85) : theme.border, lineWidth: 1))
+            .contentShape(Capsule())
+            .contentShape(.focusEffect, Capsule())
         }
         .buttonStyle(PressStyle())
         .onHover { hover = $0 }
         .tunerAnimation(TunerTheme.ease, value: hover)
+    }
+}
+
+public extension SecondaryButton where Icon == EmptyView {
+    init(_ title: String, prominent: Bool = false, action: @escaping () -> Void) {
+        self.init(title, prominent: prominent, action: action) { EmptyView() }
     }
 }
 

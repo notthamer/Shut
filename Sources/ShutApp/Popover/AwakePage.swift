@@ -106,6 +106,46 @@ private struct AwakeStatusColumn: View {
         .onAppear { if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { preview.playRound() } }
     }
 
+    /// The action under the answer shows where it leads before it is pressed. Keeping the Mac
+    /// awake is Lime with open eyes; letting it sleep is an outline with shut eyes, because a
+    /// working Mac going to sleep is the user's call and never the thing Shut pushes. Under
+    /// the button, one line says what pressing it will do.
+    @ViewBuilder
+    private func actions(_ action: AwakeText.Action?, who: String?) -> some View {
+        if let action, action != .turnOn, action != .ok {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    outcomeButton(action)
+                    if action == .allow {
+                        outcomeButton(.notThisApp)
+                            .help("Shut will not ask about this app again. You can change it under “An app is busy”.")
+                    }
+                }
+                if let consequence = action.consequence(who: who) {
+                    Text(consequence).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.top, 6)
+        }
+    }
+
+    @ViewBuilder
+    private func outcomeButton(_ action: AwakeText.Action) -> some View {
+        switch action.outcome {
+        case .staysAwake:
+            PrimaryButton(action.title, tone: .lime) { model.performAwake(action) } icon: {
+                AwakeEyes(mood: .awake, pixel: 1, tint: theme.ink, animated: false)
+            }
+        case .sleeps:
+            SecondaryButton(action.title, prominent: action == .letItSleep) { model.performAwake(action) } icon: {
+                AwakeEyes(mood: .shut, pixel: 1, tint: theme.ink, animated: false)
+            }
+        case .neutral:
+            PrimaryButton(action.title) { model.performAwake(action) }
+        }
+    }
+
     /// With a question above it, the preview shows what saying yes would look like.
     private var sampleCaption: String { "Staying awake · \(awake.pendingApp?.name ?? "Cursor") is working" }
 
@@ -159,21 +199,7 @@ private struct AwakeStatusColumn: View {
                 if copy.showsCards {
                     AwakeWarnings(state: arbiter.state, conditions: arbiter.conditions, limits: arbiter.limits, now: context.date)
                 }
-                switch status.action {
-                case .allow:
-                    HStack(spacing: 10) {
-                        PrimaryButton("Allow") { model.performAwake(.allow) }
-                        CapsuleButton("Not this app") { model.performAwake(.notThisApp) }
-                            .help("Shut will not ask about this app again. You can change it under Options, Something is working.")
-                    }
-                    .padding(.top, 6)
-                case .letItSleep, .undo, .keepAwake:
-                    PrimaryButton(status.action!.title) { model.performAwake(status.action!) }.padding(.top, 6)
-                default:
-                    // Nothing to do about "nothing is working". Keeping the Mac awake by hand is
-                    // the "You say so" dial, four rows down, for any length of time.
-                    EmptyView()
-                }
+                actions(status.action, who: pending?.name ?? arbiter.reasons.first.map(AwakeText.subject))
             }
         }
     }

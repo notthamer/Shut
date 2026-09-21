@@ -20,12 +20,38 @@ enum AwakeText {
         case turnOn, letItSleep, keepAwake, undo, ok
         /// Answers to "this app is asking to stay awake".
         case allow, notThisApp
+        /// Where the action leaves the Mac. The button shows it before it is pressed: Lime and
+        /// open eyes for "stays awake", an outline and shut eyes for "sleeps". They used to be
+        /// one dark button with four different meanings.
+        enum Outcome { case staysAwake, sleeps, neutral }
+
+        var outcome: Outcome {
+            switch self {
+            case .keepAwake, .undo, .allow: return .staysAwake
+            case .letItSleep, .notThisApp: return .sleeps
+            case .turnOn, .ok: return .neutral
+            }
+        }
+
+        /// One plain line under the button: what pressing it will do. `who` is what is working
+        /// ("Claude Code"), or the app that is asking.
+        func consequence(who: String?) -> String? {
+            switch self {
+            case .letItSleep:
+                return "Just this once: closing the lid will sleep your Mac" + (who.map { ", even though \($0) is working." } ?? ".")
+            case .undo: return "Takes that back: closing the lid keeps your Mac awake."
+            case .keepAwake: return "Keeps your Mac awake with the lid shut for another hour."
+            case .allow: return who.map { "\($0) may keep your Mac awake with the lid shut, now and from now on." }
+            case .notThisApp, .turnOn, .ok: return nil
+            }
+        }
+
         var title: String {
             switch self {
             case .turnOn: return "Turn on…"
             case .letItSleep: return "Let it sleep"
-            case .keepAwake: return "Keep awake"
-            case .undo: return "Undo"
+            case .keepAwake: return "Keep it awake"
+            case .undo: return "Keep it awake"
             case .ok: return "OK"
             case .allow: return "Allow"
             case .notThisApp: return "Not this app"
@@ -98,7 +124,7 @@ enum AwakeText {
 
     static func pendingHero(_ app: String) -> Hero {
         Hero(headline: "\(app) is asking to stay awake.",
-             detail: "Shut is not holding the lid for it. Allow, and your Mac stays awake with the lid shut while \(app) needs it.",
+             detail: "Shut is not keeping your Mac awake for it yet: nobody has said whether it may.",
              showsCards: false)
     }
 

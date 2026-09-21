@@ -240,6 +240,18 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    /// After "Let it sleep": the page says the lid will sleep the Mac, and offers the way back.
+    func testThePageAfterLettingItSleep() throws {
+        let cursor = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", tool: "Claude Code",
+                                bundleID: "com.todesktop.230313mzl4w4u92", since: Date().addingTimeInterval(-47 * 60))
+        let (model, awake) = try makeModel(on: true, reasons: [cursor], asking: [])
+        awake.perform(.letItSleep)
+        XCTAssertEqual(awake.status.action, .undo)
+        model.page = .awake
+        try render(model, name: "page-let-it-sleep")
+        awake.shutDown()
+    }
+
     /// The fullest the status column gets: a hold, a battery warning, the dial counting down
     /// and a receipt. It must fit or scroll inside its frame, never slide over the header.
     func testTheBusiestPage() throws {

@@ -34,7 +34,9 @@ built-in display, and ships a reusable tuning panel. The design is described in
    and fills the mark on the app icon (Void Black tile, `scripts/make-glass-icon.swift`).
    **Buttons** have three tiers (`PrimaryButton`, `SecondaryButton`/`ActionRow`, the
    text link) and a view has at most one primary: filled Soft Graphite, as wide as its
-   words, inverted on Void Black. Every Bool is a `TunerSwitch`; segments are for choices.
+   words, inverted on Void Black; its Lime tone is for an action that switches something
+   on, and an action that lets a working Mac sleep is an outline, never the primary. Every
+   Bool is a `TunerSwitch`; segments are for choices.
    **Depth** is a one-point border (`surface(.card/.pill/.well/.wash)`); nothing
    inside a panel casts a shadow, except the preview's product window (the
    three-layer drop shadow) and the windows themselves. **Radii**: 12 (cards,

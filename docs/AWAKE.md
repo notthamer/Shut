@@ -65,6 +65,13 @@ screen.
   while" with the three reasons, and Settings, folded, with its summary on a line of its
   own. If "An app is busy" is off the answer says that agents and builds will not keep
   the Mac awake.
+- **A button shows where it leads.** Actions that keep the Mac awake ("Keep it awake",
+  "Allow") are Lime with the open eyes; actions that let it sleep ("Let it sleep", "Not
+  this app") are an outline with the shut eyes, because a working Mac going to sleep is
+  the user's call and never the thing Shut pushes. Under the button one line says what
+  pressing it will do ("Just this once: closing the lid will sleep your Mac, even though
+  Claude Code is working."). They used to be one dark button with four meanings, one of
+  them labelled "Undo".
 - **Said once.** The eyes are small in the tab and large over the answer on the page, bare
   both times: no capsule, no border, no ground. A control that has its
   explanation written under it has no tooltip repeating it. The header switch says "On"

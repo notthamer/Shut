@@ -58,12 +58,14 @@ struct AwakeEyes: View {
     /// on a Retina panel they are whole device pixels.
     var pixel: CGFloat = 1.5
     var tint: Color? = nil
+    /// False inside a button: a label should not blink.
+    var animated = true
     @Environment(\.tunerTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
-            if reduceMotion || mood == .shut || mood == .asleep {
+            if !animated || reduceMotion || mood == .shut || mood == .asleep {
                 image(Self.restingFrame(mood))
             } else {
                 // Only a face that moves needs a clock, and only while it is on screen.

@@ -119,6 +119,20 @@ final class AwakeTextTests: XCTestCase {
         }
     }
 
+    /// A button shows where it leads, and says what it will do.
+    func testActionsSayWhereTheyLead() {
+        XCTAssertEqual(AwakeText.Action.letItSleep.outcome, .sleeps)
+        XCTAssertEqual(AwakeText.Action.notThisApp.outcome, .sleeps)
+        for action in [AwakeText.Action.keepAwake, .undo, .allow] { XCTAssertEqual(action.outcome, .staysAwake) }
+        XCTAssertEqual(AwakeText.Action.turnOn.outcome, .neutral)
+        XCTAssertEqual(AwakeText.Action.letItSleep.consequence(who: "Claude Code"),
+                       "Just this once: closing the lid will sleep your Mac, even though Claude Code is working.")
+        XCTAssertEqual(AwakeText.Action.letItSleep.consequence(who: nil), "Just this once: closing the lid will sleep your Mac.")
+        XCTAssertEqual(AwakeText.Action.allow.consequence(who: "Zoom"), "Zoom may keep your Mac awake with the lid shut, now and from now on.")
+        XCTAssertEqual(AwakeText.Action.undo.title, "Keep it awake", "\"Undo\" did not say what it undid")
+        XCTAssertNotNil(AwakeText.Action.undo.consequence(who: nil))
+    }
+
     /// The Stay awake tab's second line: its state in a few words.
     func testTheTabSaysWhatStayAwakeIsDoing() {
         func line(_ state: HoldState, _ reasons: [HoldReason] = [], _ conditions: PowerConditions? = nil,
