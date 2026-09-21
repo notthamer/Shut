@@ -74,7 +74,7 @@ screen.
   a hairline, the rules in two numbered sections like the Lid effects page: "01 Keep it
   awake while" (the three reasons) on the left and "02 Settings" (folded, with its
   summary) on the right, each scrolling by itself. At the foot, "03 Last time", one quiet
-  strip in small type. On battery at or under the chosen level the page says so with both
+  strip in small type, with an × that removes the note until the next one. On battery at or under the chosen level the page says so with both
   numbers, wherever it speaks: the tab ("Battery 18 % · too low"), the answer, a Saffron
   card with a bar filled to now and a tick at the level ("now 18 %", "needs more than
   20 %") and, while Settings is folded, a "Change the level" button that opens it, the line under the battery slider, and the set-time dial ("Not right now: the
@@ -268,10 +268,12 @@ since (powerd rewrites it, another keep-awake app can clear it).
 
 ## First run and the update tour
 
-- **First run** (`WelcomeWindow.swift`): four steps on the dark stage. Hello; pick a style and
-  watch it (the real gallery and preview); turn Stay awake on or leave it (turning it on here is
-  the consent, same words and bag warning; the eyes wake); a last step that says both choices
-  back. No lid, no Stay awake step. Back, dots, Continue; Return continues.
+- **First run** (`WelcomeWindow.swift`): a walk on the canvas (Bone, the app's own ground; it
+  was a dark stage). Hello; pick a style and watch it (the real gallery and preview); turn Stay
+  awake on or leave it (turning it on here is the consent, same words and bag warning; the eyes
+  wake); then how Stay awake works, in the update tour's own three playable slides (a new user
+  never gets the what's-new card, so its lessons are here: one set of stages and words); a last
+  step that says the choices back. No lid: hello, style, done. Back, dots, Continue.
 - **Update tour** (`WhatsNewTour` in `WhatsNew.swift`): a release with something to see gets
   slides in the what's-new card instead of the changelog's words: a small stage with the real
   views drawn live (never a picture that can go out of date), a headline, one sentence. Two

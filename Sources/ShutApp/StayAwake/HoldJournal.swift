@@ -82,6 +82,9 @@ final class HoldJournal {
         Log.awake.notice("receipt: \(AwakeText.receipt(receipt).joined(separator: " "), privacy: .public)")
     }
 
+    /// The × on "Last time": the note goes; the next time the Mac stays awake writes a new one.
+    func dismissLast() { last = nil }
+
     func markRead() {
         guard var receipt = last, !receipt.read else { return }
         receipt.read = true

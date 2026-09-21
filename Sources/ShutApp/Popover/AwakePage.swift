@@ -63,8 +63,14 @@ private struct AwakeLastTime: View {
                         .font(TunerTheme.bodySmall).lineSpacing(2)
                         .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
+                    // Read once is enough for most: it goes until the next time there is one.
+                    IconButton("xmark", help: "Remove this note. The next time your Mac stays awake leaves a new one.") {
+                        model.stayAwake.dismissLastTime()
+                    }
+                    .accessibilityLabel("Remove the note about last time")
+                    .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
                 }
-                .padding(.horizontal, 20).padding(.vertical, 12)
+                .padding(.leading, 20).padding(.trailing, 12).padding(.vertical, 12)
                 .background(slip.cutShort ? theme.washSaffron.opacity(0.5) : .clear)
             }
             .onAppear { model.stayAwake.perform(.ok) }

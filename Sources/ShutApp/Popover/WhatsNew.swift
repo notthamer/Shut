@@ -258,7 +258,7 @@ struct WhatsNewTourView: View {
 
 /// What is on a slide's stage. State here is the slide's own: nothing on a stage touches
 /// the app's settings.
-private struct TourStage: View {
+struct TourStage: View {
     let stage: WhatsNewTour.Stage
     @State private var on = false
     @State private var timed = false

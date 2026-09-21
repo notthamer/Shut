@@ -298,6 +298,12 @@ public final class StayAwakeController: ObservableObject {
         return min(max((percent - 1) / 5 * 5, range.lowerBound), range.upperBound)
     }
 
+    /// The × on the page's "Last time" strip.
+    func dismissLastTime() {
+        journal.dismissLast()
+        objectWillChange.send()
+    }
+
     /// "For a set time", one click: the last duration chosen, starting now.
     func startTimedHold() { setManualHold(stop: max(settings.lastManualStop, 1)) }
 

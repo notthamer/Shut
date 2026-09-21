@@ -3,10 +3,11 @@ import LidSensor
 import SwiftUI
 import Tuner
 
-/// First launch: a short walk on the dark stage. What Shut is, a style to pick (and watch),
-/// Stay awake to turn on or leave, and where the app lives. Each step is one idea, and the
-/// two that matter are things to do, not things to read. Permissions are explained later,
-/// only if a style actually needs them.
+/// First launch: a short walk on the canvas. What Shut is, a style to pick (and watch), Stay
+/// awake to turn on or leave, then how Stay awake works (the same playable slides people who
+/// update get in the what's-new tour, because a new user never sees that card), and where the
+/// app lives. Each step is one idea. Permissions are explained later, only if a style
+/// actually needs them.
 @MainActor
 final class WelcomeWindow {
     private var window: NSWindow?
@@ -21,12 +22,12 @@ final class WelcomeWindow {
         let windowSize = WelcomeView.size
         let w = NSWindow(contentRect: NSRect(origin: .zero, size: windowSize),
                          styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
-        w.appearance = NSAppearance(named: .darkAqua)   // the one dark surface: light traffic lights
+        w.appearance = TunerTheme.appearance
         w.titlebarAppearsTransparent = true
         w.titleVisibility = .hidden
         w.isMovableByWindowBackground = true
         w.isReleasedWhenClosed = false
-        let stage = VoidBackdrop(frame: NSRect(origin: .zero, size: windowSize))
+        let stage = CanvasBackdrop(frame: NSRect(origin: .zero, size: windowSize))
         let hosting = NSHostingView(rootView: content)
         hosting.frame = stage.bounds
         hosting.autoresizingMask = [.width, .height]
@@ -43,11 +44,21 @@ final class WelcomeWindow {
     }
 }
 
-/// The steps of the first run. A Mac without a lid has no Stay awake, so no step for it.
+/// The steps of the first run. A Mac without a lid has no Stay awake, so no steps for it.
 enum WelcomeStep: Int, CaseIterable {
-    case hello, style, awake, done
+    case hello, style, awake, lidAnswer, twoWays, battery, done
 
     static func steps(hasLid: Bool) -> [WelcomeStep] { hasLid ? allCases : [.hello, .style, .done] }
+
+    /// The teaching steps are the what's-new tour's slides: one set of words and stages.
+    var tourStage: WhatsNewTour.Stage? {
+        switch self {
+        case .lidAnswer: return .lidAnswer
+        case .twoWays: return .twoWays
+        case .battery: return .batteryAndReceipt
+        default: return nil
+        }
+    }
 
     /// The words of the last step: what was chosen, said back.
     static func summary(style: String, hasLid: Bool, awakeOn: Bool) -> [String] {
@@ -65,6 +76,7 @@ struct WelcomeView: View {
     /// Seen once, so this is the one screen that spends the delight budget: a staggered fade.
     @State private var appeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.tunerTheme) private var theme
 
     static let size = NSSize(width: 660, height: 520)
     private var steps: [WelcomeStep] { WelcomeStep.steps(hasLid: model.stayAwake.hasLid) }
@@ -84,6 +96,7 @@ struct WelcomeView: View {
                 case .hello: hello
                 case .style: style
                 case .awake: awake
+                case .lidAnswer, .twoWays, .battery: lesson
                 case .done: done
                 }
             }
@@ -93,8 +106,8 @@ struct WelcomeView: View {
         }
         .frame(width: Self.size.width, height: Self.size.height)
         .onAppear { appeared = true }
-        .environment(\.colorScheme, .dark)
         .tunerAnimation(TunerTheme.ease, value: step)
+        .tunerThemed()
     }
 
     private func go(_ delta: Int) {
@@ -111,13 +124,12 @@ struct WelcomeView: View {
         VStack(spacing: 20) {
             MarkGlyph(size: 64).modifier(Entrance(appeared: appeared, delay: 0))
             Text("Shut.")
-                .font(TunerTheme.display(40)).tracking(-1.2).foregroundStyle(TunerTheme.paperWhite)
+                .font(TunerTheme.display(40)).tracking(-1.2).foregroundStyle(theme.ink)
                 .modifier(Entrance(appeared: appeared, delay: 0.05))
             VStack(spacing: 8) {
-                Text("Ways to close your Mac.")
-                    .font(TunerTheme.font(15)).foregroundStyle(TunerTheme.paperWhite.opacity(0.85))
+                Text("Ways to close your Mac.").font(TunerTheme.font(15)).foregroundStyle(theme.ink)
                 Text(capability.explanation)
-                    .font(TunerTheme.bodySmall).foregroundStyle(TunerTheme.paperWhite.opacity(0.55))
+                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                     .multilineTextAlignment(.center).lineSpacing(4).frame(maxWidth: 320)
             }
             .modifier(Entrance(appeared: appeared, delay: 0.1))
@@ -141,44 +153,67 @@ struct WelcomeView: View {
 
     private var awake: some View {
         VStack(alignment: .leading, spacing: 18) {
-            AwakeEyes(mood: awakeOn ? .awake : .asleep, pixel: 4, tint: awakeOn ? TunerTheme.limeWash : .white.opacity(0.7), dreams: true)
+            AwakeEyes(mood: awakeOn ? .awake : .asleep, pixel: 4, tint: theme.ink, dreams: true)
                 .tunerAnimation(TunerTheme.ease, value: awakeOn)
             heading(number: "02", eyebrow: "Stay awake", title: "Keep working with the lid shut.",
                     detail: "Your Mac stays awake only while something is working, a display is connected, or you say so. It goes to sleep by itself when that ends, when the battery gets low, or if it gets hot.")
             Text("Do not put a working Mac in a bag.")
-                .font(TunerTheme.font(14, weight: .medium)).foregroundStyle(TunerTheme.saffron)
+                .font(TunerTheme.font(14, weight: .medium)).foregroundStyle(theme.ink)
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(theme.washSaffron))
             HStack(spacing: 14) {
                 if awakeOn {
-                    PrimaryButton("It is on", tone: .lime, onDark: false) { model.stayAwake.settings.isOn = false } icon: {
-                        AwakeEyes(mood: .awake, pixel: 1, tint: .black, animated: false)
+                    PrimaryButton("It is on", tone: .lime) { model.stayAwake.settings.isOn = false } icon: {
+                        AwakeEyes(mood: .awake, pixel: 1, tint: theme.ink, animated: false)
                     }
-                    Text("Click again to leave it off.").font(TunerTheme.bodySmall).foregroundStyle(TunerTheme.paperWhite.opacity(0.55))
+                    Text("Click again to leave it off.").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                 } else {
-                    PrimaryButton("Turn it on", onDark: true) {
+                    SecondaryButton("Turn it on", prominent: true) {
                         if model.stayAwake.needsConsent { model.stayAwake.consent() } else { model.stayAwake.settings.isOn = true }
                     }
-                    Text("Or leave it off. It is on its own page when you want it.")
-                        .font(TunerTheme.bodySmall).foregroundStyle(TunerTheme.paperWhite.opacity(0.55))
+                    Text("Or leave it off. The next steps show how it works.")
+                        .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                 }
             }
             .padding(.top, 4)
         }
-        .frame(maxWidth: 460, alignment: .leading)
+        .frame(maxWidth: 480, alignment: .leading)
+    }
+
+    /// How Stay awake works, one playable slide at a time: the what's-new tour's own stages
+    /// and words, because a new user never gets that card.
+    @ViewBuilder
+    private var lesson: some View {
+        if let stage = step.tourStage, let slide = WhatsNewTour.slides(for: "0.3.0")?.first(where: { $0.stage == stage }) {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("\(String(format: "%02d", index))  HOW STAY AWAKE WORKS")
+                    .font(TunerTheme.mono(11)).tracking(2).foregroundStyle(theme.inkTertiary)
+                TourStage(stage: stage)
+                    .frame(maxWidth: .infinity).frame(height: 190)
+                    .background(RoundedRectangle(cornerRadius: TunerTheme.cardRadius, style: .continuous).fill(theme.linen))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(slide.headline).font(TunerTheme.display(28)).tracking(-0.7).foregroundStyle(theme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(slide.detail).font(TunerTheme.font(14)).foregroundStyle(theme.inkLabel).lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(width: 480, alignment: .leading)
+        }
     }
 
     private var done: some View {
         VStack(spacing: 18) {
             MarkGlyph(size: 40)
-            Text("You are set.").font(TunerTheme.display(34)).tracking(-1).foregroundStyle(TunerTheme.paperWhite)
+            Text("You are set.").font(TunerTheme.display(34)).tracking(-1).foregroundStyle(theme.ink)
             VStack(spacing: 6) {
                 ForEach(WelcomeStep.summary(style: model.registry.current.displayName, hasLid: model.stayAwake.hasLid, awakeOn: awakeOn), id: \.self) {
-                    Text($0).font(TunerTheme.font(15)).foregroundStyle(TunerTheme.paperWhite.opacity(0.85))
+                    Text($0).font(TunerTheme.font(15)).foregroundStyle(theme.ink)
                 }
             }
             HStack(spacing: 6) {
-                MarkGlyph(size: 12, tint: TunerTheme.paperWhite.opacity(0.55))
-                Text("Shut lives in your menu bar.")
-                    .font(TunerTheme.bodySmall).foregroundStyle(TunerTheme.paperWhite.opacity(0.55))
+                MarkGlyph(size: 12, tint: theme.inkLabel)
+                Text("Shut lives in your menu bar.").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
             }
             .padding(.top, 6)
         }
@@ -187,9 +222,9 @@ struct WelcomeView: View {
     private func heading(number: String, eyebrow: String, title: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("\(number)  \(eyebrow.uppercased())")
-                .font(TunerTheme.mono(11)).tracking(2).foregroundStyle(TunerTheme.paperWhite.opacity(0.55))
-            Text(title).font(TunerTheme.display(30)).tracking(-0.8).foregroundStyle(TunerTheme.paperWhite)
-            Text(detail).font(TunerTheme.font(14)).foregroundStyle(TunerTheme.paperWhite.opacity(0.78)).lineSpacing(5)
+                .font(TunerTheme.mono(11)).tracking(2).foregroundStyle(theme.inkTertiary)
+            Text(title).font(TunerTheme.display(30)).tracking(-0.8).foregroundStyle(theme.ink)
+            Text(detail).font(TunerTheme.font(14)).foregroundStyle(theme.inkLabel).lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -200,18 +235,16 @@ struct WelcomeView: View {
         ZStack {
             HStack(spacing: 7) {
                 ForEach(steps, id: \.self) { s in
-                    Circle().fill(TunerTheme.paperWhite.opacity(s == step ? 0.9 : 0.25)).frame(width: 6, height: 6)
+                    Circle().fill(s == step ? theme.ink : theme.inkTertiary.opacity(0.4)).frame(width: 6, height: 6)
                 }
             }
             .accessibilityElement().accessibilityLabel("Step \(index + 1) of \(steps.count)")
             HStack {
                 if index > 0 {
-                    Button("Back") { go(-1) }
-                        .buttonStyle(.plain).font(TunerTheme.body).foregroundStyle(TunerTheme.paperWhite.opacity(0.6))
-                        .keyboardShortcut(.leftArrow, modifiers: [])
+                    QuietButton("Back") { go(-1) }.keyboardShortcut(.leftArrow, modifiers: [])
                 }
                 Spacer()
-                PrimaryButton(isLast ? "Start" : "Continue", onDark: true) { go(1) }
+                PrimaryButton(isLast ? "Start" : "Continue") { go(1) }
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -220,12 +253,12 @@ struct WelcomeView: View {
     }
 }
 
-/// Void Black: the stage the welcome opens on.
-final class VoidBackdrop: NSView {
+/// Bone: the canvas the welcome opens on, the same ground as the rest of the app.
+final class CanvasBackdrop: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
-        layer?.backgroundColor = NSColor(red: 0.008, green: 0.008, blue: 0.016, alpha: 1).cgColor
+        layer?.backgroundColor = NSColor(red: 0.973, green: 0.973, blue: 0.973, alpha: 1).cgColor
     }
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 }

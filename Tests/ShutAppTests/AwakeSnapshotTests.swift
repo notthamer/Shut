@@ -280,12 +280,13 @@ final class AwakeSnapshotTests: XCTestCase {
 
     // MARK: The first run
 
-    /// The welcome is the one dark surface. Each step is rasterised, and the two that are
+    /// The welcome, on the canvas. Each step is rasterised, and the two that are
     /// things to do are done: a style is picked, Stay awake is turned on, and the last step
     /// says both back.
     func testTheFirstRunWalk() throws {
         let (model, awake) = try makeModel(on: false, reasons: [], asking: [])
-        XCTAssertEqual(WelcomeStep.steps(hasLid: true), [.hello, .style, .awake, .done])
+        XCTAssertEqual(WelcomeStep.steps(hasLid: true), [.hello, .style, .awake, .lidAnswer, .twoWays, .battery, .done],
+                       "a new user never gets the what's-new card, so its lessons are here")
         XCTAssertEqual(WelcomeStep.steps(hasLid: false), [.hello, .style, .done], "no lid, no Stay awake to offer")
         XCTAssertEqual(WelcomeStep.summary(style: "Fold", hasLid: true, awakeOn: false),
                        ["Your Mac closes with Fold.", "Stay awake is off. It is one click away."])
@@ -298,6 +299,10 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.consent()
         XCTAssertTrue(awake.settings.isOn && awake.settings.hasConsented)
         try renderWelcome(model, step: .awake, name: "awake-on")
+        for lesson in [WelcomeStep.lidAnswer, .twoWays, .battery] {
+            XCTAssertNotNil(lesson.tourStage)
+            try renderWelcome(model, step: lesson)
+        }
         try renderWelcome(model, step: .done)
         XCTAssertEqual(WelcomeStep.summary(style: model.registry.current.displayName, hasLid: true, awakeOn: true),
                        ["Your Mac closes with Frost.", "It stays awake while something is working."])
@@ -306,7 +311,7 @@ final class AwakeSnapshotTests: XCTestCase {
 
     private func renderWelcome(_ model: PopoverModel, step: WelcomeStep, name: String? = nil) throws {
         let frame = NSRect(origin: .zero, size: WelcomeView.size)
-        let stage = VoidBackdrop(frame: frame)
+        let stage = CanvasBackdrop(frame: frame)
         let hosting = NSHostingView(rootView: WelcomeView(capability: .continuousAngle, model: model, step: step, enable: {}))
         hosting.frame = frame
         stage.addSubview(hosting)
@@ -468,6 +473,11 @@ final class AwakeSnapshotTests: XCTestCase {
         model.showingAwakeSettings = true
         model.page = .awake
         try render(model, name: "page-busy")
+        // The × takes the note off the page, and it stays off after a restart of the journal.
+        XCTAssertNotNil(awake.journal.last)
+        awake.dismissLastTime()
+        XCTAssertNil(awake.journal.last)
+        try render(model, name: "page-busy-dismissed")
         awake.shutDown()
     }
 
