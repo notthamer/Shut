@@ -247,6 +247,52 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    // MARK: The first run
+
+    /// The welcome is the one dark surface. Each step is rasterised, and the two that are
+    /// things to do are done: a style is picked, Stay awake is turned on, and the last step
+    /// says both back.
+    func testTheFirstRunWalk() throws {
+        let (model, awake) = try makeModel(on: false, reasons: [], asking: [])
+        XCTAssertEqual(WelcomeStep.steps(hasLid: true), [.hello, .style, .awake, .done])
+        XCTAssertEqual(WelcomeStep.steps(hasLid: false), [.hello, .style, .done], "no lid, no Stay awake to offer")
+        XCTAssertEqual(WelcomeStep.summary(style: "Fold", hasLid: true, awakeOn: false),
+                       ["Your Mac closes with Fold.", "Stay awake is off. It is one click away."])
+        XCTAssertEqual(WelcomeStep.summary(style: "Frost", hasLid: false, awakeOn: false), ["Your Mac closes with Frost."])
+
+        try renderWelcome(model, step: .hello)
+        try renderWelcome(model, step: .style)
+        try renderWelcome(model, step: .awake, name: "awake-off")
+        model.select("frost")
+        awake.consent()
+        XCTAssertTrue(awake.settings.isOn && awake.settings.hasConsented)
+        try renderWelcome(model, step: .awake, name: "awake-on")
+        try renderWelcome(model, step: .done)
+        XCTAssertEqual(WelcomeStep.summary(style: model.registry.current.displayName, hasLid: true, awakeOn: true),
+                       ["Your Mac closes with Frost.", "It stays awake while something is working."])
+        awake.shutDown()
+    }
+
+    private func renderWelcome(_ model: PopoverModel, step: WelcomeStep, name: String? = nil) throws {
+        let frame = NSRect(origin: .zero, size: WelcomeView.size)
+        let stage = VoidBackdrop(frame: frame)
+        let hosting = NSHostingView(rootView: WelcomeView(capability: .continuousAngle, model: model, step: step, enable: {}))
+        hosting.frame = frame
+        stage.addSubview(hosting)
+        let window = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = stage
+        hosting.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        XCTAssertEqual(hosting.fittingSize.height, WelcomeView.size.height, accuracy: 1, "every step fits the one window")
+        let rep = try XCTUnwrap(stage.bitmapImageRepForCachingDisplay(in: stage.bounds))
+        stage.cacheDisplay(in: stage.bounds, to: rep)
+        XCTAssertGreaterThan(rep.pixelsWide, 0)
+        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"],
+           let png = rep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("welcome-\(name ?? String(describing: step)).png"))
+        }
+    }
+
     /// One click each way between the two ways to stay awake, and the time last used comes back.
     func testSwitchingBetweenAutomaticAndASetTime() throws {
         let (model, awake) = try makeModel(on: true, reasons: [], asking: [])

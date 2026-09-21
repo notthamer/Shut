@@ -12,6 +12,7 @@
 - Limits that always win: a battery level you choose, heat, eight hours on battery, Low Power Mode. When the battery is under your level, Shut says so with both numbers. It locks the screen as the lid shuts.
 - Safe to leave: if Shut quits, updates, crashes or is force-killed while keeping your Mac awake, lid sleep is given back to macOS.
 - Only on Macs with a lid.
+- A new first run: pick how your Mac closes and watch it, turn Stay awake on or leave it, and you are set.
 
 **Also**
 

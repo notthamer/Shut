@@ -251,7 +251,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings.lastSeenVersion = version
 
         if !settings.hasCompletedFirstRun {
-            welcome.show(capability: capability) { [weak self] in
+            welcome.show(capability: capability, model: popoverModel) { [weak self] in
                 self?.settings.isEnabled = true
                 self?.settings.hasCompletedFirstRun = true
                 self?.mainWindow.show()
