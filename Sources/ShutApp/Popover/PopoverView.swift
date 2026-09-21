@@ -11,13 +11,10 @@ struct PopoverView: View {
 
     static let width: CGFloat = 640
     static let previewWidth: CGFloat = 290
-    /// The page's height. The status line, when it has something to say, takes its row out of
-    /// the page, so the panel is the same size with it or without.
-    static func bodyHeight(statusLine: Bool) -> CGFloat { statusLine ? 560 - StatusLine.height - 1 : 560 }
+    static let bodyHeight: CGFloat = 560
 
     var body: some View {
-        let statusLine = StatusLine.shows(model)
-        let bodyHeight = Self.bodyHeight(statusLine: statusLine)
+        let bodyHeight = Self.bodyHeight
         VStack(spacing: 0) {
             PopoverHeader(model: model, hostedInWindow: hostedInWindow)
             // The one place the spectrum appears. With two sections it is the mark under the
@@ -27,10 +24,6 @@ struct PopoverView: View {
                 Rectangle().fill(theme.hairline).frame(height: 1)
             } else {
                 SpectrumLine(height: 2)
-            }
-            if statusLine {
-                StatusLine(model: model).transition(.opacity)
-                Rectangle().fill(theme.hairline).frame(height: 1)
             }
             ZStack {
                 switch model.page {
@@ -85,9 +78,9 @@ struct PopoverHeader: View {
             Circle().fill(statusColor).frame(width: 6, height: 6)
                 .tunerAnimation(TunerTheme.ease, value: statusColor)
                 .help(model.statusLine)
-            // The dot's words, when it needs any, are in the status line under the header.
+            // The dot's words are the Lid effects tab's second line.
             if model.stayAwake.hasLid {
-                SectionTabs(model: model).padding(.leading, 18)
+                SectionTabs(model: model).padding(.leading, 10)
             }
             Spacer(minLength: 8)
             if !hostedInWindow {

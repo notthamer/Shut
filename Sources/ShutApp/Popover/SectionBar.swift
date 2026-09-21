@@ -2,135 +2,101 @@ import StayAwake
 import SwiftUI
 import Tuner
 
-/// The app's two sections, as two words in the header: "Lid effects" and "Stay awake". No
-/// pill, no row of their own. The 2-pt spectrum line that has always run under the header
-/// is the indicator: it is drawn under the chosen word, and the rest of the line is a
-/// hairline. The eyes sit beside "Stay awake", so its state shows from either section.
+/// The app's two sections, in the header, as two tabs that each carry their own state:
+///
+///     ▭ Lid effects        ◉◉ Stay awake
+///     Fold · On            Claude Code · 47 min
+///
+/// A name alone read as a subtitle of "Shut.", not as somewhere to go. An icon, a second
+/// line that changes, a filled ground under the chosen one and the spectrum line beneath it
+/// say "tab" the way tabs do everywhere; and because each says what it is doing, the state of
+/// Stay awake shows from the Lid effects side with no status row of its own.
 struct SectionTabs: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
 
     var body: some View {
-        let status = model.stayAwake.status
-        let isOn = model.stayAwake.settings.isOn && model.stayAwake.settings.hasConsented
-        HStack(spacing: 22) {
-            SectionTab(isSelected: model.page == .styles, help: "Ways to close your Mac: the style and how it plays.") {
-                model.page = .styles
-            } label: { Text("Lid effects") }
-            SectionTab(isSelected: model.page == .awake, help: "Keep working with the lid shut: when, and its limits.") {
-                model.page = .awake
-            } label: {
-                HStack(spacing: 7) {
-                    Text("Stay awake")
-                    AwakeEyes(mood: .init(status.dot, isOn: isOn), pixel: 1.5,
-                              tint: status.dot == .idle ? theme.inkTertiary : theme.ink)
+        // The second line can carry a running time ("47 min"); a slow timeline keeps it true
+        // while the panel is on screen and costs nothing when it is not.
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            let awake = model.stayAwake
+            let status = awake.status
+            let isOn = awake.settings.isOn && awake.settings.hasConsented
+            HStack(spacing: 6) {
+                SectionTab(title: "Lid effects", line: model.lidEffectsLine, isSelected: model.page == .styles,
+                           help: "Ways to close your Mac: the style and how it plays.") {
+                    model.page = .styles
+                } icon: {
+                    Image(systemName: "laptopcomputer").font(.system(size: 12, weight: .medium))
+                }
+                SectionTab(title: "Stay awake",
+                           line: AwakeText.tabLine(state: awake.arbiter.state, reasons: awake.arbiter.reasons,
+                                                   conditions: awake.arbiter.conditions, limits: awake.arbiter.limits,
+                                                   pendingApp: awake.pendingApp?.name, now: context.date),
+                           isSelected: model.page == .awake, emphasised: status.dot != .idle || awake.pendingApp != nil,
+                           help: "Keep working with the lid shut: when, and its limits.") {
+                    model.page = .awake
+                } icon: {
+                    AwakeEyes(mood: .init(status.dot, isOn: isOn), pixel: 1.25,
+                              tint: status.dot == .idle ? theme.inkLabel : theme.ink)
                 }
             }
+            .tunerAnimation(TunerTheme.ease, value: status)
         }
-        .tunerAnimation(TunerTheme.ease, value: status)
     }
 }
 
-/// One word of the two. Ink when chosen, Carbon otherwise; the spectrum under it when chosen.
-private struct SectionTab<Label: View>: View {
+/// One tab: icon and name, its state under them. Chosen: a Linen ground and the spectrum.
+private struct SectionTab<Icon: View>: View {
+    let title: String
+    let line: String
     let isSelected: Bool
+    var emphasised = false
     let help: String
     let action: () -> Void
-    @ViewBuilder let label: () -> Label
+    @ViewBuilder let icon: () -> Icon
     @Environment(\.tunerTheme) private var theme
     @State private var hover = false
 
     var body: some View {
         Button(action: action) {
-            label()
-                .font(isSelected ? TunerTheme.bodyMedium : TunerTheme.body)
-                .foregroundStyle(isSelected || hover ? theme.ink : theme.inkLabel)
-                .lineLimit(1).fixedSize()
-                .offset(y: 4)   // onto the baseline of "Shut."
-                .frame(height: PopoverHeader.height)
-                // The indicator sits exactly where the header's bottom line runs.
-                .overlay(alignment: .bottom) {
-                    LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing)
-                        .frame(height: 2)
-                        .opacity(isSelected ? 1 : 0)
-                        .offset(y: 1)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    icon().frame(width: 20, height: 15)
+                    Text(title).font(isSelected ? TunerTheme.bodyMedium : TunerTheme.body)
                 }
-                .contentShape(Rectangle())
+                .foregroundStyle(isSelected || hover ? theme.ink : theme.inkLabel)
+                // In ink when it has news (keeping the Mac awake, a limit), Carbon otherwise.
+                Text(line).font(TunerTheme.bodySmall)
+                    .foregroundStyle(emphasised ? theme.ink : theme.inkLabel)
+                    .lineLimit(1).truncationMode(.tail)
+                    .id(line).transition(.opacity)
+            }
+            .frame(maxWidth: 168, alignment: .leading)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(theme.linen).opacity(isSelected ? 1 : (hover ? 0.6 : 0)))
+            .frame(height: PopoverHeader.height)
+            // The indicator sits exactly where the header's bottom line runs.
+            .overlay(alignment: .bottom) {
+                LinearGradient(gradient: TunerTheme.spectrum, startPoint: .leading, endPoint: .trailing)
+                    .frame(height: 2)
+                    .opacity(isSelected ? 1 : 0)
+                    .offset(y: 1)
+            }
+            .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
         .focusEffectDisabled()
         .onHover { hover = $0 }
         .tunerAnimation(TunerTheme.ease, value: isSelected)
         .tunerAnimation(TunerTheme.ease, value: hover)
+        .tunerAnimation(TunerTheme.ease, value: line)
         .help(help)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-    }
-}
-
-/// A row that exists only when there is something to say. On the right, what Stay awake is
-/// doing and its one action (staying awake, winding down, a limit, a question, an unread
-/// receipt); on the left, on the Lid effects side, why the lid effects are not simply
-/// running (paused, no sensor, lid shut on an external display). Silence otherwise: the
-/// panel gives the row's height back to the page.
-struct StatusLine: View {
-    @ObservedObject var model: PopoverModel
-    @Environment(\.tunerTheme) private var theme
-
-    static let height: CGFloat = 40
-
-    /// Whether the row is there at all.
-    static func shows(_ model: PopoverModel) -> Bool {
-        guard model.page == .styles else { return false }   // the Stay awake page says it itself
-        return (model.stayAwake.hasLid && model.stayAwake.status.speaks) || model.lidEffectsNote != nil
-    }
-
-    var body: some View {
-        // The sentence can carry a running time ("47 min"); a slow timeline keeps it true
-        // while the panel is on screen and costs nothing when it is not.
-        TimelineView(.periodic(from: .now, by: 30)) { _ in
-            let status = model.stayAwake.status
-            HStack(spacing: 10) {
-                if let note = model.lidEffectsNote {
-                    Text(note).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                if model.stayAwake.hasLid, status.speaks {
-                    StatusSpot(dot: status.dot)
-                    Text(status.sentence)
-                        .font(TunerTheme.body).foregroundStyle(theme.ink)
-                        .lineLimit(1).minimumScaleFactor(0.85).truncationMode(.tail)
-                        .id(status.sentence).transition(.opacity)
-                        .help(status.sentence)
-                    if let action = status.action {
-                        CapsuleButton(action.title) { model.performAwake(action) }
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .frame(height: Self.height)
-            .tunerAnimation(TunerTheme.ease, value: status)
-            .accessibilityElement(children: .contain)
-        }
-    }
-}
-
-/// The colour of the status line: Lime holding, Linen winding down, Saffron for a limit.
-private struct StatusSpot: View {
-    let dot: AwakeText.Dot
-    @Environment(\.tunerTheme) private var theme
-
-    var body: some View {
-        Circle().fill(fill).overlay(Circle().strokeBorder(theme.ink.opacity(0.8), lineWidth: 1))
-            .frame(width: 8, height: 8)
-    }
-
-    private var fill: Color {
-        switch dot {
-        case .idle: return theme.card
-        case .holding: return TunerTheme.limeWash
-        case .winding: return theme.linen
-        case .warning: return TunerTheme.saffron
-        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title). \(line)")
+        .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : [.isButton])
     }
 }
 

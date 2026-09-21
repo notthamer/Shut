@@ -119,15 +119,27 @@ final class AwakeTextTests: XCTestCase {
         }
     }
 
-    /// Words under the tabs only when they matter.
-    func testTheStatusLineSpeaksOnlyWhenItMatters() {
-        XCTAssertFalse(status(.off).speaks, "the tab is the offer")
-        XCTAssertFalse(status(.ready).speaks, "it will sleep, as always: nothing to say")
-        XCTAssertTrue(status(.holding, [work()]).speaks)
-        XCTAssertTrue(status(.grace(until: t0.addingTimeInterval(240))).speaks)
-        XCTAssertTrue(status(.stopped(.batteryFloor)).speaks)
-        XCTAssertTrue(AwakeText.pending("Zoom").speaks)
-        XCTAssertTrue(status(.stopped(.userLetItSleep), [work()], canUndo: true).speaks, "Undo is worth offering")
+    /// The Stay awake tab's second line: its state in a few words.
+    func testTheTabSaysWhatStayAwakeIsDoing() {
+        func line(_ state: HoldState, _ reasons: [HoldReason] = [], _ conditions: PowerConditions? = nil,
+                  pending: String? = nil, after seconds: TimeInterval = 0) -> String {
+            AwakeText.tabLine(state: state, reasons: reasons, conditions: conditions ?? plugged, limits: limits,
+                              pendingApp: pending, now: t0.addingTimeInterval(seconds))
+        }
+        XCTAssertEqual(line(.off), "Off")
+        XCTAssertEqual(line(.ready), "Lid will sleep your Mac")
+        XCTAssertEqual(line(.ready, pending: "Zoom"), "Zoom is asking")
+        let claude = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", tool: "Claude Code", since: t0)
+        XCTAssertEqual(line(.holding, [claude], after: 47 * 60), "Claude Code · 47 min")
+        XCTAssertEqual(line(.holding, [claude, work("Terminal")]), "2 things keep it awake")
+        XCTAssertEqual(line(.holding, [HoldReason(id: "display:x", kind: .display, title: "Studio Display", since: t0)]), "Studio Display")
+        XCTAssertEqual(line(.holding, [claude], PowerConditions(onCharger: false, batteryPercent: 24)), "Battery 24 % · sleeps at 20 %")
+        XCTAssertEqual(line(.grace(until: t0.addingTimeInterval(240))), "Sleeping in 4 min")
+        XCTAssertEqual(line(.stopped(.tooHot)), "Too hot · will sleep")
+        XCTAssertEqual(line(.stopped(.userLetItSleep), [claude]), "Letting it sleep")
+        for text in [line(.ready), line(.holding, [claude, work("Terminal")]), line(.stopped(.lowPowerMode))] {
+            XCTAssertLessThanOrEqual(text.count, 28, "it has to fit a tab: \(text)")
+        }
     }
 
     func testLimitsSummarySaysTheOnesWorthKnowing() {

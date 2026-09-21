@@ -45,19 +45,17 @@ screen.
   47 min"); a card appears above them only to warn (battery near the floor).
 - **The first switch-on** goes through a Void Black sheet with the eyes asleep at the
   top; "Turn on" opens them, and the sheet leaves a moment later.
-- **Two sections, as two words in the header: "Lid effects" and "Stay awake".** No pill
-  and no row of their own. The 2-pt spectrum line that runs under the header is the
-  indicator: it is drawn under the chosen word, over a hairline. The eyes sit beside
-  "Stay awake", so the state is in view from either section. The header has one switch,
-  in one place, and it belongs to the section on show; its label says which.
-- **Words only when they matter.** A status row appears under the header, on the Lid
-  effects side, only when there is something to say: the Mac is being kept awake
-  ("Claude Code is working · 47 min · Let it sleep"), it is winding down, a limit is near
-  or has spoken, an app is asking, or a receipt is unread. "It will sleep, as always" is
-  not worth a row, and neither is an offer to turn the feature on: the section's name is
-  the offer. When the row is absent the page has its height; the panel never changes
-  size. (All this replaced a strip that was a status readout, a link and a button holder
-  at once, and that mostly said "Nothing is working", which read like an error.)
+- **Two sections, as two tabs in the header that each carry their own state.** "Lid
+  effects" with a lid icon and, under it, the style and whether it is running ("Fold ·
+  On", "Fold · Paused", "Fold · plain fade for now"); "Stay awake" with the eyes and, under
+  it, what it is doing ("Claude Code · 47 min", "Sleeping in 4 min", "Battery 24 % ·
+  sleeps at 20 %", "Zoom is asking", "Lid will sleep your Mac", "Off"). The chosen tab has
+  a Linen ground and the 2-pt spectrum line beneath it. A name alone had read as a
+  subtitle of "Shut.", not as somewhere to go; and because each tab says what it is
+  doing, the state of Stay awake shows from the Lid effects side with no status row. To
+  act on it (Let it sleep, Allow) is one click away, on its tab, and in the menu. The
+  header has one switch, in one place; it belongs to the section on show and says On or
+  Off.
 - **The page has two columns with one job each.** Left, where the eye lands first, the
   status: the answer to the one question anyone has, always in the same words ("Closing
   the lid will sleep your Mac." / "Closing the lid keeps your Mac awake."), then why,

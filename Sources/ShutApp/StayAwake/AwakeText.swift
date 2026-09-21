@@ -12,19 +12,8 @@ enum AwakeText {
     struct Status: Equatable {
         let dot: Dot
         let sentence: String
-        /// The line's one button, when there is something to do.
+        /// The one button, when there is something to do.
         let action: Action?
-
-        /// Worth a line under the tabs. Prominence follows importance: staying awake, winding
-        /// down, a limit, a question and an unread receipt speak; "it will sleep, as always"
-        /// and the offer to turn the feature on do not (the tab itself is the offer).
-        var speaks: Bool {
-            if dot != .idle { return true }
-            switch action {
-            case .allow, .undo, .ok: return true
-            default: return false
-            }
-        }
     }
 
     enum Action: Equatable {
@@ -66,6 +55,38 @@ enum AwakeText {
             return Status(dot: .winding, sentence: "Finished · sleeping in \(duration(until.timeIntervalSince(now)))", action: .keepAwake)
         case .stopped(let reason):
             return Status(dot: reason == .userLetItSleep ? .idle : .warning, sentence: stopped(reason, conditions: conditions), action: nil)
+        }
+    }
+
+    /// The "Stay awake" tab's second line: its state in three or four words, so the tab is
+    /// plainly a section with a life of its own, and the state shows from the other section.
+    static func tabLine(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
+                        pendingApp: String? = nil, now: Date) -> String {
+        if let pendingApp, state == .ready { return "\(pendingApp) is asking" }
+        switch state {
+        case .off: return "Off"
+        case .ready: return "Lid will sleep your Mac"
+        case .grace(let until): return "Sleeping in \(duration(until.timeIntervalSince(now)))"
+        case .stopped(let reason):
+            switch reason {
+            case .batteryFloor: return "Battery low · will sleep"
+            case .tooHot: return "Too hot · will sleep"
+            case .timeCap: return "8 h on battery · will sleep"
+            case .lowPowerMode: return "Low Power Mode · will sleep"
+            case .chargerOnly: return "On battery · will sleep"
+            case .userLetItSleep: return "Letting it sleep"
+            }
+        case .holding:
+            if !conditions.onCharger, let percent = conditions.batteryPercent, percent <= limits.batteryFloor + 5 {
+                return "Battery \(percent) % · sleeps at \(limits.batteryFloor) %"
+            }
+            guard let first = reasons.first else { return "Staying awake" }
+            if reasons.count > 1 { return "\(reasons.count) things keep it awake" }
+            switch first.kind {
+            case .working, .command: return "\(subject(first)) · \(duration(now.timeIntervalSince(first.since)))"
+            case .display, .appOpen: return first.title
+            case .manual: return first.until.map { "Until \(clock($0))" } ?? "Until you stop it"
+            }
         }
     }
 
