@@ -60,7 +60,9 @@ screen.
 - **The page is a grid, with the same vertical rule as the Lid effects page.** Top left,
   where the eye lands: the eyes and, under them, the answer to the one question anyone
   has, always in the same words ("Closing the lid will sleep your Mac." / "Closing the
-  lid keeps your Mac awake."), then why, with the icon of the app it is about, and the
+  lid keeps your Mac awake."), then when that ends (who is working is said once, in the box on the right; every fact
+  is on the page once: a sentence that repeats its label, its headline or its neighbour
+  is cut), and the
   one action (Let it sleep, Allow). Top right: "Keep it awake" with the two ways side by side,
   "Automatically" (the rules below decide; one sentence says which are on, and while they are
   keeping the Mac awake a box under the choice, "Keeping it awake now", lists who with

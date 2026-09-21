@@ -89,7 +89,7 @@ final class AwakeTextTests: XCTestCase {
         // The caption says it whole.
         let until = t0.addingTimeInterval(72 * 60)
         XCTAssertEqual(AwakeText.manualCaption(stop: stop(90), running: true, until: until, now: t0),
-                       "Awake until \(AwakeText.clock(until)) · 1 h 12 min left. Then back to automatic.")
+                       "1 h 12 min left, then back to automatic.", "the answer beside it has the time it ends")
         XCTAssertEqual(AwakeText.manualCaption(stop: stop(60), running: false, until: nil, now: t0),
                        "Until \(AwakeText.clock(t0.addingTimeInterval(3600))), then back to automatic.")
         XCTAssertTrue(AwakeText.manualCaption(stop: 0, running: false, until: nil, now: t0).hasPrefix("Drag to pick"))
@@ -127,7 +127,7 @@ final class AwakeTextTests: XCTestCase {
         for (state, reasons) in [(HoldState.ready, [HoldReason]()), (.stopped(.batteryFloor), [manual])] {
             let hero = AwakeText.hero(state: state, reasons: reasons, conditions: low, limits: limits, now: t0)
             XCTAssertEqual(hero.headline, "Closing the lid will sleep your Mac.")
-            XCTAssertEqual(hero.detail, "The battery is too low to keep it awake. Plug in and it can again.")
+            XCTAssertEqual(hero.detail, "Plug in and it can stay awake again.", "the card under it says too low, with the numbers")
             XCTAssertTrue(hero.showsCards, "the card carries the two numbers")
             XCTAssertEqual(AwakeText.tabLine(state: state, reasons: reasons, conditions: low, limits: limits, now: t0), "Battery 18 % · too low")
             XCTAssertEqual(status(state, reasons, low).sentence, "Battery 18 % is under your 20 % limit · lid will sleep your Mac")
@@ -156,8 +156,14 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(hero(.ready).detail, "Nothing is keeping it awake right now.")
         XCTAssertTrue(hero(.ready, watching: false).detail.contains("apps are not being watched"), "the main reason is off: say so")
         XCTAssertEqual(hero(.holding, [work()]).headline, stays)
-        XCTAssertTrue(hero(.holding, [work()]).detail.hasPrefix("Cursor is working. It sleeps by itself when that ends"))
-        XCTAssertTrue(hero(.holding, [work(), work("Terminal")]).detail.hasPrefix("2 things are keeping it awake."))
+        // Who is working is said once, in the box under Automatically; the answer says only when it ends.
+        XCTAssertEqual(hero(.holding, [work()]).detail, "It sleeps by itself when that ends, or at 20\u{00A0}% battery.")
+        XCTAssertEqual(hero(.holding, [work(), work("Terminal")]).detail, "It sleeps by itself when they end, or at 20\u{00A0}% battery.")
+        // With a set time running there is no box, so the answer still counts them.
+        let manual = HoldReason(id: "manual", kind: .manual, title: "You", since: t0, until: t0.addingTimeInterval(3600))
+        XCTAssertTrue(hero(.holding, [manual, work()]).detail.hasPrefix("2 things are keeping it awake."))
+        XCTAssertEqual(hero(.holding, [manual]).detail, "Until \(AwakeText.clock(t0.addingTimeInterval(3600))), or at 20\u{00A0}% battery.")
+        XCTAssertEqual(AwakeText.live([work()], named: false, now: t0), "At work now")
         XCTAssertEqual(hero(.grace(until: t0.addingTimeInterval(240))).headline, "Your Mac will sleep in 4 min.")
         XCTAssertEqual(hero(.stopped(.tooHot)).headline, sleeps)
         XCTAssertTrue(hero(.stopped(.tooHot)).detail.hasSuffix("That limit always wins."))
@@ -174,11 +180,11 @@ final class AwakeTextTests: XCTestCase {
         for action in [AwakeText.Action.keepAwake, .undo, .allow] { XCTAssertEqual(action.outcome, .staysAwake) }
         XCTAssertEqual(AwakeText.Action.turnOn.outcome, .neutral)
         XCTAssertEqual(AwakeText.Action.letItSleep.consequence(who: "Claude Code"),
-                       "Just this once: closing the lid will sleep your Mac, even though Claude Code is working.")
-        XCTAssertEqual(AwakeText.Action.letItSleep.consequence(who: nil), "Just this once: closing the lid will sleep your Mac.")
-        XCTAssertEqual(AwakeText.Action.allow.consequence(who: "Zoom"), "Zoom may keep your Mac awake with the lid shut, now and from now on.")
+                       "Just this once, even though Claude Code is working.", "the headline above already says what the lid will do")
+        XCTAssertEqual(AwakeText.Action.letItSleep.consequence(who: nil), "Just this once.")
+        XCTAssertEqual(AwakeText.Action.allow.consequence(who: "Zoom"), "Zoom may keep your Mac awake, now and from now on.")
         XCTAssertEqual(AwakeText.Action.undo.title, "Keep it awake", "\"Undo\" did not say what it undid")
-        XCTAssertNotNil(AwakeText.Action.undo.consequence(who: nil))
+        XCTAssertNil(AwakeText.Action.undo.consequence(who: nil), "its title says it whole")
     }
 
     /// The Stay awake tab's second line: its state in a few words.

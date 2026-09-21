@@ -205,9 +205,6 @@ private struct AwakeBand: View {
                 HStack(alignment: .top, spacing: 8) {
                     if let pending {
                         AppIconView(bundleID: pending.bundleID, size: 20)
-                    } else if arbiter.state.holdsLid, arbiter.reasons.count == 1, let reason = arbiter.reasons.first,
-                              AppIcons.bundleID(for: reason) != nil {
-                        AppIconView(bundleID: AppIcons.bundleID(for: reason), size: 20)
                     }
                     Text(copy.detail)
                         .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
@@ -276,7 +273,8 @@ private struct AwakeControls: View {
         let reasons = awake.arbiter.reasons
         func live(_ kind: HoldReason.Kind) -> String? {
             guard isOn else { return nil }
-            return AwakeText.live(reasons.filter { $0.kind == kind }, now: now)
+            // Without a set time running, the box at the top names who; the row marks the rule.
+            return AwakeText.live(reasons.filter { $0.kind == kind }, named: reasons.contains { $0.kind == .manual }, now: now)
         }
         return VStack(alignment: .leading, spacing: 4) {
             Eyebrow("Keep it awake while", number: "01").padding(.bottom, 8)
@@ -595,8 +593,11 @@ struct AwakeWarnings: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(row.title).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink).lineLimit(1)
-                        Text(row.subtitle).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
-                            .fixedSize(horizontal: false, vertical: true)
+                        // With a meter, its two labels carry the numbers; the sentence stays for VoiceOver.
+                        if row.meter == nil {
+                            Text(row.subtitle).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         if let meter = row.meter {
                             BatteryMeter(percent: meter.percent, floor: meter.floor).padding(.top, 6)
                             // The level is the user's own: a way straight to it, unless it is already showing.
@@ -810,7 +811,7 @@ struct AwakeLimits: View {
         VStack(alignment: .leading, spacing: 4) {
             Eyebrow("Protects your Mac").padding(.bottom, 12)
             Explained(AwakeText.batteryTooLow(conditions: model.stayAwake.arbiter.conditions, limits: model.stayAwake.arbiter.limits)?.setting
-                      ?? "On battery your Mac goes to sleep at this charge, whatever is working.") {
+                      ?? "") {   // the row's own name says it all, until the battery is under it
                 StackedSlider("Sleep when battery reaches", valueText: "\(settings.batteryFloor) %",
                               value: Binding(get: { Double(settings.batteryFloor) }, set: { settings.batteryFloor = Int($0) }),
                               in: Double(HoldLimits.batteryFloorRange.lowerBound)...Double(HoldLimits.batteryFloorRange.upperBound),
@@ -863,9 +864,11 @@ private struct Explained<Row: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             row
-            Text(caption).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
-                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 4)
+            if !caption.isEmpty {
+                Text(caption).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
+                    .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+            }
         }
         .padding(.bottom, 20)
     }

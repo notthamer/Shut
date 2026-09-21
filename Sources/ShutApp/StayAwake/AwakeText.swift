@@ -38,11 +38,12 @@ enum AwakeText {
         func consequence(who: String?) -> String? {
             switch self {
             case .letItSleep:
-                return "Just this once: closing the lid will sleep your Mac" + (who.map { ", even though \($0) is working." } ?? ".")
-            case .undo: return "Takes that back: closing the lid keeps your Mac awake."
-            case .keepAwake: return "Keeps your Mac awake with the lid shut for another hour."
-            case .allow: return who.map { "\($0) may keep your Mac awake with the lid shut, now and from now on." }
-            case .notThisApp, .turnOn, .ok: return nil
+                // The headline above the button already says what the lid will do; this adds only
+                // what it does not: that it is for one close.
+                return "Just this once" + (who.map { ", even though \($0) is working." } ?? ".")
+            case .keepAwake: return "For another hour."
+            case .allow: return who.map { "\($0) may keep your Mac awake, now and from now on." }
+            case .undo, .notThisApp, .turnOn, .ok: return nil
             }
         }
 
@@ -196,7 +197,7 @@ enum AwakeText {
             // say that first, with the card that shows both numbers.
             if batteryTooLow(conditions: conditions, limits: limits) != nil {
                 return Hero(headline: willSleep,
-                            detail: "The battery is too low to keep it awake. Plug in and it can again.",
+                            detail: "Plug in and it can stay awake again.",
                             showsCards: true)
             }
             if case .stopped(let reason) = state {
@@ -219,8 +220,13 @@ enum AwakeText {
             guard let first = reasons.first else { return Hero(headline: staysAwake, detail: "", showsCards: low) }
             if reasons.count == 1, first.kind == .manual {
                 return Hero(headline: staysAwake,
-                            detail: first.until.map { "Until \(clock($0)), because you said so\(floor)." } ?? "Until you let it sleep\(floor).",
+                            detail: first.until.map { "Until \(clock($0))\(floor)." } ?? "Until you let it sleep\(floor).",
                             showsCards: low)
+            }
+            // Under Automatically the box beside this names who, with icon and time; said once.
+            if !reasons.contains(where: { $0.kind == .manual }) {
+                return Hero(headline: staysAwake,
+                            detail: "It sleeps by itself when \(reasons.count > 1 ? "they end" : "that ends")\(floor).", showsCards: low)
             }
             let why: String
             if reasons.count > 1 {
@@ -241,8 +247,11 @@ enum AwakeText {
 
     /// One trigger's line while it is the one at work: "Claude Code in Cursor · 47 min",
     /// "Studio Display", "Xcode and 1 more". nil when nothing of that kind is holding.
-    static func live(_ reasons: [HoldReason], now: Date) -> String? {
+    /// `named: false` while the "Keeping it awake now" box is on the page: it names them, the
+    /// row only marks which rule is at work.
+    static func live(_ reasons: [HoldReason], named: Bool = true, now: Date) -> String? {
         guard let first = reasons.first else { return nil }
+        guard named else { return "At work now" }
         let who: String
         switch first.kind {
         case .working: who = first.tool.map { "\($0) in \(first.title)" } ?? first.title
@@ -396,7 +405,7 @@ enum AwakeText {
         if stop <= 0 { return "Drag to pick how long, whatever is running." }
         if stop >= manualLastStop { return running ? "Awake until you choose Automatically." : "Until you choose Automatically." }
         if running, let until {
-            return "Awake until \(clock(until)) · \(duration(until.timeIntervalSince(now))) left. Then back to automatic."
+            return "\(duration(until.timeIntervalSince(now))) left, then back to automatic."
         }
         return "Until \(clock(now.addingTimeInterval(manualDurations[stop - 1]))), then back to automatic."
     }
