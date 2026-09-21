@@ -198,6 +198,10 @@ final class AwakeSnapshotTests: XCTestCase {
                 try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("tour-\(index + 1).png"))
             }
         }
+        // A tour sits in the middle of the screen (the words of an ordinary release stay under the icon).
+        let origin = WhatsNewCard.centred(NSSize(width: 440, height: 400), on: nil)
+        XCTAssertEqual(origin.x, 500, "centred across 1440")
+        XCTAssertEqual(origin.y, 290, "a little above the middle of 900")
         XCTAssertEqual(heights.count, 1, "one height for every slide: \(heights)")
         XCTAssertLessThan(try XCTUnwrap(heights.first), 520, "a card, not a page")
     }

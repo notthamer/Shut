@@ -77,6 +77,7 @@ final class WhatsNewCard {
         let onShow: () -> Void = { [weak self] in self?.close(); self?.showMe?() }
         let onClose: () -> Void = { [weak self] in self?.close() }
         // A release with a tour shows it; any other gets the words from the changelog.
+        let isTour = WhatsNewTour.slides(for: version) != nil
         let view = WhatsNewTour.slides(for: version).map { AnyView(WhatsNewTourView(slides: $0, version: version, onShow: onShow, onClose: onClose)) }
             ?? AnyView(WhatsNewView(news: news, version: version, onShow: onShow, onClose: onClose))
         let hosting = FirstMouseHostingView(rootView: view)
@@ -97,7 +98,14 @@ final class WhatsNewCard {
         let chrome = PanelChrome(frame: NSRect(origin: .zero, size: size))
         chrome.install(hosting)
         panel.contentView = chrome
-        panel.setFrameOrigin(PopoverController.origin(for: size, under: anchor?()))
+        // The few words of an ordinary release sit under the menu bar icon, like the slip. A tour
+        // is something to sit and look at: the middle of the screen, and it can be dragged aside.
+        if isTour {
+            panel.isMovableByWindowBackground = true
+            panel.setFrameOrigin(Self.centred(size, on: anchor?()?.window?.screen ?? NSScreen.main))
+        } else {
+            panel.setFrameOrigin(PopoverController.origin(for: size, under: anchor?()))
+        }
         self.panel = panel
         panel.alphaValue = 0
         panel.orderFrontRegardless()
@@ -110,6 +118,13 @@ final class WhatsNewCard {
     func close() {
         panel?.orderOut(nil)
         panel = nil
+    }
+
+    /// The middle of the screen's usable area, a little above centre, where a dialog sits.
+    static func centred(_ size: NSSize, on screen: NSScreen?) -> NSPoint {
+        let area = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        return NSPoint(x: (area.midX - size.width / 2).rounded(),
+                       y: (area.minY + (area.height - size.height) * 0.58).rounded())
     }
 }
 
@@ -251,6 +266,7 @@ struct WhatsNewTourView: View {
             .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 16)
         }
         .frame(width: Self.width)
+        .background(WindowDragArea())
         .tunerAnimation(TunerTheme.ease, value: index)
         .tunerThemed()
     }
@@ -313,4 +329,15 @@ struct TourStage: View {
             .frame(width: 340)
         }
     }
+}
+
+/// Anywhere on the card that is not a button drags its window. (A borderless, non-activating
+/// panel under a hosting view does not move by its background by itself.)
+struct WindowDragArea: NSViewRepresentable {
+    final class DragView: NSView {
+        override var mouseDownCanMoveWindow: Bool { true }
+        override func mouseDown(with event: NSEvent) { window?.performDrag(with: event) }
+    }
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
