@@ -16,14 +16,19 @@ struct AwakePage: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            AwakeStatusColumn(model: model)
-                .padding(16)
-                .frame(width: Self.statusWidth)
-                .frame(maxHeight: .infinity, alignment: .top)
+            // A battery warning, a running dial, last time and the preview together are taller
+            // than the panel. A column that runs long scrolls; it must never push the page out
+            // of its frame (it once slid up under the header and down over the footer).
+            ScrollView(showsIndicators: false) {
+                AwakeStatusColumn(model: model).padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 20)
+            }
+            .fadesAtTheFold()
+            .frame(width: Self.statusWidth)
             Rectangle().fill(theme.hairline).frame(width: 1)
             AwakeControls(model: model)
                 .frame(width: PopoverView.width - Self.statusWidth - 1)
         }
+        .clipped()
         .overlay {
             if model.showingAwakeConsent {
                 AwakeConsent(model: model).transition(.opacity)
@@ -57,7 +62,7 @@ private struct AwakeStatusColumn: View {
             TimelineView(.periodic(from: .now, by: 30)) { context in
                 KeepAwakeDial(awake: awake, now: context.date)
             }
-            .padding(.top, TunerTheme.sectionGap)
+            .padding(.top, 32)
             .disabled(!isOn)
             .opacity(isOn ? 1 : 0.5)
 
@@ -73,14 +78,15 @@ private struct AwakeStatusColumn: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                .padding(.top, TunerTheme.sectionGap)
+                .padding(.top, 32)
                 .onAppear { awake.perform(.ok) }
             }
 
-            // A small illustration of the close with its caption, not the page's centrepiece.
-            // It follows the rest rather than being pinned to the bottom, where it sat alone
-            // under a gap.
-            HStack(alignment: .center, spacing: 12) {
+            // A small illustration of the close with its caption. It teaches, so it shows while
+            // there is nothing else to look at; once the column is busy with a real hold (the
+            // answer, a warning, the dial counting down) it steps aside rather than crowd it.
+            if !awake.arbiter.state.holdsLid {
+            HStack(alignment: .center, spacing: 14) {
                 PreviewWindow(preview: preview, caption: awake.closingCaption(beginning: false)
                               ?? AwakeText.Caption(text: sampleCaption, warning: false, hint: nil), compact: true)
                     .frame(width: 140)
@@ -92,10 +98,10 @@ private struct AwakeStatusColumn: View {
                         .padding(.leading, -6)
                 }
             }
-            .padding(.top, TunerTheme.sectionGap)
-
-            Spacer(minLength: 0)
+            .padding(.top, 32)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         // Show, don't explain: the close plays once as the page opens.
         .onAppear { if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { preview.playRound() } }
     }
@@ -126,7 +132,7 @@ private struct AwakeStatusColumn: View {
                 ?? AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
                                   limits: arbiter.limits, watchingApps: settings.whenWorking, now: context.date)
             let status = awake.status
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 14) {
                 // The eyes are in the header, once. Here: the answer, then why, with the icon of
                 // the app it is about beside the sentence that names it.
                 Text(copy.headline)
@@ -183,11 +189,11 @@ private struct AwakeControls: View {
 
     var body: some View {
         ScrollView(showsIndicators: true) {
-            VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
+            VStack(alignment: .leading, spacing: 32) {
                 triggers
                 options
             }
-            .padding(16)
+            .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 20)
             .tunerAnimation(TunerTheme.ease, value: model.showingAwakeSettings)
             .tunerAnimation(TunerTheme.ease, value: showApps)
             .tunerAnimation(TunerTheme.ease, value: showPicker)
@@ -212,8 +218,8 @@ private struct AwakeControls: View {
             return AwakeText.live(reasons.filter { $0.kind == kind }, now: now)
         }
         return VStack(alignment: .leading, spacing: 4) {
-            Eyebrow("Keep it awake while").padding(.bottom, 6)
-            TriggerRow("An app is busy", about: "Agents, builds, renders, downloads.",
+            Eyebrow("Keep it awake while").padding(.bottom, 8)
+            TriggerRow("An app is busy", about: "Agents, builds, renders.",
                        live: live(.working), detail: allowedSummary, isOn: bind(\.whenWorking), expanded: $showApps,
                        help: "Hold the lid while an app you allow is asking macOS to stay awake: a coding agent in a terminal, a render, a download.")
             if showApps { AllowedApps(model: model).transition(.blurFade).padding(.bottom, 6) }
@@ -274,6 +280,40 @@ private struct AwakeControls: View {
     }
 }
 
+/// A slider for a narrow column: its name and value share a line, and the track gets the
+/// whole width under them. (A row with the label beside the track left "Sleep when battery
+/// reaches" a track 30 pt long.)
+struct StackedSlider: View {
+    let title: String
+    let valueText: String
+    var emphasised = false
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    var onEditingEnded: (() -> Void)? = nil
+    @Environment(\.tunerTheme) private var theme
+
+    init(_ title: String, valueText: String, emphasised: Bool = false, value: Binding<Double>,
+         in range: ClosedRange<Double>, step: Double, onEditingEnded: (() -> Void)? = nil) {
+        self.title = title; self.valueText = valueText; self.emphasised = emphasised
+        _value = value; self.range = range; self.step = step; self.onEditingEnded = onEditingEnded
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).font(emphasised ? TunerTheme.bodyMedium : TunerTheme.body)
+                    .foregroundStyle(emphasised ? theme.ink : theme.inkLabel)
+                Spacer()
+                Text(valueText).font(TunerTheme.value).foregroundStyle(theme.ink)
+            }
+            FillSliderRow(title, value: $value, in: range, step: step, decimals: 0,
+                          showsValue: false, height: 28, labelWidth: 0, onEditingEnded: onEditingEnded)
+                .padding(.leading, -12)   // the row keeps a gap for a label it does not show here
+        }
+    }
+}
+
 /// "Keep awake now": one dial instead of four arbitrary buttons. Off on the left, any time from
 /// five minutes to twelve hours, "until I stop" on the right. The line under it says
 /// the choice whole ("Awake until 6:40 PM · 1 h 12 min left"), and while a hold runs the
@@ -289,19 +329,11 @@ private struct KeepAwakeDial: View {
     var body: some View {
         let stop = dragged.map { Int($0.rounded()) } ?? awake.manualStop(now: now)
         VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Keep awake now").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
-                Spacer()
-                Text(AwakeText.manualValue(stop: stop)).font(TunerTheme.value).foregroundStyle(theme.ink)
-            }
             // No tooltip: everything it would say is written under the track.
-            FillSliderRow("Keep awake now",
+            StackedSlider("Keep awake now", valueText: AwakeText.manualValue(stop: stop), emphasised: true,
                           value: Binding(get: { dragged ?? Double(awake.manualStop(now: now)) },
                                          set: { dragged = $0; commitSoon() }),
-                          in: 0...Double(AwakeText.manualLastStop), step: 1, decimals: 0,
-                          showsValue: false, height: 28, labelWidth: 0,
-                          onEditingEnded: commit)
-                .padding(.leading, -12)   // the row keeps a gap for a label it does not show here
+                          in: 0...Double(AwakeText.manualLastStop), step: 1, onEditingEnded: commit)
             // The scale, so nobody has to drag to learn it (as Slow and Fast do for Speed).
             HStack {
                 Text("5 min"); Spacer(); Text("12 h · until I stop")
@@ -378,7 +410,7 @@ private struct TriggerRow: View {
             }
             SmallPill(isOn: isOn, size: .regular) { isOn.toggle() }
         }
-        .padding(.vertical, 5)
+        .padding(.vertical, 9)
         // No tooltip: the line under the name says it. (`help` stays for VoiceOver.)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(label). \(live ?? about)")
@@ -536,23 +568,15 @@ struct AwakeLimits: View {
     var body: some View {
         let settings = model.stayAwake.settings
         VStack(alignment: .leading, spacing: 4) {
-            Eyebrow("Protects your Mac").padding(.bottom, 6)
+            Eyebrow("Protects your Mac").padding(.bottom, 12)
             Explained("On battery your Mac goes to sleep at this charge, whatever is working.") {
-                FillSliderRow("Sleep when battery reaches",
+                StackedSlider("Sleep when battery reaches", valueText: "\(settings.batteryFloor) %",
                               value: Binding(get: { Double(settings.batteryFloor) }, set: { settings.batteryFloor = Int($0) }),
                               in: Double(HoldLimits.batteryFloorRange.lowerBound)...Double(HoldLimits.batteryFloorRange.upperBound),
-                              step: 5, decimals: 0, unit: "%",
-                              labelWidth: 170)
+                              step: 5)
             }
-            Explained("Charger only: on battery the lid sleeps your Mac, as it always has.") {
-                SegmentedRow("Stay awake on", options: ["Any power", "Charger only"],
-                             selection: Binding(get: { settings.chargerOnly ? 1 : 0 }, set: { settings.chargerOnly = $0 == 1 }))
-            }
-            Explained("How long to wait after the work ends, in case it starts again.") {
-                SegmentedRow("Then sleep after", options: ["1", "5", "15", "30 min"],
-                             selection: Binding(get: { HoldLimits.graceChoices.firstIndex(of: settings.grace) ?? 1 },
-                                                set: { settings.grace = HoldLimits.graceChoices[$0] }))
-            }
+            Explained("Stay awake on any power, or only on the charger.") { Self.powerRow(settings) }
+            Explained("Minutes to wait after the work ends, in case it starts again.") { Self.graceRow(settings) }
             TriggerRow("Lock the screen", about: "A Mac that stays awake stays unlocked. This locks it as the lid shuts.",
                        live: nil, detail: nil, isOn: Binding(get: { settings.lockWhenShut }, set: { settings.lockWhenShut = $0 }), expanded: nil,
                        help: "A Mac that never slept is unlocked for whoever opens it next. On: Shut locks the screen as the lid shuts.")
@@ -560,7 +584,7 @@ struct AwakeLimits: View {
                        live: nil, detail: nil, isOn: Binding(get: { settings.respectLowPowerMode }, set: { settings.respectLowPowerMode = $0 }), expanded: nil,
                        help: "While macOS Low Power Mode is on, the lid sleeps your Mac as usual.")
 
-            Eyebrow("Extras").padding(.top, TunerTheme.sectionGap - 4).padding(.bottom, 6)
+            Eyebrow("Extras").padding(.top, 28).padding(.bottom, 12)
             // No switch for the Option key: a gesture nobody makes by accident needs no way to
             // be turned off, only a way to be found. The caption teaches it, and so does this.
             Text("Hold ⌥ while closing the lid to do the opposite, just that once.")
@@ -572,6 +596,19 @@ struct AwakeLimits: View {
         }
     }
 
+
+    // The two segmented rows cannot shrink (their words never become "…"), so they are built
+    // here where a test can measure them against the column they have to fit.
+    static func powerRow(_ settings: StayAwakeSettings) -> SegmentedRow {
+        SegmentedRow("Power", options: ["Any", "Charger only"],
+                     selection: Binding(get: { settings.chargerOnly ? 1 : 0 }, set: { settings.chargerOnly = $0 == 1 }))
+    }
+
+    static func graceRow(_ settings: StayAwakeSettings) -> SegmentedRow {
+        SegmentedRow("Sleep after", options: ["1", "5", "15", "30 min"],
+                     selection: Binding(get: { HoldLimits.graceChoices.firstIndex(of: settings.grace) ?? 1 },
+                                        set: { settings.grace = HoldLimits.graceChoices[$0] }))
+    }
 }
 
 /// A slider or a segmented row with its one line of explanation underneath.
@@ -585,10 +622,11 @@ private struct Explained<Row: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             row
-            Text(caption).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+            Text(caption).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 4)
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, 20)
     }
 }
 

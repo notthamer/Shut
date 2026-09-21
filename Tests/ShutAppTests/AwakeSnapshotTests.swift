@@ -240,6 +240,18 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    /// The fullest the status column gets: a hold, a battery warning, the dial counting down
+    /// and a receipt. It must fit or scroll inside its frame, never slide over the header.
+    func testTheBusiestPage() throws {
+        let (model, awake) = try makeModel(on: true, reasons: [], asking: [])
+        leaveAReceipt(in: awake)
+        awake.setManualHold(stop: 1)
+        model.showingAwakeSettings = true
+        model.page = .awake
+        try render(model, name: "page-busy")
+        awake.shutDown()
+    }
+
     /// Option flips the decision for one close, and a second press takes it back.
     func testOptionFlipsAndFlipsBack() throws {
         let cursor = HoldReason(id: "working:cursor", kind: .working, title: "Cursor", since: Date())
@@ -320,8 +332,16 @@ final class AwakeSnapshotTests: XCTestCase {
         XCTAssertEqual(readyAwake.arbiter.state, .ready)
         try render(ready, name: "page-ready")
         // The folded Settings, by themselves: inside the panel they sit below the fold.
-        let settingsView = NSHostingView(rootView: AwakeLimits(model: ready).padding(16)
-            .frame(width: PopoverView.width - PopoverView.previewWidth - 1).tunerThemed())
+        // At the width the rules column really has. A row wider than its column spills out of
+        // both sides of it (it happened: the switches touched the window's edge).
+        let column = PopoverView.width - AwakePage.statusWidth - 1
+        // Measured on the rows that cannot shrink (captions wrap, so the whole view's ideal
+        // width says nothing): each at its natural size against the column less its padding.
+        for row in [AwakeLimits.powerRow(readyAwake.settings), AwakeLimits.graceRow(readyAwake.settings)] {
+            let natural = NSHostingView(rootView: row.fixedSize().tunerThemed()).fittingSize.width
+            XCTAssertLessThanOrEqual(natural, column - 40, "a segmented Settings row is wider than the column it lives in")
+        }
+        let settingsView = NSHostingView(rootView: AwakeLimits(model: ready).padding(.horizontal, 20).padding(.vertical, 16).frame(width: column).tunerThemed())
         settingsView.appearance = TunerTheme.appearance
         settingsView.frame = NSRect(origin: .zero, size: settingsView.fittingSize)
         settingsView.wantsLayer = true
