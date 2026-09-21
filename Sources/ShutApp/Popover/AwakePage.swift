@@ -111,6 +111,7 @@ private struct AwakeStatusColumn: View {
 
     private var pitch: some View {
         VStack(alignment: .leading, spacing: 12) {
+            AwakeEyes(mood: .asleep, pixel: 3, tint: theme.inkLabel).padding(.bottom, 2)
             Text("Keep working\nwith the lid shut.")
                 .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
             Text("Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done.")
@@ -133,8 +134,12 @@ private struct AwakeStatusColumn: View {
                                   limits: arbiter.limits, watchingApps: settings.whenWorking, now: context.date)
             let status = awake.status
             VStack(alignment: .leading, spacing: 14) {
-                // The eyes are in the header, once. Here: the answer, then why, with the icon of
-                // the app it is about beside the sentence that names it.
+                // The eyes, large and bare: no capsule, no border, no ground, just the face over
+                // the answer it illustrates (open: stays awake; shut: the lid sleeps it). Then the
+                // answer and why, with the icon of the app it is about beside its sentence.
+                AwakeEyes(mood: .init(pending == nil ? status.dot : .idle, isOn: true), pixel: 3,
+                          tint: status.dot == .idle || pending != nil ? theme.inkLabel : theme.ink)
+                    .padding(.bottom, 2)
                 Text(copy.headline)
                     .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
                     .fixedSize(horizontal: false, vertical: true)

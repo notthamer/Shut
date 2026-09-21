@@ -65,7 +65,8 @@ screen.
   while" with the three reasons, and Settings, folded, with its summary on a line of its
   own. If "An app is busy" is off the answer says that agents and builds will not keep
   the Mac awake.
-- **Said once.** The eyes are in the header and nowhere else. A control that has its
+- **Said once.** The eyes are small in the tab and large over the answer on the page, bare
+  both times: no capsule, no border, no ground. A control that has its
   explanation written under it has no tooltip repeating it. The header switch says "On"
   or "Off": the section's name is already beside it, selected.
 - **Readable.** Text that carries meaning is Carbon (5.4:1 on the paper); Slate, which
