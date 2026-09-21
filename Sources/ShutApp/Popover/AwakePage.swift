@@ -26,11 +26,6 @@ struct AwakePage: View {
     /// The left column under the band. (The right one holds Settings, whose segmented rows
     /// cannot shrink; a test measures them against what is left.)
     static let statusWidth: CGFloat = 320
-    /// The rules under the band take the height they need, up to this; past it they scroll.
-    /// With the band and the strip that keeps the whole panel well inside a 14-inch screen
-    /// even with an app list and Settings both open.
-    static let rulesHeightCap: CGFloat = 340
-
     var body: some View {
         VStack(spacing: 0) {
             AwakeBand(model: model)
@@ -46,11 +41,6 @@ struct AwakePage: View {
         }
         .tunerAnimation(TunerTheme.ease, value: model.showingAwakeConsent)
     }
-}
-
-private struct RulesHeight: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 /// History, quietly: one strip at the foot of the page, in the slip's order (how long, when,
@@ -96,19 +86,26 @@ private struct AwakeBand: View {
     private var isOn: Bool { settings.isOn && settings.hasConsented }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 28) {
-            // The eyes and the answer are one thing: a face and what it is saying.
-            HStack(alignment: .top, spacing: 26) {
+        // Two cells with the page's vertical rule between them, as tall as the taller one, so
+        // the rule runs unbroken from the header down to "Last time".
+        HStack(alignment: .top, spacing: 0) {
+            // Top left, where the eye lands: the face, and under it what it is saying.
+            VStack(alignment: .leading, spacing: 14) {
                 TimelineView(.periodic(from: .now, by: 30)) { _ in
                     let dot = awake.pendingApp == nil ? awake.status.dot : .idle
                     AwakeEyes(mood: isOn ? .init(dot, isOn: true) : .asleep, pixel: 3,
                               tint: !isOn || dot == .idle ? theme.inkLabel : theme.ink, dreams: true)
-                        .padding(.top, 2)
                 }
-                (isOn ? AnyView(hero) : AnyView(pitch)).frame(maxWidth: .infinity, alignment: .leading)
+                if isOn { hero } else { pitch }
             }
-            // The one thing to do about it, beside it: keep it awake, for how long. Under the
-            // dial, only while closing the lid will keep the Mac awake, what that will look like.
+            .padding(.horizontal, 20).padding(.vertical, 22)
+            .frame(width: AwakePage.statusWidth, alignment: .topLeading)
+            .frame(maxHeight: .infinity, alignment: .topLeading)
+
+            Rectangle().fill(theme.hairline).frame(width: 1)
+
+            // Top right: the one thing to do about it, and, only while closing the lid will keep
+            // the Mac awake, what that will look like.
             VStack(alignment: .leading, spacing: 18) {
                 TimelineView(.periodic(from: .now, by: 30)) { context in
                     KeepAwakeDial(awake: awake, now: context.date)
@@ -128,10 +125,11 @@ private struct AwakeBand: View {
                     .onAppear { if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { preview.playRound() } }
                 }
             }
-            .frame(width: 236)
+            .padding(.horizontal, 20).padding(.vertical, 22)
+            .frame(width: PopoverView.width - AwakePage.statusWidth - 1, alignment: .topLeading)
+            .frame(maxHeight: .infinity, alignment: .topLeading)
         }
-        .padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 22)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// The action under the answer shows where it leads before it is pressed. Keeping the Mac
@@ -233,7 +231,6 @@ private struct AwakeControls: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
     @State private var showPicker = false
-    @State private var rulesHeight: CGFloat = 260
 
     private var awake: StayAwakeController { model.stayAwake }
     private var settings: StayAwakeSettings { awake.settings }
@@ -241,32 +238,27 @@ private struct AwakeControls: View {
     private var isOn: Bool { settings.isOn && settings.hasConsented }
 
     var body: some View {
-        ScrollView(showsIndicators: true) {
-            HStack(alignment: .top, spacing: 0) {
-                triggers
-                    .padding(.horizontal, 20)
-                    .frame(width: AwakePage.statusWidth, alignment: .leading)
-                options
-                    .padding(.horizontal, 20)
-                    .frame(width: PopoverView.width - AwakePage.statusWidth - 1, alignment: .leading)
+        // "01" on the left, "02" on the right, the page's vertical rule between them (as on the
+        // Lid effects page). Each cell scrolls by itself and fills what the panel has left.
+        HStack(alignment: .top, spacing: 0) {
+            ScrollView(showsIndicators: true) {
+                triggers.padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.top, 22).padding(.bottom, 20)
-            // Measured, so the scroll view can be exactly as tall as what is in it.
-            .background(GeometryReader { proxy in
-                Color.clear.preference(key: RulesHeight.self, value: proxy.size.height)
-            })
-            .tunerAnimation(TunerTheme.ease, value: model.showingAwakeSettings)
-            .tunerAnimation(TunerTheme.ease, value: model.showingAllowedApps)
-            .tunerAnimation(TunerTheme.ease, value: showPicker)
+            .fadesAtTheFold()
+            .frame(width: AwakePage.statusWidth)
+            Rectangle().fill(theme.hairline).frame(width: 1)
+            ScrollView(showsIndicators: true) {
+                options.padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .fadesAtTheFold()
+            .frame(width: PopoverView.width - AwakePage.statusWidth - 1)
         }
-        .onPreferenceChange(RulesHeight.self) { rulesHeight = $0 }
-        // As tall as its content, so a quiet page is a short panel with nothing empty under
-        // it; capped, so an open list and open Settings scroll instead of growing off-screen.
-        .frame(height: min(max(rulesHeight, 120), AwakePage.rulesHeightCap))
-        .mask(rulesHeight > AwakePage.rulesHeightCap
-              ? AnyView(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.95),
-                                               .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
-              : AnyView(Color.black))
+        .frame(maxHeight: .infinity)
+        .tunerAnimation(TunerTheme.ease, value: model.showingAwakeSettings)
+        .tunerAnimation(TunerTheme.ease, value: model.showingAllowedApps)
+        .tunerAnimation(TunerTheme.ease, value: showPicker)
     }
 
     /// What keeps the Mac awake, always in view: the page answers "when?" without a

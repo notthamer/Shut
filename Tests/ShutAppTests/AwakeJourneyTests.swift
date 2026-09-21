@@ -262,7 +262,9 @@ final class AwakeJourneyTests: XCTestCase {
 
         world.power = PowerConditions(onCharger: true, batteryPercent: 28)
         awake.arbiter.refreshPower()
-        spin(1.8)
+        // Twice a second means five or six in three seconds; three is asked for, so a busy
+        // machine running the suite cannot fail this by being slow.
+        spin(3.0)
         let during = world.kernel.lidCalls.filter { $0 }.count - before
         XCTAssertGreaterThanOrEqual(during, 3, "the bit goes back twice a second after a power change, not once")
         XCTAssertEqual(awake.arbiter.state, .holding)

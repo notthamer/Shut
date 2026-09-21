@@ -1,5 +1,4 @@
 import AppKit
-import Combine
 import SwiftUI
 import Tuner
 
@@ -12,7 +11,6 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     private let model: PopoverModel
     private let dock: DockPresence
     private var window: NSWindow?
-    private var pageWatch: AnyCancellable?
     /// Called before the window comes up, so the popover can get out of the way.
     var onShow: (() -> Void)?
 
@@ -73,10 +71,6 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         let top = w.frame.maxY
         w.setContentSize(size)
         w.setFrameTopLeftPoint(NSPoint(x: w.frame.minX, y: top))
-        // The window follows the page's height, like the popover (see `NSWindow.fitHeight`).
-        pageWatch = model.$contentHeight.removeDuplicates().sink { [weak w, weak hosting] _ in
-            DispatchQueue.main.async { if let w, let hosting { w.fitHeight(to: hosting) } }
-        }
         return w
     }
 

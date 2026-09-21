@@ -58,8 +58,7 @@ final class AwakeSnapshotTests: XCTestCase {
         hosting.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))   // the rules report their height, then the page settles
         let height = hosting.fittingSize.height
-        XCTAssertGreaterThan(height, 300)
-        XCTAssertLessThanOrEqual(height, 800, "the panel must stay well inside a 14-inch screen")
+        XCTAssertEqual(height, 56 + 1 + PopoverView.bodyHeight + 1 + 48, accuracy: 1, "one panel size, whichever section and whatever its state")
         let frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: height)
         let window = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = TunerTheme.appearance

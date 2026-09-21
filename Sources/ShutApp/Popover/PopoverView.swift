@@ -11,8 +11,9 @@ struct PopoverView: View {
 
     static let width: CGFloat = 640
     static let previewWidth: CGFloat = 290
-    /// The Lid effects page has this height. The Stay awake page is as tall as its content, and
-    /// the window follows (see `NSWindow.fitHeight` and `PopoverModel.contentHeight`).
+    /// Both pages have this height: the panel is one size whichever section is on show. (It
+    /// briefly followed the Stay awake page's content; a window that changes size when you
+    /// change tabs felt wrong.)
     static let bodyHeight: CGFloat = 560
 
     var body: some View {
@@ -47,19 +48,12 @@ struct PopoverView: View {
                     AwakePage(model: model).transition(.blurFade)
                 }
             }
-            .frame(width: Self.width, height: model.page == .styles ? bodyHeight : nil)
+            .frame(width: Self.width, height: bodyHeight)
             .tunerAnimation(TunerTheme.ease, value: model.page)
             Rectangle().fill(theme.hairline).frame(height: 1)
             PopoverFooter(model: model)
         }
         .frame(width: Self.width)
-        .fixedSize(horizontal: false, vertical: true)
-        // The windows that host this view size themselves to it; tell them when it changes.
-        .background(GeometryReader { proxy in
-            Color.clear
-                .onAppear { model.contentHeight = proxy.size.height }
-                .onChange(of: proxy.size.height) { _, height in model.contentHeight = height }
-        })
         .tunerThemed()
     }
 }

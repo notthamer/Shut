@@ -1,27 +1,10 @@
 import AppKit
-import Combine
 import SwiftUI
 import Tuner
 
 /// Presents the main panel under the status item as a floating, borderless
 /// window with a 14-pt radius, hairline border and soft shadow, dropping in with
 /// a short spring. No system arrow, no bezel: the same chrome as Tuner.
-extension NSWindow {
-    /// The Lid effects page and the Stay awake page are not the same height. When the page
-    /// changes, the window takes the new height with its top edge where it was: it hangs from
-    /// the menu bar, or from where the user put it, and grows or shrinks downwards. No
-    /// animation: the content crossfades, and a window sliding under it would be motion the
-    /// interface does not otherwise have.
-    func fitHeight(to hosting: NSView) {
-        hosting.layoutSubtreeIfNeeded()
-        let height = hosting.fittingSize.height
-        guard height > 0, abs(height - (contentView?.frame.height ?? 0)) > 0.5 else { return }
-        let top = frame.maxY
-        setContentSize(NSSize(width: contentView?.frame.width ?? frame.width, height: height))
-        setFrameTopLeftPoint(NSPoint(x: frame.minX, y: top))
-    }
-}
-
 @MainActor
 final class PopoverController {
     private let model: PopoverModel
@@ -31,7 +14,6 @@ final class PopoverController {
     private var hosting: NSView?
     private var monitors: [Any] = []
     private weak var anchorButton: NSStatusBarButton?
-    private var pageWatch: AnyCancellable?
 
     init(model: PopoverModel, dock: DockPresence) {
         self.model = model
@@ -136,11 +118,6 @@ final class PopoverController {
         chrome.install(hosting)
         panel.contentView = chrome
         self.chrome = chrome
-        // The panel follows the page's height. `$page` fires before the value is in place, so
-        // the fit happens on the next turn, once SwiftUI has laid the new page out.
-        pageWatch = model.$contentHeight.removeDuplicates().sink { [weak panel, weak hosting] _ in
-            DispatchQueue.main.async { if let panel, let hosting { panel.fitHeight(to: hosting) } }
-        }
         return panel
     }
 

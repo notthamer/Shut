@@ -38,8 +38,6 @@ final class PopoverModel: ObservableObject {
     /// The panel has two pages of the same size: the lid styles, and Stay awake.
     enum Page { case styles, awake }
     @Published var page: Page = .styles
-    /// The panel's natural height, reported by the view; the hosting windows follow it.
-    @Published var contentHeight: CGFloat = 0
     @Published var showingAwakeConsent = false
 
     @Published var stateDescription = "idle"
