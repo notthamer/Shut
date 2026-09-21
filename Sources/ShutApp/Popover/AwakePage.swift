@@ -34,6 +34,9 @@ struct AwakePage: View {
             AwakeLastTime(model: model)
         }
         .clipped()
+        // The page opening (from the menu bar or the Dock window) is the one moment the
+        // battery level is started from the charge.
+        .onAppear { model.stayAwake.startTheBatteryLevelFromTheChargeOnce() }
         .overlay {
             if model.showingAwakeConsent {
                 AwakeConsent(model: model).transition(.opacity)

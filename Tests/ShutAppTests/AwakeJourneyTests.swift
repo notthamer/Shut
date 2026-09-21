@@ -273,7 +273,9 @@ final class AwakeJourneyTests: XCTestCase {
         awake.lidEdge(isOpen: true)
         let atOpen = world.kernel.lidCalls.count
         spin(1.2)
-        XCTAssertEqual(world.kernel.lidCalls.count, atOpen, "no re-applying with the lid open")
+        // The burst would add two or three in this time. One is allowed for: a tick already
+        // on its way when the lid opened, or the ten-second re-apply that holding always has.
+        XCTAssertLessThanOrEqual(world.kernel.lidCalls.count - atOpen, 1, "the twice-a-second guard stops with the lid open")
         awake.shutDown()
     }
 

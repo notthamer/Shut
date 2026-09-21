@@ -30,6 +30,8 @@ public final class StayAwakeSettings: ObservableObject {
     /// The last duration chosen on the dial (a stop of `AwakeText.manualDurations`), so choosing
     /// "For a set time" starts something sensible at once. One hour until the user says otherwise.
     public var lastManualStop: Int { didSet { defaults.set(lastManualStop, forKey: "stayAwake.lastManualStop") } }
+    /// The battery level has been started from the charge, the one time that happens.
+    public var batteryLevelSeeded: Bool { didSet { defaults.set(batteryLevelSeeded, forKey: "stayAwake.batteryLevelSeeded") } }
     /// How many closes have carried the "Hold ⌥" hint. It teaches, then gets out of the way.
     public var optionHintsShown: Int { didSet { defaults.set(optionHintsShown, forKey: "stayAwake.optionHintsShown") } }
     public static let optionHintLimit = 5
@@ -50,6 +52,7 @@ public final class StayAwakeSettings: ObservableObject {
         lockWhenShut = bool("stayAwake.lockWhenShut", true)
         showReceipt = bool("stayAwake.showReceipt", true)
         lastManualStop = defaults.object(forKey: "stayAwake.lastManualStop") as? Int ?? 6
+        batteryLevelSeeded = defaults.bool(forKey: "stayAwake.batteryLevelSeeded")
         optionHintsShown = defaults.integer(forKey: "stayAwake.optionHintsShown")
     }
 

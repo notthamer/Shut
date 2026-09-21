@@ -269,6 +269,21 @@ public final class StayAwakeController: ObservableObject {
         else { arbiter.manual.begin(for: AwakeText.manualDurations[stop - 1]) }
     }
 
+    /// The first time Settings opens, the battery level starts from the charge right now, so
+    /// nobody has to work out a number: the step just under it (65 % → 60 %). Just under, not
+    /// at, because at the charge itself the Mac would refuse to stay awake on battery at once.
+    /// Once only: after that the level is the user's.
+    func startTheBatteryLevelFromTheChargeOnce() {
+        guard !settings.batteryLevelSeeded, let percent = arbiter.conditions.batteryPercent else { return }
+        settings.batteryLevelSeeded = true
+        settings.batteryFloor = Self.levelJustUnder(percent)
+    }
+
+    static func levelJustUnder(_ percent: Int) -> Int {
+        let range = HoldLimits.batteryFloorRange
+        return min(max((percent - 1) / 5 * 5, range.lowerBound), range.upperBound)
+    }
+
     /// "For a set time", one click: the last duration chosen, starting now.
     func startTimedHold() { setManualHold(stop: max(settings.lastManualStop, 1)) }
 

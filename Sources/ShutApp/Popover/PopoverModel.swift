@@ -127,7 +127,9 @@ final class PopoverModel: ObservableObject {
     /// The list of apps under "An app is busy".
     @Published var showingAllowedApps = false
     /// The folded Settings on the Awake page.
-    @Published var showingAwakeSettings = false
+    @Published var showingAwakeSettings = false {
+        didSet { if showingAwakeSettings, !oldValue { stayAwake.startTheBatteryLevelFromTheChargeOnce() } }
+    }
 
     var needsPermissionCard: Bool {
         registry.current.needsSnapshot && !registry.captureAvailable

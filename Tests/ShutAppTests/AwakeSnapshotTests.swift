@@ -35,6 +35,7 @@ final class AwakeSnapshotTests: XCTestCase {
         awakeSettings.isOn = on
         awakeSettings.whenWorking = asking != nil  // on only with a stand-in for the system read
         awakeSettings.whenDisplayConnected = false
+        awakeSettings.batteryLevelSeeded = true   // the level stays at its 20 % unless a test asks for the seeding
         let marker = ArmedMarker(directory: FileManager.default.temporaryDirectory.appendingPathComponent("AwakeSnapshot-\(UUID().uuidString)"))
         let plugged = PowerSourceMonitor(reader: { power })
         let arbiter = HoldArbiter(hold: FakeHold(), marker: marker, monitor: plugged, mirror: AssertionMirror(defaults: nil, read: { asking ?? [] }),
@@ -282,6 +283,25 @@ final class AwakeSnapshotTests: XCTestCase {
         model.page = .awake
         XCTAssertEqual(awake.arbiter.state, .holding)
         try render(model, name: "page-automatic-working")
+        awake.shutDown()
+    }
+
+    /// The first time Settings opens, the level starts just under the charge; never again.
+    func testTheBatteryLevelStartsFromTheChargeOnce() throws {
+        XCTAssertEqual(StayAwakeController.levelJustUnder(65), 60)
+        XCTAssertEqual(StayAwakeController.levelJustUnder(63), 60)
+        XCTAssertEqual(StayAwakeController.levelJustUnder(100), 95)
+        XCTAssertEqual(StayAwakeController.levelJustUnder(3), 5)
+        let (model, awake) = try makeModel(on: true, reasons: [], asking: [], power: PowerConditions(onCharger: false, batteryPercent: 65))
+        XCTAssertEqual(awake.settings.batteryFloor, 20)
+        awake.settings.batteryLevelSeeded = false
+        model.showingAwakeSettings = true
+        XCTAssertEqual(awake.settings.batteryFloor, 60)
+        XCTAssertNil(AwakeText.batteryTooLow(conditions: awake.arbiter.conditions, limits: awake.arbiter.limits), "it can still stay awake")
+        awake.settings.batteryFloor = 30
+        model.showingAwakeSettings = false
+        model.showingAwakeSettings = true
+        XCTAssertEqual(awake.settings.batteryFloor, 30, "the level is the user's from then on")
         awake.shutDown()
     }
 
