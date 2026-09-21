@@ -53,14 +53,20 @@ final class AwakeSnapshotTests: XCTestCase {
     }
 
     private func render(_ model: PopoverModel, name: String) throws {
-        let frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: 660)
+        // The panel is as tall as its content, so the frame is measured, not assumed.
+        let hosting = NSHostingView(rootView: PopoverView(model: model))
+        hosting.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))   // the rules report their height, then the page settles
+        let height = hosting.fittingSize.height
+        XCTAssertGreaterThan(height, 300)
+        XCTAssertLessThanOrEqual(height, 800, "the panel must stay well inside a 14-inch screen")
+        let frame = NSRect(x: 0, y: 0, width: PopoverView.width, height: height)
         let window = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = TunerTheme.appearance
         let container = NSView(frame: frame)
         container.wantsLayer = true
         container.layer?.backgroundColor = NSColor(red: 0.62, green: 0.74, blue: 0.92, alpha: 1).cgColor
         let chrome = PanelChrome(frame: frame)
-        let hosting = NSHostingView(rootView: PopoverView(model: model))
         chrome.install(hosting)
         container.addSubview(chrome)
         window.contentView = container

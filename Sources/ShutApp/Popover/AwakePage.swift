@@ -3,30 +3,40 @@ import StayAwake
 import SwiftUI
 import Tuner
 
-/// The Stay awake page, in two columns with one job each. Left, where the eye lands first:
-/// the status. What closing the lid will do and why, the one thing to do about it, the
-/// "Keep awake now" dial, what happened last time, and a small preview of the close. Right:
-/// the rules. What else keeps the Mac awake, and the settings. (It used to open on a large
-/// decorative preview top-left, with the answer on the right and a third of the left empty.)
+/// The Stay awake page reads in one order, top to bottom:
+///
+///     ◉◉  Closing the lid will sleep your Mac.        Keep awake now        Off
+///         Nothing is keeping it awake right now.      ●━━━━━━━━━━━━━━━━━━━━━━━
+///     ─────────────────────────────────────────────────────────────────────────
+///     01 KEEP IT AWAKE WHILE                 02 SETTINGS
+///     An app is busy          1 app ›  ◉     Sleeps at 30 % battery · locks …
+///     ─────────────────────────────────────────────────────────────────────────
+///     03 LAST TIME   Slept after <1 min · 2:15 → 2:16 AM …
+///
+/// The answer spans the panel, because it is the one thing the page is for, with the eyes
+/// beside it and the one thing to do about it (the dial) on its right. Under it, the rules in
+/// two numbered sections like the Lid effects page. History is a strip at the bottom, in
+/// small type: it used to be a second large headline competing with the first. (Before this
+/// the page was split 50/50 by a full-height rule, with nothing dominant and the lower third
+/// of a too-tall panel empty.)
 struct AwakePage: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
 
+    /// The left column under the band. (The right one holds Settings, whose segmented rows
+    /// cannot shrink; a test measures them against what is left.)
     static let statusWidth: CGFloat = 320
+    /// The rules under the band take the height they need, up to this; past it they scroll.
+    /// With the band and the strip that keeps the whole panel well inside a 14-inch screen
+    /// even with an app list and Settings both open.
+    static let rulesHeightCap: CGFloat = 340
 
     var body: some View {
-        HStack(spacing: 0) {
-            // A battery warning, a running dial, last time and the preview together are taller
-            // than the panel. A column that runs long scrolls; it must never push the page out
-            // of its frame (it once slid up under the header and down over the footer).
-            ScrollView(showsIndicators: false) {
-                AwakeStatusColumn(model: model).padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 20)
-            }
-            .fadesAtTheFold()
-            .frame(width: Self.statusWidth)
-            Rectangle().fill(theme.hairline).frame(width: 1)
+        VStack(spacing: 0) {
+            AwakeBand(model: model)
+            Rectangle().fill(theme.hairline).frame(height: 1)
             AwakeControls(model: model)
-                .frame(width: PopoverView.width - Self.statusWidth - 1)
+            AwakeLastTime(model: model)
         }
         .clipped()
         .overlay {
@@ -38,9 +48,40 @@ struct AwakePage: View {
     }
 }
 
+private struct RulesHeight: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+/// History, quietly: one strip at the foot of the page, in the slip's order (how long, when,
+/// why) and in small type.
+private struct AwakeLastTime: View {
+    @ObservedObject var model: PopoverModel
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        if let receipt = model.stayAwake.journal.last, let slip = AwakeText.slip(receipt) {
+            VStack(spacing: 0) {
+                Rectangle().fill(theme.hairline).frame(height: 1)
+                HStack(alignment: .firstTextBaseline, spacing: 14) {
+                    Eyebrow("Last time", number: "03").fixedSize()
+                    (Text(slip.headline).foregroundStyle(theme.ink).font(TunerTheme.bodyMedium)
+                     + Text("  ·  \(slip.span)" + (slip.footnote.isEmpty ? "" : "  ·  \(slip.footnote)")).foregroundStyle(theme.inkLabel))
+                        .font(TunerTheme.bodySmall).lineSpacing(2)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 20).padding(.vertical, 12)
+                .background(slip.cutShort ? theme.washSaffron.opacity(0.5) : .clear)
+            }
+            .onAppear { model.stayAwake.perform(.ok) }
+        }
+    }
+}
+
 // MARK: - Left: the status
 
-private struct AwakeStatusColumn: View {
+private struct AwakeBand: View {
     @ObservedObject var model: PopoverModel
     @ObservedObject var preview: PreviewModel
     @Environment(\.tunerTheme) private var theme
@@ -55,53 +96,41 @@ private struct AwakeStatusColumn: View {
     private var isOn: Bool { settings.isOn && settings.hasConsented }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if isOn { hero } else { pitch }
-
-            // The one thing to do here, straight under the answer: keep it awake, for how long.
-            TimelineView(.periodic(from: .now, by: 30)) { context in
-                KeepAwakeDial(awake: awake, now: context.date)
-            }
-            .padding(.top, 32)
-            .disabled(!isOn)
-            .opacity(isOn ? 1 : 0.5)
-
-            if let receipt = awake.journal.last, let slip = AwakeText.slip(receipt) {
-                // The same three lines as the slip, in the same order: how long, when, why.
-                VStack(alignment: .leading, spacing: 4) {
-                    Eyebrow("Last time").padding(.bottom, 2)
-                    Text(slip.headline).font(TunerTheme.heading).tracking(TunerTheme.headingTracking).foregroundStyle(theme.ink)
-                    Text(slip.span).font(TunerTheme.bodySmall).foregroundStyle(theme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if !slip.footnote.isEmpty {
-                        Text(slip.footnote).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+        HStack(alignment: .top, spacing: 28) {
+            // The eyes and the answer are one thing: a face and what it is saying.
+            HStack(alignment: .top, spacing: 26) {
+                TimelineView(.periodic(from: .now, by: 30)) { _ in
+                    let dot = awake.pendingApp == nil ? awake.status.dot : .idle
+                    AwakeEyes(mood: isOn ? .init(dot, isOn: true) : .asleep, pixel: 3,
+                              tint: !isOn || dot == .idle ? theme.inkLabel : theme.ink, dreams: true)
+                        .padding(.top, 2)
                 }
-                .padding(.top, 32)
-                .onAppear { awake.perform(.ok) }
+                (isOn ? AnyView(hero) : AnyView(pitch)).frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            // The close with its caption, shown only when there is a caption to show: when
-            // closing the lid will keep the Mac awake. Otherwise closing is just closing, the
-            // way it has always been, and a preview of that is a preview of nothing.
-            if isOn, awake.arbiter.state.holdsLid, let caption = awake.closingCaption(beginning: false) {
-                HStack(alignment: .center, spacing: 14) {
-                    PreviewWindow(preview: preview, caption: caption, compact: true)
-                        .frame(width: 140)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("What closing will look like")
-                            .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
-                            .fixedSize(horizontal: false, vertical: true)
-                        QuietButton(preview.isPlaying ? "Playing…" : "Play") { preview.playRound() }
-                            .padding(.leading, -6)
-                    }
+            // The one thing to do about it, beside it: keep it awake, for how long. Under the
+            // dial, only while closing the lid will keep the Mac awake, what that will look like.
+            VStack(alignment: .leading, spacing: 18) {
+                TimelineView(.periodic(from: .now, by: 30)) { context in
+                    KeepAwakeDial(awake: awake, now: context.date)
                 }
-                .padding(.top, 32)
-                // Show, don't explain: it plays once as it appears.
-                .onAppear { if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { preview.playRound() } }
+                .disabled(!isOn)
+                .opacity(isOn ? 1 : 0.5)
+                if isOn, awake.arbiter.state.holdsLid, let caption = awake.closingCaption(beginning: false) {
+                    HStack(alignment: .center, spacing: 12) {
+                        PreviewWindow(preview: preview, caption: caption, compact: true).frame(width: 120)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("What closing will look like").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                                .fixedSize(horizontal: false, vertical: true)
+                            QuietButton(preview.isPlaying ? "Playing…" : "Play") { preview.playRound() }.padding(.leading, -6)
+                        }
+                    }
+                    // Show, don't explain: it plays once as it appears.
+                    .onAppear { if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { preview.playRound() } }
+                }
             }
+            .frame(width: 236)
         }
+        .padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 22)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -147,9 +176,9 @@ private struct AwakeStatusColumn: View {
 
     private var pitch: some View {
         VStack(alignment: .leading, spacing: 12) {
-            AwakeEyes(mood: .asleep, pixel: 3, tint: theme.inkLabel, dreams: true).padding(.bottom, 2)
-            Text("Keep working\nwith the lid shut.")
-                .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
+            Text("Keep working with the lid shut.")
+                .font(TunerTheme.display(24)).tracking(-0.6).foregroundStyle(theme.ink).lineSpacing(1)
+                .fixedSize(horizontal: false, vertical: true)
             Text("Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done.")
                 .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
@@ -170,14 +199,10 @@ private struct AwakeStatusColumn: View {
                                   limits: arbiter.limits, watchingApps: settings.whenWorking, now: context.date)
             let status = awake.status
             VStack(alignment: .leading, spacing: 14) {
-                // The eyes, large and bare: no capsule, no border, no ground, just the face over
-                // the answer it illustrates (open: stays awake; shut: the lid sleeps it). Then the
-                // answer and why, with the icon of the app it is about beside its sentence.
-                AwakeEyes(mood: .init(pending == nil ? status.dot : .idle, isOn: true), pixel: 3,
-                          tint: status.dot == .idle || pending != nil ? theme.inkLabel : theme.ink, dreams: true)
-                    .padding(.bottom, 2)
+                // The eyes are beside this block, in the band. Here: the answer and why, with the icon
+                // of the app it is about beside its sentence.
                 Text(copy.headline)
-                    .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
+                    .font(TunerTheme.display(24)).tracking(-0.6).foregroundStyle(theme.ink).lineSpacing(1)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(alignment: .top, spacing: 8) {
                     if let pending {
@@ -195,7 +220,8 @@ private struct AwakeStatusColumn: View {
                 if copy.showsCards {
                     AwakeWarnings(state: arbiter.state, conditions: arbiter.conditions, limits: arbiter.limits, now: context.date)
                 }
-                actions(status.action, who: pending?.name ?? arbiter.reasons.first.map(AwakeText.subject))
+                actions(status.action, who: pending?.name
+                        ?? arbiter.reasons.first { $0.kind == .working || $0.kind == .command }.map(AwakeText.subject))
             }
         }
     }
@@ -207,6 +233,7 @@ private struct AwakeControls: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
     @State private var showPicker = false
+    @State private var rulesHeight: CGFloat = 260
 
     private var awake: StayAwakeController { model.stayAwake }
     private var settings: StayAwakeSettings { awake.settings }
@@ -215,16 +242,31 @@ private struct AwakeControls: View {
 
     var body: some View {
         ScrollView(showsIndicators: true) {
-            VStack(alignment: .leading, spacing: 32) {
+            HStack(alignment: .top, spacing: 0) {
                 triggers
+                    .padding(.horizontal, 20)
+                    .frame(width: AwakePage.statusWidth, alignment: .leading)
                 options
+                    .padding(.horizontal, 20)
+                    .frame(width: PopoverView.width - AwakePage.statusWidth - 1, alignment: .leading)
             }
-            .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 20)
+            .padding(.top, 22).padding(.bottom, 20)
+            // Measured, so the scroll view can be exactly as tall as what is in it.
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: RulesHeight.self, value: proxy.size.height)
+            })
             .tunerAnimation(TunerTheme.ease, value: model.showingAwakeSettings)
             .tunerAnimation(TunerTheme.ease, value: model.showingAllowedApps)
             .tunerAnimation(TunerTheme.ease, value: showPicker)
         }
-        .fadesAtTheFold()
+        .onPreferenceChange(RulesHeight.self) { rulesHeight = $0 }
+        // As tall as its content, so a quiet page is a short panel with nothing empty under
+        // it; capped, so an open list and open Settings scroll instead of growing off-screen.
+        .frame(height: min(max(rulesHeight, 120), AwakePage.rulesHeightCap))
+        .mask(rulesHeight > AwakePage.rulesHeightCap
+              ? AnyView(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.95),
+                                               .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+              : AnyView(Color.black))
     }
 
     /// What keeps the Mac awake, always in view: the page answers "when?" without a
@@ -244,7 +286,7 @@ private struct AwakeControls: View {
             return AwakeText.live(reasons.filter { $0.kind == kind }, now: now)
         }
         return VStack(alignment: .leading, spacing: 4) {
-            Eyebrow("Keep it awake while").padding(.bottom, 8)
+            Eyebrow("Keep it awake while", number: "01").padding(.bottom, 8)
             TriggerRow("An app is busy", about: "Agents, builds, renders.",
                        live: live(.working), detail: allowedSummary, isOn: bind(\.whenWorking), expanded: $model.showingAllowedApps,
                        help: "Hold the lid while an app you allow is asking macOS to stay awake: a coding agent in a terminal, a render, a download.")
@@ -273,7 +315,7 @@ private struct AwakeControls: View {
             Button { model.showingAwakeSettings.toggle() } label: {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
-                        Eyebrow("Settings")
+                        Eyebrow("Settings", number: "02")
                         Image(systemName: model.showingAwakeSettings ? "chevron.down" : "chevron.right")
                             .font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.inkTertiary)
                         Spacer()

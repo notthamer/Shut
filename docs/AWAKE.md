@@ -57,17 +57,24 @@ screen.
   act on it (Let it sleep, Allow) is one click away, on its tab, and in the menu. The
   header has one switch, in one place; it belongs to the section on show and says On or
   Off.
-- **The page has two columns with one job each.** Left, where the eye lands first, the
-  status: the answer to the one question anyone has, always in the same words ("Closing
-  the lid will sleep your Mac." / "Closing the lid keeps your Mac awake."), then why,
-  with the icon of the app it is about; the one action (Let it sleep, Allow); the "Keep
-  awake now" dial with its scale written under it (5 min … 12 h · until I stop); what
-  happened last time; and, only while closing the lid will keep the Mac awake, a small
-  preview of the close with its caption (when the lid will simply sleep the Mac there
-  is nothing new to show, so there is no preview). Right, the rules: "Keep it awake
-  while" with the three reasons, and Settings, folded, with its summary on a line of its
-  own. If "An app is busy" is off the answer says that agents and builds will not keep
-  the Mac awake.
+- **The page reads in one order, top to bottom.** First a band across the whole panel: the
+  eyes and, beside them, the answer to the one question anyone has, always in the same
+  words ("Closing the lid will sleep your Mac." / "Closing the lid keeps your Mac
+  awake."), then why, with the icon of the app it is about, and the one action (Let it
+  sleep, Allow). On the band's right, the one thing to do about it: the "Keep awake now"
+  dial with its scale under it (5 min … 12 h · until I stop), and, only while closing will
+  keep the Mac awake, a small preview of the close with its caption. Under the band, the
+  rules in two numbered sections like the Lid effects page: "01 Keep it awake while" (the
+  three reasons) and "02 Settings" (folded, with its summary). At the foot, "03 Last
+  time", one quiet strip in small type. If "An app is busy" is off the answer says that
+  agents and builds will not keep the Mac awake. (An earlier version split the page 50/50
+  with a full-height rule: nothing was dominant, "Last time" was a second large headline
+  competing with the first, and the lower third of a too-tall panel was empty.)
+- **The panel is as tall as the page.** The Lid effects page has a fixed height; the Stay
+  awake page takes the height of its content (about 470 pt when quiet), and the window
+  follows with its top edge where it was. The rules scroll only past a cap, so an open app
+  list and open Settings never grow the panel off a 14-inch screen (a test holds it under
+  800 pt).
 - **A button shows where it leads.** Actions that keep the Mac awake ("Keep it awake",
   "Allow") are Lime with the open eyes; actions that let it sleep ("Let it sleep", "Not
   this app") are an outline with the shut eyes, because a working Mac going to sleep is
