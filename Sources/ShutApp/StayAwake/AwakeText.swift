@@ -59,6 +59,25 @@ enum AwakeText {
         }
     }
 
+    /// On battery, at or under the level the user set: nothing can keep the Mac awake until it
+    /// charges. Said with both numbers, because "battery low" alone does not say which side of
+    /// the line it is on.
+    struct BatteryTooLow: Equatable {
+        let percent: Int
+        let floor: Int
+        var title: String { "Battery \(percent) % · too low" }
+        var rule: String { "It stays awake only above \(floor) %." }
+        var tab: String { "Battery \(percent) % · too low" }
+        /// Under the battery slider, in place of its usual explanation.
+        var setting: String { "Your battery is at \(percent) % now, under this level, so the lid sleeps your Mac." }
+        var sentence: String { "Battery \(percent) % is under your \(floor) % limit · lid will sleep your Mac" }
+    }
+
+    static func batteryTooLow(conditions: PowerConditions, limits: HoldLimits) -> BatteryTooLow? {
+        guard !conditions.onCharger, let percent = conditions.batteryPercent, percent <= limits.batteryFloor else { return nil }
+        return BatteryTooLow(percent: percent, floor: limits.batteryFloor)
+    }
+
     /// `everTurnedOn`: the user has been through the consent sheet. Someone who switched
     /// the feature off knows what it is; the bar stops offering it and just says so.
     static func status(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
@@ -71,6 +90,9 @@ enum AwakeText {
             if everTurnedOn { return Status(dot: .idle, sentence: "Off · lid sleeps as usual", action: nil) }
             return Status(dot: .idle, sentence: "Keep working with the lid shut", action: .turnOn)
         case .ready:
+            if let low = batteryTooLow(conditions: conditions, limits: limits) {
+                return Status(dot: .idle, sentence: low.sentence, action: nil)
+            }
             return Status(dot: .idle, sentence: "Closing the lid will sleep your Mac", action: nil)
         case .holding:
             if !conditions.onCharger, let percent = conditions.batteryPercent, percent <= limits.batteryFloor + 5 {
@@ -80,6 +102,9 @@ enum AwakeText {
         case .grace(let until):
             return Status(dot: .winding, sentence: "Finished · sleeping in \(duration(until.timeIntervalSince(now)))", action: .keepAwake)
         case .stopped(let reason):
+            if reason == .batteryFloor, let low = batteryTooLow(conditions: conditions, limits: limits) {
+                return Status(dot: .warning, sentence: low.sentence, action: nil)
+            }
             return Status(dot: reason == .userLetItSleep ? .idle : .warning, sentence: stopped(reason, conditions: conditions), action: nil)
         }
     }
@@ -91,11 +116,11 @@ enum AwakeText {
         if let pendingApp, state == .ready { return "\(pendingApp) is asking" }
         switch state {
         case .off: return "Off"
-        case .ready: return "Lid will sleep your Mac"
+        case .ready: return batteryTooLow(conditions: conditions, limits: limits)?.tab ?? "Lid will sleep your Mac"
         case .grace(let until): return "Sleeping in \(duration(until.timeIntervalSince(now)))"
         case .stopped(let reason):
             switch reason {
-            case .batteryFloor: return "Battery low · will sleep"
+            case .batteryFloor: return batteryTooLow(conditions: conditions, limits: limits)?.tab ?? "Battery low · will sleep"
             case .tooHot: return "Too hot · will sleep"
             case .timeCap: return "8 h on battery · will sleep"
             case .lowPowerMode: return "Low Power Mode · will sleep"
@@ -165,7 +190,17 @@ enum AwakeText {
         switch state {
         case .off:
             return Hero(headline: willSleep, detail: "Stay awake is off.", showsCards: false)
-        case .ready:
+        case .ready, .stopped(.batteryFloor):
+            // Under the battery level nothing can keep it awake, whatever is running or set:
+            // say that first, with the card that shows both numbers.
+            if batteryTooLow(conditions: conditions, limits: limits) != nil {
+                return Hero(headline: willSleep,
+                            detail: "The battery is too low to keep it awake. Plug in and it can again.",
+                            showsCards: true)
+            }
+            if case .stopped(let reason) = state {
+                return Hero(headline: willSleep, detail: stopped(reason, conditions: conditions) + ". That limit always wins.", showsCards: false)
+            }
             return Hero(headline: willSleep,
                         detail: watchingApps ? "Nothing is keeping it awake right now."
                                              : "Nothing is keeping it awake, and apps are not being watched: an agent or a build will not keep it awake until “An app is busy” is on.",
@@ -294,6 +329,20 @@ enum AwakeText {
         }
     }
 
+    // MARK: The two ways to stay awake
+
+    /// Automatic, in one sentence made of the rules that are on, so the mode says what it
+    /// will actually do. With none on, it says that too: then only a set time keeps it awake.
+    static func automaticSummary(working: Bool, display: Bool, pickedApps: Int) -> String {
+        var rules: [String] = []
+        if working { rules.append("an app is busy") }
+        if display { rules.append("a display is connected") }
+        if pickedApps > 0 { rules.append(pickedApps == 1 ? "the app you picked is open" : "an app you picked is open") }
+        guard !rules.isEmpty else { return "No rule is switched on below, so nothing keeps it awake by itself." }
+        let list = rules.count == 1 ? rules[0] : rules.dropLast().joined(separator: ", ") + " or " + rules[rules.count - 1]
+        return "Stays awake while \(list), and sleeps by itself when that ends."
+    }
+
     // MARK: The "You say so" dial
 
     /// The dial's stops between Off (0) and "until I stop" (the last): close together where
@@ -320,11 +369,25 @@ enum AwakeText {
     /// land); `until` is the running hold's end, nil for none or for "until I stop".
     static func manualCaption(stop: Int, running: Bool, until: Date?, now: Date) -> String {
         if stop <= 0 { return "Drag to pick how long, whatever is running." }
-        if stop >= manualLastStop { return running ? "Awake until you drag this back to Off." : "Until you drag this back to Off." }
+        if stop >= manualLastStop { return running ? "Awake until you choose Automatically." : "Until you choose Automatically." }
         if running, let until {
-            return "Awake until \(clock(until)) · \(duration(until.timeIntervalSince(now))) left."
+            return "Awake until \(clock(until)) · \(duration(until.timeIntervalSince(now))) left. Then back to automatic."
         }
-        return "Until \(clock(now.addingTimeInterval(manualDurations[stop - 1])))."
+        return "Until \(clock(now.addingTimeInterval(manualDurations[stop - 1]))), then back to automatic."
+    }
+
+    /// A set time that a limit overrules: say which, and that the time is still running.
+    static func manualBlocked(_ reason: StopReason) -> String {
+        let why: String
+        switch reason {
+        case .batteryFloor: why = "the battery is too low"
+        case .tooHot: why = "your Mac is hot"
+        case .timeCap: why = "it has been 8 hours on battery"
+        case .lowPowerMode: why = "Low Power Mode is on"
+        case .chargerOnly: why = "it is set to stay awake on the charger only"
+        case .userLetItSleep: why = "you chose to let it sleep"
+        }
+        return "Not right now: \(why). The time keeps counting."
     }
 
     /// The folded Limits row: the ones most worth knowing without opening it.

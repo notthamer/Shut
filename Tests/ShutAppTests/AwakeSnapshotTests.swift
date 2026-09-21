@@ -27,7 +27,8 @@ final class AwakeSnapshotTests: XCTestCase {
         func stop() {}
     }
 
-    private func makeModel(on: Bool, reasons: [HoldReason], asking: [AssertionAttribution.Owner]? = nil) throws -> (PopoverModel, StayAwakeController) {
+    private func makeModel(on: Bool, reasons: [HoldReason], asking: [AssertionAttribution.Owner]? = nil,
+                           power: PowerConditions = PowerConditions(onCharger: true, batteryPercent: 90)) throws -> (PopoverModel, StayAwakeController) {
         let suite = UserDefaults(suiteName: "AwakeSnapshot-\(UUID().uuidString)")!
         let awakeSettings = StayAwakeSettings(defaults: suite)
         awakeSettings.hasConsented = on
@@ -35,7 +36,7 @@ final class AwakeSnapshotTests: XCTestCase {
         awakeSettings.whenWorking = asking != nil  // on only with a stand-in for the system read
         awakeSettings.whenDisplayConnected = false
         let marker = ArmedMarker(directory: FileManager.default.temporaryDirectory.appendingPathComponent("AwakeSnapshot-\(UUID().uuidString)"))
-        let plugged = PowerSourceMonitor(reader: { PowerConditions(onCharger: true, batteryPercent: 90) })
+        let plugged = PowerSourceMonitor(reader: { power })
         let arbiter = HoldArbiter(hold: FakeHold(), marker: marker, monitor: plugged, mirror: AssertionMirror(defaults: nil, read: { asking ?? [] }),
                                   displays: DisplayConnected(read: { [] }))
         let awake = StayAwakeController(settings: awakeSettings, arbiter: arbiter, hasLid: true, listensToTheRealLid: false)
@@ -242,6 +243,44 @@ final class AwakeSnapshotTests: XCTestCase {
         XCTAssertNil(try XCTUnwrap(awake.manualHold).until, "until stopped")
         awake.setManualHold(stop: 0)
         XCTAssertEqual(awake.arbiter.state, .ready)
+        awake.shutDown()
+    }
+
+    /// One click each way between the two ways to stay awake, and the time last used comes back.
+    func testSwitchingBetweenAutomaticAndASetTime() throws {
+        let (model, awake) = try makeModel(on: true, reasons: [], asking: [])
+        model.page = .awake
+        XCTAssertNil(awake.manualHold, "automatic to begin with")
+        try render(model, name: "page-automatic")
+
+        awake.startTimedHold()
+        let hour = try XCTUnwrap(awake.manualHold)
+        XCTAssertEqual(try XCTUnwrap(hour.until).timeIntervalSince(hour.since), 3600, accuracy: 1, "one hour until the user picks otherwise")
+        XCTAssertEqual(awake.arbiter.state, .holding)
+
+        awake.setManualHold(stop: 2)            // the dial: 10 min
+        awake.returnToAutomatic()
+        XCTAssertNil(awake.manualHold)
+        XCTAssertEqual(awake.arbiter.state, .ready, "the rules decide again")
+
+        awake.startTimedHold()
+        let again = try XCTUnwrap(awake.manualHold)
+        XCTAssertEqual(try XCTUnwrap(again.until).timeIntervalSince(again.since), 600, accuracy: 1, "the time last used")
+        XCTAssertEqual(awake.settings.lastManualStop, 2)
+        try render(model, name: "page-set-time")
+        awake.shutDown()
+    }
+
+    /// 18 % on battery with the level at 20 %: a set time cannot hold, and the page says why.
+    func testABatteryUnderTheLevel() throws {
+        let (model, awake) = try makeModel(on: true, reasons: [], asking: [], power: PowerConditions(onCharger: false, batteryPercent: 18))
+        model.page = .awake
+        XCTAssertEqual(awake.arbiter.state, .ready)
+        XCTAssertEqual(awake.status.sentence, "Battery 18 % is under your 20 % limit · lid will sleep your Mac")
+        try render(model, name: "page-battery-low")
+        awake.startTimedHold()
+        XCTAssertEqual(awake.arbiter.state, .stopped(.batteryFloor))
+        try render(model, name: "page-battery-low-set-time")
         awake.shutDown()
     }
 

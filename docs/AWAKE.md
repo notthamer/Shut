@@ -61,13 +61,20 @@ screen.
   where the eye lands: the eyes and, under them, the answer to the one question anyone
   has, always in the same words ("Closing the lid will sleep your Mac." / "Closing the
   lid keeps your Mac awake."), then why, with the icon of the app it is about, and the
-  one action (Let it sleep, Allow). Top right: the one thing to do about it, the "Keep
-  awake now" dial with its scale under it (5 min … 12 h · until I stop), and, only while
+  one action (Let it sleep, Allow). Top right: "Keep it awake" with the two ways side by side,
+  "Automatically" (the rules below decide; one sentence says which are on) and "For a set
+  time" (one click starts the time last used, a dial under it changes it from 5 min to
+  12 h or until stopped; when it runs out the page is automatic again), so going from one
+  to the other is one click either way, and, only while
   closing will keep the Mac awake, a small preview of the close with its caption. Under
   a hairline, the rules in two numbered sections like the Lid effects page: "01 Keep it
   awake while" (the three reasons) on the left and "02 Settings" (folded, with its
   summary) on the right, each scrolling by itself. At the foot, "03 Last time", one quiet
-  strip in small type. If "An app is busy" is off the answer says that agents and builds
+  strip in small type. On battery at or under the chosen level the page says so with both
+  numbers, wherever it speaks: the tab ("Battery 18 % · too low"), the answer, a Saffron
+  card with a bar filled to now and a tick at the level ("now 18 %", "needs more than
+  20 %"), the line under the battery slider, and the set-time dial ("Not right now: the
+  battery is too low."). If "An app is busy" is off the answer says that agents and builds
   will not keep the Mac awake.
 - **One panel size.** Both sections have the same height, whatever their state. (For a
   day the panel followed the Stay awake page's content; a window that changes size when

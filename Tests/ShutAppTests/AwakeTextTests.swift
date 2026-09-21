@@ -89,12 +89,46 @@ final class AwakeTextTests: XCTestCase {
         // The caption says it whole.
         let until = t0.addingTimeInterval(72 * 60)
         XCTAssertEqual(AwakeText.manualCaption(stop: stop(90), running: true, until: until, now: t0),
-                       "Awake until \(AwakeText.clock(until)) · 1 h 12 min left.")
+                       "Awake until \(AwakeText.clock(until)) · 1 h 12 min left. Then back to automatic.")
         XCTAssertEqual(AwakeText.manualCaption(stop: stop(60), running: false, until: nil, now: t0),
-                       "Until \(AwakeText.clock(t0.addingTimeInterval(3600))).")
+                       "Until \(AwakeText.clock(t0.addingTimeInterval(3600))), then back to automatic.")
         XCTAssertTrue(AwakeText.manualCaption(stop: 0, running: false, until: nil, now: t0).hasPrefix("Drag to pick"))
         XCTAssertEqual(AwakeText.manualCaption(stop: AwakeText.manualLastStop, running: true, until: nil, now: t0),
-                       "Awake until you drag this back to Off.")
+                       "Awake until you choose Automatically.")
+    }
+
+    /// "Automatically" says what it will do, out of the rules that are on.
+    func testAutomaticSaysItsRules() {
+        XCTAssertEqual(AwakeText.automaticSummary(working: true, display: false, pickedApps: 0),
+                       "Stays awake while an app is busy, and sleeps by itself when that ends.")
+        XCTAssertEqual(AwakeText.automaticSummary(working: true, display: true, pickedApps: 2),
+                       "Stays awake while an app is busy, a display is connected or an app you picked is open, and sleeps by itself when that ends.")
+        XCTAssertTrue(AwakeText.automaticSummary(working: false, display: false, pickedApps: 0).hasPrefix("No rule is switched on"))
+    }
+
+    /// 18 % with the level at 20 %: every surface says the battery is under it, with both numbers.
+    func testABatteryUnderTheLevelIsSaidPlainly() {
+        let low = PowerConditions(onCharger: false, batteryPercent: 18)
+        let manual = HoldReason(id: "manual", kind: .manual, title: "You", since: t0, until: t0.addingTimeInterval(3600))
+        for (state, reasons) in [(HoldState.ready, [HoldReason]()), (.stopped(.batteryFloor), [manual])] {
+            let hero = AwakeText.hero(state: state, reasons: reasons, conditions: low, limits: limits, now: t0)
+            XCTAssertEqual(hero.headline, "Closing the lid will sleep your Mac.")
+            XCTAssertEqual(hero.detail, "The battery is too low to keep it awake. Plug in and it can again.")
+            XCTAssertTrue(hero.showsCards, "the card carries the two numbers")
+            XCTAssertEqual(AwakeText.tabLine(state: state, reasons: reasons, conditions: low, limits: limits, now: t0), "Battery 18 % · too low")
+            XCTAssertEqual(status(state, reasons, low).sentence, "Battery 18 % is under your 20 % limit · lid will sleep your Mac")
+            let rows = AwakeWarnings(state: state, conditions: low, limits: limits, now: t0).rows
+            XCTAssertEqual(rows.map(\.title), ["Battery 18 % · too low"])
+            XCTAssertEqual(rows.first?.subtitle, "It stays awake only above 20 %.")
+            XCTAssertEqual(rows.first?.meter, AwakeText.BatteryTooLow(percent: 18, floor: 20))
+        }
+        XCTAssertEqual(AwakeText.manualBlocked(.batteryFloor), "Not right now: the battery is too low. The time keeps counting.")
+        // Exactly at the level counts as under it; one above does not; nor does any level on the charger.
+        XCTAssertNotNil(AwakeText.batteryTooLow(conditions: PowerConditions(onCharger: false, batteryPercent: 20), limits: limits))
+        XCTAssertNil(AwakeText.batteryTooLow(conditions: PowerConditions(onCharger: false, batteryPercent: 21), limits: limits))
+        XCTAssertNil(AwakeText.batteryTooLow(conditions: PowerConditions(onCharger: true, batteryPercent: 5), limits: limits))
+        XCTAssertNil(AwakeText.batteryTooLow(conditions: PowerConditions(onCharger: false, batteryPercent: nil), limits: limits), "a Mac with no battery")
+        XCTAssertEqual(AwakeText.hero(state: .ready, reasons: [], conditions: plugged, limits: limits, now: t0).detail, "Nothing is keeping it awake right now.")
     }
 
     /// The page's headline is always the answer to "what will closing the lid do?".

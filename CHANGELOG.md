@@ -4,12 +4,12 @@
 
 **Stay awake.** Close the lid while something is working and your Mac stays awake, then goes to sleep by itself when the work is done. Off until you turn it on. No password, no helper to install.
 
-- Reasons, not timers. Your Mac stays awake while an app is busy (a coding agent, a build, a render, a download), while an external display is connected, while apps you pick are open, or for as long as you say: one dial, from five minutes to twelve hours, or until you stop it.
+- Reasons, not timers. Your Mac stays awake while an app is busy (a coding agent, a build, a render, a download), while an external display is connected, while apps you pick are open, or for a set time: one click, from five minutes to twelve hours or until you stop it, and one click back to automatic.
 - You always know what the lid will do. Shut has two sections now, Lid effects and Stay awake, named in the header, and a pair of eyes beside the second: open, your Mac will stay awake; shut, the lid will sleep it. The page says it in words too: "Closing the lid keeps your Mac awake." The menu bar icon carries a dot while holding, a ring while winding down, and Saffron when a limit is near.
 - The closing screen says what will happen. "Staying awake · Claude Code is working", readable on any wallpaper. Hold Option at any point of the close to do the opposite, just that once.
 - When you come back, Shut tells you what happened. A slip under the menu bar icon: how long, from when to when, for what, and the battery it used.
 - An app that asks to stay awake and is not allowed yet (a call, a recording) is asked about once: Allow, or Not this app.
-- Limits that always win: a battery level you choose, heat, eight hours on battery, Low Power Mode. It locks the screen as the lid shuts.
+- Limits that always win: a battery level you choose, heat, eight hours on battery, Low Power Mode. When the battery is under your level, Shut says so with both numbers. It locks the screen as the lid shuts.
 - Safe to leave: if Shut quits, updates, crashes or is force-killed while keeping your Mac awake, lid sleep is given back to macOS.
 - Only on Macs with a lid.
 

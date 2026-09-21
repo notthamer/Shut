@@ -27,6 +27,9 @@ public final class StayAwakeSettings: ObservableObject {
 
     /// A slip under the menu bar icon on coming back, saying what happened while the lid was shut.
     @Published public var showReceipt: Bool { didSet { defaults.set(showReceipt, forKey: "stayAwake.showReceipt") } }
+    /// The last duration chosen on the dial (a stop of `AwakeText.manualDurations`), so choosing
+    /// "For a set time" starts something sensible at once. One hour until the user says otherwise.
+    public var lastManualStop: Int { didSet { defaults.set(lastManualStop, forKey: "stayAwake.lastManualStop") } }
     /// How many closes have carried the "Hold ⌥" hint. It teaches, then gets out of the way.
     public var optionHintsShown: Int { didSet { defaults.set(optionHintsShown, forKey: "stayAwake.optionHintsShown") } }
     public static let optionHintLimit = 5
@@ -46,6 +49,7 @@ public final class StayAwakeSettings: ObservableObject {
         respectLowPowerMode = bool("stayAwake.lowPower", true)
         lockWhenShut = bool("stayAwake.lockWhenShut", true)
         showReceipt = bool("stayAwake.showReceipt", true)
+        lastManualStop = defaults.object(forKey: "stayAwake.lastManualStop") as? Int ?? 6
         optionHintsShown = defaults.integer(forKey: "stayAwake.optionHintsShown")
     }
 

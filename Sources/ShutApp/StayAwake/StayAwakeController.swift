@@ -263,10 +263,17 @@ public final class StayAwakeController: ObservableObject {
     /// The "You say so" dial: stop 0 ends the hold, the last stop holds until stopped, the
     /// ones between hold for `AwakeText.manualDurations`.
     func setManualHold(stop: Int) {
+        if stop > 0 { settings.lastManualStop = min(stop, AwakeText.manualLastStop) }
         if stop <= 0 { arbiter.manual.end() }
         else if stop >= AwakeText.manualLastStop { arbiter.manual.begin(for: nil) }
         else { arbiter.manual.begin(for: AwakeText.manualDurations[stop - 1]) }
     }
+
+    /// "For a set time", one click: the last duration chosen, starting now.
+    func startTimedHold() { setManualHold(stop: max(settings.lastManualStop, 1)) }
+
+    /// "Automatically", one click: the timer ends and the rules decide again.
+    func returnToAutomatic() { setManualHold(stop: 0) }
 
     /// The running manual hold, if any.
     var manualHold: HoldReason? { arbiter.manual.reasons.first }

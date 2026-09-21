@@ -108,7 +108,7 @@ private struct AwakeBand: View {
             // the Mac awake, what that will look like.
             VStack(alignment: .leading, spacing: 18) {
                 TimelineView(.periodic(from: .now, by: 30)) { context in
-                    KeepAwakeDial(awake: awake, now: context.date)
+                    KeepAwakeMode(awake: awake, now: context.date)
                 }
                 .disabled(!isOn)
                 .opacity(isOn ? 1 : 0.5)
@@ -374,11 +374,11 @@ struct StackedSlider: View {
     }
 }
 
-/// "Keep awake now": one dial instead of four arbitrary buttons. Off on the left, any time from
-/// five minutes to twelve hours, "until I stop" on the right. The line under it says
-/// the choice whole ("Awake until 6:40 PM · 1 h 12 min left"), and while a hold runs the
-/// thumb drifts back towards Off, so the dial is also the countdown.
-private struct KeepAwakeDial: View {
+/// The two ways to stay awake, side by side, so going from one to the other is one click
+/// either way. "Automatically": the rules under "Keep it awake while" decide. "For a set
+/// time": awake whatever is running, for the time on the dial, then automatic again by
+/// itself. Choosing "For a set time" starts the last time used at once; the dial changes it.
+private struct KeepAwakeMode: View {
     @ObservedObject var awake: StayAwakeController
     let now: Date
     /// Where the thumb is while it is being moved; the hold starts when it is let go.
@@ -386,26 +386,48 @@ private struct KeepAwakeDial: View {
     @State private var settle: DispatchWorkItem?
     @Environment(\.tunerTheme) private var theme
 
+    private var settings: StayAwakeSettings { awake.settings }
+    private var timed: Bool { awake.manualHold != nil || dragged != nil }
+
     var body: some View {
-        let stop = dragged.map { Int($0.rounded()) } ?? awake.manualStop(now: now)
-        VStack(alignment: .leading, spacing: 2) {
-            // No tooltip: everything it would say is written under the track.
-            StackedSlider("Keep awake now", valueText: AwakeText.manualValue(stop: stop), emphasised: true,
-                          value: Binding(get: { dragged ?? Double(awake.manualStop(now: now)) },
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Keep it awake").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
+            ModeSwitch(options: ["Automatically", "For a set time"], selection: timed ? 1 : 0) { index in
+                settle?.cancel(); dragged = nil
+                if index == 1 { awake.startTimedHold() } else { awake.returnToAutomatic() }
+            }
+            if timed { dial } else {
+                Text(AwakeText.automaticSummary(working: settings.whenWorking, display: settings.whenDisplayConnected,
+                                                pickedApps: settings.whenAppsOpen ? settings.pickedApps.count : 0))
+                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .tunerAnimation(TunerTheme.ease, value: timed)
+    }
+
+    private var dial: some View {
+        let stop = max(dragged.map { Int($0.rounded()) } ?? awake.manualStop(now: now), 1)
+        return VStack(alignment: .leading, spacing: 2) {
+            StackedSlider("How long", valueText: AwakeText.manualValue(stop: stop),
+                          value: Binding(get: { dragged ?? Double(max(awake.manualStop(now: now), 1)) },
                                          set: { dragged = $0; commitSoon() }),
-                          in: 0...Double(AwakeText.manualLastStop), step: 1, onEditingEnded: commit)
+                          in: 1...Double(AwakeText.manualLastStop), step: 1, onEditingEnded: commit)
             // The scale, so nobody has to drag to learn it (as Slow and Fast do for Speed).
             HStack {
                 Text("5 min"); Spacer(); Text("12 h · until I stop")
             }
             .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
-            // Its sentence appears when the dial is the thing to do or is in use; while
-            // something else is keeping the Mac awake, the dial waits quietly.
-            if stop > 0 || !awake.arbiter.state.holdsLid {
+            // A limit that forbids staying awake wins over the timer, and the line says so
+            // instead of promising a time.
+            if case .stopped(let reason) = awake.arbiter.state, reason != .userLetItSleep {
+                Text(AwakeText.manualBlocked(reason))
+                    .font(TunerTheme.bodySmall).foregroundStyle(theme.ink)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+            } else {
                 Text(AwakeText.manualCaption(stop: stop, running: dragged == nil && awake.manualHold != nil,
                                              until: awake.manualHold?.until, now: now))
-                    .font(TunerTheme.bodySmall)
-                    .foregroundStyle(stop > 0 ? theme.ink : theme.inkLabel)
+                    .font(TunerTheme.bodySmall).foregroundStyle(theme.ink)
                     .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)
             }
@@ -415,7 +437,7 @@ private struct KeepAwakeDial: View {
     private func commit() {
         settle?.cancel()
         guard let dragged else { return }
-        awake.setManualHold(stop: Int(dragged.rounded()))
+        awake.setManualHold(stop: max(Int(dragged.rounded()), 1))
         self.dragged = nil
     }
 
@@ -425,6 +447,40 @@ private struct KeepAwakeDial: View {
         let work = DispatchWorkItem { commit() }
         settle = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
+    }
+}
+
+/// Two equal halves filling the width: a choice between two ways, not a setting with a label.
+/// Same pill and capsule as `SegmentedRow`.
+private struct ModeSwitch: View {
+    let options: [String]
+    let selection: Int
+    let choose: (Int) -> Void
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(Array(options.enumerated()), id: \.offset) { index, name in
+                Button { if index != selection { choose(index) } } label: {
+                    Text(name)
+                        .font(index == selection ? TunerTheme.bodyMedium : TunerTheme.body)
+                        .foregroundStyle(index == selection ? theme.ink : theme.inkLabel)
+                        .lineLimit(1).minimumScaleFactor(0.9)
+                        .frame(maxWidth: .infinity).padding(.vertical, 7)
+                        .background {
+                            Capsule().fill(theme.card)
+                                .overlay(Capsule().strokeBorder(theme.border, lineWidth: 1))
+                                .opacity(index == selection ? 1 : 0)
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(index == selection ? .isSelected : [])
+            }
+        }
+        .padding(2)
+        .surface(.pill)
+        .tunerAnimation(TunerTheme.ease, value: selection)
     }
 }
 
@@ -503,6 +559,7 @@ struct AwakeWarnings: View {
                         Text(row.title).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink).lineLimit(1)
                         Text(row.subtitle).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                             .fixedSize(horizontal: false, vertical: true)
+                        if let meter = row.meter { BatteryMeter(percent: meter.percent, floor: meter.floor).padding(.top, 6) }
                     }
                     Spacer(minLength: 8)
                 }
@@ -520,9 +577,15 @@ struct AwakeWarnings: View {
     struct Row: Equatable {
         let glyph, title, subtitle: String
         let warning: Bool
+        var meter: AwakeText.BatteryTooLow? = nil
     }
 
     var rows: [Row] {
+        // Under the battery level: the one fact, with both numbers and where they sit.
+        if state == .ready || state == .stopped(.batteryFloor),
+           let low = AwakeText.batteryTooLow(conditions: conditions, limits: limits) {
+            return [Row(glyph: "▲", title: low.title, subtitle: low.rule, warning: true, meter: low)]
+        }
         switch state {
         case .grace(let until):
             return [Row(glyph: "◆", title: "Finished", subtitle: "sleeping in \(AwakeText.duration(until.timeIntervalSince(now))) unless it starts again", warning: false)]
@@ -536,6 +599,34 @@ struct AwakeWarnings: View {
         default:
             return []
         }
+    }
+}
+
+/// Where the battery is against the level it must be above: a bar filled to now, a tick at
+/// the level. Two numbers are easier to compare as two places on one line.
+private struct BatteryMeter: View {
+    let percent: Int
+    let floor: Int
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            GeometryReader { geometry in
+                let width = geometry.size.width
+                ZStack(alignment: .leading) {
+                    Capsule().fill(theme.ink.opacity(0.12))
+                    Capsule().fill(theme.ink).frame(width: max(4, width * CGFloat(percent) / 100))
+                    Rectangle().fill(theme.ink).frame(width: 1.5, height: 10)
+                        .offset(x: width * CGFloat(floor) / 100)
+                }
+            }
+            .frame(height: 4).padding(.vertical, 3)
+            HStack {
+                Text("now \(percent) %"); Spacer(); Text("needs more than \(floor) %")
+            }
+            .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -674,7 +765,8 @@ struct AwakeLimits: View {
         let settings = model.stayAwake.settings
         VStack(alignment: .leading, spacing: 4) {
             Eyebrow("Protects your Mac").padding(.bottom, 12)
-            Explained("On battery your Mac goes to sleep at this charge, whatever is working.") {
+            Explained(AwakeText.batteryTooLow(conditions: model.stayAwake.arbiter.conditions, limits: model.stayAwake.arbiter.limits)?.setting
+                      ?? "On battery your Mac goes to sleep at this charge, whatever is working.") {
                 StackedSlider("Sleep when battery reaches", valueText: "\(settings.batteryFloor) %",
                               value: Binding(get: { Double(settings.batteryFloor) }, set: { settings.batteryFloor = Int($0) }),
                               in: Double(HoldLimits.batteryFloorRange.lowerBound)...Double(HoldLimits.batteryFloorRange.upperBound),
