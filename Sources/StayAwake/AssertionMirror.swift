@@ -45,8 +45,10 @@ public struct ProcessNode: Equatable, Sendable {
     public let app: App?
     /// The executable's path, for naming a command-line tool.
     public let path: String?
-    public init(name: String, parent: pid_t, app: App?, path: String? = nil) {
-        self.name = name; self.parent = parent; self.app = app; self.path = path
+    /// For an interpreter (node, python…): the script it is running, which is the tool.
+    public let script: String?
+    public init(name: String, parent: pid_t, app: App?, path: String? = nil, script: String? = nil) {
+        self.name = name; self.parent = parent; self.app = app; self.path = path; self.script = script
     }
 }
 
@@ -84,25 +86,50 @@ public enum AssertionAttribution {
     /// Processes that are plumbing, not the tool the user would name.
     static let plumbing: Set<String> = ["caffeinate", "zsh", "bash", "sh", "fish", "login", "tmux", "screen", "env", "sudo"]
 
-    /// Friendlier names for a few common tools. Purely cosmetic: anything else shows
-    /// under its own name, and nothing depends on this list being complete.
+    /// Friendlier names for a few common tools. Purely cosmetic: anything that asks macOS to
+    /// stay awake is recognised whatever it is called, shows under its own name otherwise,
+    /// and nothing depends on this list being complete. A key also matches a name that goes
+    /// on with "-" or "_" ("codex-aarch64-apple-darwin", "gemini-cli").
     static let friendlyNames: [String: String] = [
         "claude": "Claude Code", "codex": "Codex", "gemini": "Gemini CLI", "aider": "Aider",
         "opencode": "OpenCode", "cursor-agent": "Cursor Agent", "goose": "Goose", "amp": "Amp",
+        "copilot": "Copilot CLI", "qwen": "Qwen Code",
     ]
+
+    /// Runtimes that are not the tool: the tool is the script they run.
+    static let interpreters: Set<String> = ["node", "bun", "deno", "python", "python3", "ruby", "java"]
+
+    static func friendly(_ name: String) -> String {
+        let lower = name.lowercased()
+        if let exact = friendlyNames[lower] { return exact }
+        // Longest key first, so "cursor-agent" wins over a shorter one that also fits.
+        for key in friendlyNames.keys.sorted(by: { $0.count > $1.count })
+        where lower.hasPrefix(key + "-") || lower.hasPrefix(key + "_") {
+            return friendlyNames[key] ?? name
+        }
+        return name
+    }
 
     /// A tool's name from its process. Some tools name their binary after their
     /// version (`~/.local/share/claude/versions/2.1.275`), so a name that looks like
-    /// a version is replaced by the nearest meaningful folder in the path.
-    static func toolName(processName: String, path: String?) -> String {
+    /// a version is replaced by the nearest meaningful folder in the path. A tool that is
+    /// a script ("node …/gemini-cli/dist/index.js") is named after the script, or after its
+    /// package when the script is called something like index.js.
+    static func toolName(processName: String, path: String?, script: String? = nil) -> String {
         var name = processName
+        if interpreters.contains(name.lowercased()), let script {
+            let generic: Set<String> = ["index", "main", "cli", "bin", "app", "run", "start", "dist", "lib", "build", "src", "out"]
+            let parts = script.split(separator: "/").map(String.init)
+            let stem = (parts.last ?? "").split(separator: ".").first.map(String.init) ?? ""
+            name = ([stem] + parts.dropLast().reversed()).first { !$0.isEmpty && !generic.contains($0.lowercased()) && !$0.hasPrefix("@") } ?? name
+        }
         let looksLikeVersion = name.first?.isNumber == true && name.contains(".")
         if looksLikeVersion, let path {
             let skip: Set<String> = ["versions", "bin", "libexec", "current"]
             name = path.split(separator: "/").dropLast().reversed()
                 .first { !skip.contains($0.lowercased()) && !($0.first?.isNumber ?? true) }.map(String.init) ?? name
         }
-        return friendlyNames[name.lowercased()] ?? name
+        return friendly(name)
     }
 
     public static func owners(of assertions: [RawAssertion], ownPID: pid_t,
@@ -123,7 +150,7 @@ public enum AssertionAttribution {
                 // The first process on the way up that is not plumbing is the tool:
                 // caffeinate <- claude <- zsh <- Cursor names "claude".
                 if tool == nil, !plumbing.contains(node.name), !node.name.hasSuffix("Helper") {
-                    tool = toolName(processName: node.name, path: node.path)
+                    tool = toolName(processName: node.name, path: node.path, script: node.script)
                 }
                 pid = node.parent
                 hops += 1
@@ -315,6 +342,28 @@ public final class AssertionMirror: HoldSource {
         }
         var pathBuffer = [CChar](repeating: 0, count: 4096)
         let path = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count)) > 0 ? String(cString: pathBuffer) : nil
-        return ProcessNode(name: name, parent: info.kp_eproc.e_ppid, app: app, path: path)
+        let script = AssertionAttribution.interpreters.contains(name.lowercased()) ? scriptArgument(of: pid) : nil
+        return ProcessNode(name: name, parent: info.kp_eproc.e_ppid, app: app, path: path, script: script)
+    }
+
+    /// The first argument of `pid` that is a path to a script: what an interpreter is running.
+    /// KERN_PROCARGS2 is readable for the user's own processes; anything else returns nil.
+    nonisolated static func scriptArgument(of pid: pid_t) -> String? {
+        var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
+        var size = 0
+        guard sysctl(&mib, 3, nil, &size, nil, 0) == 0, size > MemoryLayout<Int32>.size else { return nil }
+        var buffer = [UInt8](repeating: 0, count: size)
+        guard sysctl(&mib, 3, &buffer, &size, nil, 0) == 0 else { return nil }
+        let argc = buffer.withUnsafeBytes { $0.load(as: Int32.self) }
+        // Layout: argc, the executable's path, padding NULs, then argv[0], argv[1], …
+        var strings: [String] = []
+        var current: [UInt8] = []
+        for byte in buffer[MemoryLayout<Int32>.size..<size] {
+            if byte == 0 {
+                if !current.isEmpty { strings.append(String(decoding: current, as: UTF8.self)); current = [] }
+            } else { current.append(byte) }
+            if strings.count > Int(argc) + 1 { break }
+        }
+        return strings.dropFirst(2).prefix(max(Int(argc) - 1, 0)).first { $0.contains("/") && !$0.hasPrefix("-") }
     }
 }

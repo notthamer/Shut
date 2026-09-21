@@ -60,6 +60,9 @@ struct AwakeEyes: View {
     var tint: Color? = nil
     /// False inside a button: a label should not blink.
     var animated = true
+    /// A soft "z z z" rising from sleeping eyes. For the large eyes on the page, which have
+    /// room beside them; in a tab the letters would sit on the tab's name.
+    var dreams = false
     @Environment(\.tunerTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -75,6 +78,12 @@ struct AwakeEyes: View {
             }
         }
         .frame(width: 16 * pixel, height: Self.rows * pixel)
+        .overlay(alignment: .topLeading) {
+            if dreams, mood == .shut || mood == .asleep {
+                SleepingZs(pixel: pixel, tint: tint ?? theme.ink, still: !animated || reduceMotion)
+                    .offset(x: 17 * pixel, y: -1 * pixel)
+            }
+        }
         .accessibilityHidden(true)   // the sentence beside it says the same thing
     }
 
@@ -129,6 +138,60 @@ struct AwakeEyes: View {
         case .shut, .asleep:
             return restingFrame(mood)
         }
+    }
+}
+
+/// Three pixel z's beside sleeping eyes, each a little higher and fainter than the last.
+/// Very soft: they are an aside, not a status. They come one by one and fade together on a
+/// four-second loop; nothing moves (only opacity changes), and Reduce Motion holds them still.
+struct SleepingZs: View {
+    let pixel: CGFloat
+    let tint: Color
+    let still: Bool
+
+    /// A four-by-four z: two bars and the diagonal between them. (Three by three has no room
+    /// for the diagonal and reads as a capital I.)
+    private static let glyph: [CGPoint] = [(0, 0), (1, 0), (2, 0), (3, 0), (2, 1), (1, 2), (0, 3), (1, 3), (2, 3), (3, 3)]
+        .map { CGPoint(x: $0.0, y: $0.1) }
+    /// Where each z sits, in sprite pixels, and how strong it may get.
+    private static let places: [(x: CGFloat, y: CGFloat, strength: Double)] = [(0, 7, 0.30), (5, 3, 0.22), (10, -1, 0.14)]
+
+    var body: some View {
+        if still {
+            letters(visible: 3)
+        } else {
+            TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                letters(visible: Self.visible(at: context.date.timeIntervalSinceReferenceDate))
+            }
+        }
+    }
+
+    /// 0, 1, 2, 3 letters, then none again: one every 0.8 s, all held, all gone.
+    static func visible(at time: TimeInterval) -> Int {
+        switch time.truncatingRemainder(dividingBy: 4) {
+        case ..<0.5: return 0
+        case ..<1.3: return 1
+        case ..<2.1: return 2
+        case ..<3.4: return 3
+        default: return 0
+        }
+    }
+
+    private func letters(visible: Int) -> some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(Array(Self.places.enumerated()), id: \.offset) { index, place in
+                Path { path in
+                    for point in Self.glyph {
+                        path.addRect(CGRect(x: (place.x + point.x) * pixel, y: (place.y + point.y) * pixel, width: pixel, height: pixel))
+                    }
+                }
+                .fill(tint)
+                .opacity(index < visible ? place.strength : 0)
+                .animation(.easeInOut(duration: 0.6), value: visible)
+            }
+        }
+        .frame(width: 14 * pixel, height: 11 * pixel, alignment: .topLeading)
+        .allowsHitTesting(false)
     }
 }
 

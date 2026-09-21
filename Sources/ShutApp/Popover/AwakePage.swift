@@ -147,7 +147,7 @@ private struct AwakeStatusColumn: View {
 
     private var pitch: some View {
         VStack(alignment: .leading, spacing: 12) {
-            AwakeEyes(mood: .asleep, pixel: 3, tint: theme.inkLabel).padding(.bottom, 2)
+            AwakeEyes(mood: .asleep, pixel: 3, tint: theme.inkLabel, dreams: true).padding(.bottom, 2)
             Text("Keep working\nwith the lid shut.")
                 .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
             Text("Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done.")
@@ -174,7 +174,7 @@ private struct AwakeStatusColumn: View {
                 // the answer it illustrates (open: stays awake; shut: the lid sleeps it). Then the
                 // answer and why, with the icon of the app it is about beside its sentence.
                 AwakeEyes(mood: .init(pending == nil ? status.dot : .idle, isOn: true), pixel: 3,
-                          tint: status.dot == .idle || pending != nil ? theme.inkLabel : theme.ink)
+                          tint: status.dot == .idle || pending != nil ? theme.inkLabel : theme.ink, dreams: true)
                     .padding(.bottom, 2)
                 Text(copy.headline)
                     .font(TunerTheme.display(26)).tracking(-0.7).foregroundStyle(theme.ink).lineSpacing(1)
@@ -724,7 +724,7 @@ private struct AwakeConsent: View {
         ZStack {
             TunerTheme.voidBlack
             VStack(alignment: .leading, spacing: 18) {
-                AwakeEyes(mood: awake ? .awake : .asleep, pixel: 3.5, tint: awake ? TunerTheme.limeWash : .white.opacity(0.7))
+                AwakeEyes(mood: awake ? .awake : .asleep, pixel: 3.5, tint: awake ? TunerTheme.limeWash : .white.opacity(0.7), dreams: true)
                     .padding(.bottom, 4)
                     .tunerAnimation(TunerTheme.ease, value: awake)
                 Text("Your Mac will stay awake\nwith the lid shut.")

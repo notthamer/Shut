@@ -184,6 +184,16 @@ final class AssertionAttributionTests: XCTestCase {
     func testToolNames() {
         XCTAssertEqual(AssertionAttribution.toolName(processName: "npm", path: "/opt/homebrew/bin/npm"), "npm")
         XCTAssertEqual(AssertionAttribution.toolName(processName: "codex", path: nil), "Codex")
+        // The npm build of Codex runs a binary named after its platform.
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "codex-aarch64-apple-darwin", path: nil), "Codex")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "cursor-agent", path: nil), "Cursor Agent")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "codexy", path: nil), "codexy", "a prefix is not a match without its separator")
+        // A tool that is a script is named after the script, not after node.
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "node", path: "/opt/homebrew/bin/node",
+                                                     script: "/opt/homebrew/lib/node_modules/@google/gemini-cli/dist/index.js"), "Gemini CLI")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "node", path: nil, script: "/usr/local/lib/node_modules/@openai/codex/bin/codex.js"), "Codex")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "python3", path: nil, script: "/Users/someone/train/run_sweep.py"), "run_sweep")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "node", path: nil), "node", "no script known: leave it alone")
         XCTAssertEqual(AssertionAttribution.toolName(processName: "3.2.0", path: "/opt/tools/rendr/bin/3.2.0"), "rendr")
         XCTAssertEqual(AssertionAttribution.toolName(processName: "1.0.0", path: nil), "1.0.0", "no path: leave it alone")
     }

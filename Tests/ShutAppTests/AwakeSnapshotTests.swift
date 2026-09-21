@@ -270,6 +270,27 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    /// Sleeping eyes with their soft z's, held still and enlarged so they can be judged by eye.
+    func testSleepingEyesDream() throws {
+        XCTAssertEqual([0.2, 0.9, 1.7, 2.5, 3.8].map(SleepingZs.visible(at:)), [0, 1, 2, 3, 0], "one by one, held, then gone")
+        let view = HStack(spacing: 60) {
+            AwakeEyes(mood: .asleep, pixel: 6, tint: .black.opacity(0.6), animated: false, dreams: true)
+            AwakeEyes(mood: .shut, pixel: 6, tint: .black.opacity(0.6), animated: false, dreams: true)
+            AwakeEyes(mood: .awake, pixel: 6, tint: .black, animated: false, dreams: true)
+        }
+        .padding(.horizontal, 40).padding(.vertical, 40).padding(.trailing, 60)
+        .background(Color(red: 0.95, green: 0.95, blue: 0.95)).tunerThemed()
+        let hosting = NSHostingView(rootView: view)
+        hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
+        hosting.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        let rep = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+        hosting.cacheDisplay(in: hosting.bounds, to: rep)
+        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"], let png = rep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("eyes-dreaming.png"))
+        }
+    }
+
     /// The fullest the status column gets: a hold, a battery warning, the dial counting down
     /// and a receipt. It must fit or scroll inside its frame, never slide over the header.
     func testTheBusiestPage() throws {

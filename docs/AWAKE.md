@@ -27,7 +27,8 @@ screen.
   page. While holding they rest on the words beside them, roll once around the other
   corners and blink, on a six-second loop that is a
   pure function of time (`AwakeEyes.frame(_:at:)`); only a face that moves has a
-  clock, only while it is on screen, and Reduce Motion stills it.
+  clock, only while it is on screen, and Reduce Motion stills it. The large sleeping eyes on
+  the page breathe out a very soft "z z z", one letter at a time (opacity only).
 - **The Awake page answers "when?" without a click.** Under the headline, "Stays
   awake when" lists the four triggers, each with one line about it and its switch:
   an app is busy (apps that ask macOS to stay awake), a display is connected, an app
@@ -112,7 +113,16 @@ Shut has no list of agents to keep up to date. Tools that must not be interrupte
 already ask macOS not to idle-sleep (it is what `caffeinate` does; Claude Code
 does it while it works). Shut reads those requests and walks each one up the
 process tree to the app it belongs to, so `caffeinate <- claude <- zsh <- Cursor`
-is "Cursor". Apps seen asking appear in **Allowed apps** by themselves; developer
+is "Cursor", and the tool is named too: the first process on the way up that is not
+plumbing. A short list gives the common ones their proper names (Claude Code, Codex,
+Gemini CLI, Aider, OpenCode, Cursor Agent, Goose, Amp, Copilot CLI, Qwen Code), also
+when the binary is named after its platform (`codex-aarch64-apple-darwin`) or is a
+script run by node or python (the script's name, or its package's, is read from the
+process arguments). The list is cosmetic: a tool that is not on it is recognised just
+the same and shows under its own name. No logos are bundled. A tool borrows its maker's
+app icon when that app is installed (Claude Code: Claude; Codex: the Codex or ChatGPT
+app; Cursor Agent: Cursor) and otherwise shows the app it runs in. Apps seen asking
+appear in **Allowed apps** by themselves; developer
 tools and anything run from a terminal are allowed by default, a music player is
 not. The list never outgrows the page: it shows six and a half rows and scrolls inside
 itself beyond that, grows a filter past eight apps, puts the apps keeping the Mac awake

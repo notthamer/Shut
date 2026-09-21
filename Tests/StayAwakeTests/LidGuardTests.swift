@@ -48,4 +48,22 @@ final class LidGuardTests: XCTestCase {
         XCTAssertTrue(ran)
         XCTAssertLessThan(Date().timeIntervalSince(started), 1)
     }
+
+    /// The script an interpreter is running, read from the real process table: what turns
+    /// "node" into "Gemini CLI".
+    func testTheScriptAnInterpreterIsRunningCanBeRead() throws {
+        let script = FileManager.default.temporaryDirectory.appendingPathComponent("shut-probe-\(UUID().uuidString)/gemini-cli/dist/index.sh")
+        try FileManager.default.createDirectory(at: script.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try "sleep 5\n".write(to: script, atomically: true, encoding: .utf8)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = [script.path]
+        try process.run()
+        defer { process.terminate() }
+        usleep(150_000)
+        let read = try XCTUnwrap(AssertionMirror.scriptArgument(of: process.processIdentifier))
+        XCTAssertEqual(read, script.path)
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "node", path: nil, script: read), "Gemini CLI")
+        XCTAssertNil(AssertionMirror.scriptArgument(of: 1), "launchd is not ours to read")
+    }
 }
