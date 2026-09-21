@@ -82,28 +82,27 @@ private struct AwakeStatusColumn: View {
                 .onAppear { awake.perform(.ok) }
             }
 
-            // A small illustration of the close with its caption. It teaches, so it shows while
-            // there is nothing else to look at; once the column is busy with a real hold (the
-            // answer, a warning, the dial counting down) it steps aside rather than crowd it.
-            if !awake.arbiter.state.holdsLid {
-            HStack(alignment: .center, spacing: 14) {
-                PreviewWindow(preview: preview, caption: awake.closingCaption(beginning: false)
-                              ?? AwakeText.Caption(text: sampleCaption, warning: false, hint: nil), compact: true)
-                    .frame(width: 140)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(awake.caption == nil ? "What closing looks like when something is working" : "What closing will look like")
-                        .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
-                        .fixedSize(horizontal: false, vertical: true)
-                    QuietButton(preview.isPlaying ? "Playing…" : "Play") { preview.playRound() }
-                        .padding(.leading, -6)
+            // The close with its caption, shown only when there is a caption to show: when
+            // closing the lid will keep the Mac awake. Otherwise closing is just closing, the
+            // way it has always been, and a preview of that is a preview of nothing.
+            if isOn, awake.arbiter.state.holdsLid, let caption = awake.closingCaption(beginning: false) {
+                HStack(alignment: .center, spacing: 14) {
+                    PreviewWindow(preview: preview, caption: caption, compact: true)
+                        .frame(width: 140)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("What closing will look like")
+                            .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                            .fixedSize(horizontal: false, vertical: true)
+                        QuietButton(preview.isPlaying ? "Playing…" : "Play") { preview.playRound() }
+                            .padding(.leading, -6)
+                    }
                 }
-            }
-            .padding(.top, 32)
+                .padding(.top, 32)
+                // Show, don't explain: it plays once as it appears.
+                .onAppear { if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { preview.playRound() } }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // Show, don't explain: the close plays once as the page opens.
-        .onAppear { if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { preview.playRound() } }
     }
 
     /// The action under the answer shows where it leads before it is pressed. Keeping the Mac
@@ -145,9 +144,6 @@ private struct AwakeStatusColumn: View {
             PrimaryButton(action.title) { model.performAwake(action) }
         }
     }
-
-    /// With a question above it, the preview shows what saying yes would look like.
-    private var sampleCaption: String { "Staying awake · \(awake.pendingApp?.name ?? "Cursor") is working" }
 
     private var pitch: some View {
         VStack(alignment: .leading, spacing: 12) {

@@ -61,7 +61,9 @@ screen.
   the lid will sleep your Mac." / "Closing the lid keeps your Mac awake."), then why,
   with the icon of the app it is about; the one action (Let it sleep, Allow); the "Keep
   awake now" dial with its scale written under it (5 min … 12 h · until I stop); what
-  happened last time; and a small preview of the close. Right, the rules: "Keep it awake
+  happened last time; and, only while closing the lid will keep the Mac awake, a small
+  preview of the close with its caption (when the lid will simply sleep the Mac there
+  is nothing new to show, so there is no preview). Right, the rules: "Keep it awake
   while" with the three reasons, and Settings, folded, with its summary on a line of its
   own. If "An app is busy" is off the answer says that agents and builds will not keep
   the Mac awake.
