@@ -265,3 +265,16 @@ helper to install, no CPU while it waits, and it exists only while a hold does. 
 a hold ends the ordinary way Shut restores the lid itself and dismisses the guard.
 As the lid starts to close, Shut also sets the bit again whatever happened to it
 since (powerd rewrites it, another keep-awake app can clear it).
+
+## First run and the update tour
+
+- **First run** (`WelcomeWindow.swift`): four steps on the dark stage. Hello; pick a style and
+  watch it (the real gallery and preview); turn Stay awake on or leave it (turning it on here is
+  the consent, same words and bag warning; the eyes wake); a last step that says both choices
+  back. No lid, no Stay awake step. Back, dots, Continue; Return continues.
+- **Update tour** (`WhatsNewTour` in `WhatsNew.swift`): a release with something to see gets
+  slides in the what's-new card instead of the changelog's words: a small stage with the real
+  views drawn live (never a picture that can go out of date), a headline, one sentence. Two
+  stages can be played with; their state is the slide's own and touches no setting. One height
+  for every slide, Later on every slide, "Show me" on the last. A release without a tour falls
+  back to the text card.

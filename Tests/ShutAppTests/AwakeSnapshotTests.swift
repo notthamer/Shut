@@ -171,6 +171,37 @@ final class AwakeSnapshotTests: XCTestCase {
     }
 
     /// The "What's new" card, with this version's real changelog section.
+    /// 0.3 has something to see, so the card is a tour: every slide renders, at one height
+    /// (the card must not jump under the pointer). A release without a tour keeps the words.
+    func testTheUpdateTour() throws {
+        let slides = try XCTUnwrap(WhatsNewTour.slides(for: "0.3.0"))
+        XCTAssertEqual(slides.map(\.stage), [.eyesWake, .lidAnswer, .twoWays, .batteryAndReceipt])
+        XCTAssertNil(WhatsNewTour.slides(for: "0.2.1"), "the changelog's words, as before")
+        XCTAssertNotNil(WhatsNewTour.slides(for: "0.3.1"), "a fix of 0.3 still shows what 0.3 brought")
+        var heights: Set<CGFloat> = []
+        for index in slides.indices {
+            let hosting = NSHostingView(rootView: WhatsNewTourView(slides: slides, version: "0.3.0", index: index))
+            hosting.appearance = TunerTheme.appearance
+            let size = hosting.fittingSize
+            XCTAssertEqual(size.width, WhatsNewTourView.width)
+            heights.insert(size.height.rounded())
+            hosting.frame = NSRect(origin: NSPoint(x: 24, y: 24), size: size)
+            let container = NSView(frame: NSRect(x: 0, y: 0, width: size.width + 48, height: size.height + 48))
+            container.wantsLayer = true
+            container.layer?.backgroundColor = NSColor(red: 0.62, green: 0.74, blue: 0.92, alpha: 1).cgColor
+            container.addSubview(hosting)
+            hosting.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+            let rep = try XCTUnwrap(container.bitmapImageRepForCachingDisplay(in: container.bounds))
+            container.cacheDisplay(in: container.bounds, to: rep)
+            if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"], let png = rep.representation(using: .png, properties: [:]) {
+                try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("tour-\(index + 1).png"))
+            }
+        }
+        XCTAssertEqual(heights.count, 1, "one height for every slide: \(heights)")
+        XCTAssertLessThan(try XCTUnwrap(heights.first), 520, "a card, not a page")
+    }
+
     func testTheWhatsNewCardRenders() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let changelog = try String(contentsOf: root.appendingPathComponent("CHANGELOG.md"), encoding: .utf8)

@@ -282,7 +282,7 @@ private struct AwakeControls: View {
         }
         return VStack(alignment: .leading, spacing: 4) {
             Eyebrow("Keep it awake while", number: "01").padding(.bottom, 8)
-            TriggerRow("An app is busy", about: "Agents, builds, renders.",
+            TriggerRow("An app is busy", about: "Only while it is working: agents, builds, renders.",
                        live: live(.working), detail: allowedSummary, isOn: bind(\.whenWorking), expanded: $model.showingAllowedApps,
                        help: "Hold the lid while an app you allow is asking macOS to stay awake: a coding agent in a terminal, a render, a download.")
             if model.showingAllowedApps { AllowedApps(model: model).transition(.blurFade).padding(.bottom, 6) }
@@ -291,7 +291,7 @@ private struct AwakeControls: View {
                        live: live(.display), detail: nil, isOn: bind(\.whenDisplayConnected), expanded: nil,
                        help: "Close the lid and keep working on an external display, even on battery and without a keyboard or mouse attached.")
 
-            TriggerRow("An app is open", about: "While apps you pick are open.",
+            TriggerRow("An app is open", about: "The whole time apps you pick are open, busy or not.",
                        live: live(.appOpen), detail: settings.pickedApps.isEmpty ? "Pick" : (settings.pickedApps.count == 1 ? "1 app" : "\(settings.pickedApps.count) apps"),
                        isOn: bind(\.whenAppsOpen), expanded: $showPicker,
                        help: "Hold the lid for as long as an app you pick is open.")
@@ -490,7 +490,7 @@ private struct KeepAwakeMode: View {
 
 /// Two equal halves filling the width: a choice between two ways, not a setting with a label.
 /// Same pill and capsule as `SegmentedRow`.
-private struct ModeSwitch: View {
+struct ModeSwitch: View {
     let options: [String]
     let selection: Int
     let choose: (Int) -> Void
@@ -653,7 +653,7 @@ struct AwakeWarnings: View {
 
 /// Where the battery is against the level it must be above: a bar filled to now, a tick at
 /// the level. Two numbers are easier to compare as two places on one line.
-private struct BatteryMeter: View {
+struct BatteryMeter: View {
     let percent: Int
     let floor: Int
     @Environment(\.tunerTheme) private var theme
