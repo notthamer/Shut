@@ -247,6 +247,34 @@ final class AwakeJourneyTests: XCTestCase {
         laptop.shutDown()
     }
 
+    // MARK: 8. The charger goes in with the lid shut
+
+    /// 21 September, 02:16: a manual hold on battery, lid shut, charger plugged in, and the Mac
+    /// was in Clamshell Sleep fifteen seconds later: powerd had written its own answer over the
+    /// lid bit, and Shut put it back once and then not for ten seconds.
+    func testPluggingInWithTheLidShutKeepsPuttingTheBitBack() throws {
+        let world = World()
+        world.power = PowerConditions(onCharger: false, batteryPercent: 28)
+        let awake = start(world)
+        awake.setManualHold(stop: AwakeText.manualStop(remaining: 3600))
+        awake.lidEdge(isOpen: false, now: Date().addingTimeInterval(-25))
+        let before = world.kernel.lidCalls.filter { $0 }.count
+
+        world.power = PowerConditions(onCharger: true, batteryPercent: 28)
+        awake.arbiter.refreshPower()
+        spin(1.8)
+        let during = world.kernel.lidCalls.filter { $0 }.count - before
+        XCTAssertGreaterThanOrEqual(during, 3, "the bit goes back twice a second after a power change, not once")
+        XCTAssertEqual(awake.arbiter.state, .holding)
+
+        // The lid opens: nothing left to guard, so it stops.
+        awake.lidEdge(isOpen: true)
+        let atOpen = world.kernel.lidCalls.count
+        spin(1.2)
+        XCTAssertEqual(world.kernel.lidCalls.count, atOpen, "no re-applying with the lid open")
+        awake.shutDown()
+    }
+
     // MARK: 5. Switching the feature off and on with the lid shut must not lose the lid
 
     func testTheLidStaysShutAcrossASettingsChange() throws {

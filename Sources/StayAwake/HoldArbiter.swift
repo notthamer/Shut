@@ -40,6 +40,7 @@ public final class HoldArbiter: ObservableObject {
     private var extraSources: [HoldSource] = []
     private var deadlineTimer: Timer?
     private var mirrorTimer: Timer?
+    private var burstTimer: Timer?
     private var reapplyTimer: Timer?
     private var undoTimer: Timer?
     private var applied = false
@@ -78,7 +79,7 @@ public final class HoldArbiter: ObservableObject {
 
     /// Quit, update relaunch, handover to another copy: always leave the lid as we found it.
     public func shutDown() {
-        [deadlineTimer, mirrorTimer, reapplyTimer, undoTimer].forEach { $0?.invalidate() }
+        [deadlineTimer, mirrorTimer, reapplyTimer, undoTimer, burstTimer].forEach { $0?.invalidate() }
         allSources.forEach { $0.stop() }
         monitor.stop()
         apply(false)
@@ -180,6 +181,29 @@ public final class HoldArbiter: ObservableObject {
         // powerd recomputes the shared lid bit on power-source changes; put ours back first.
         if applied { hold.setLidSleepDisabled(true) }
         evaluate()
+        guardTheBitAfterAPowerChange()
+    }
+
+    /// Once is not enough. powerd writes its own answer over the bit some seconds after the
+    /// charger goes in or comes out, and the ten-second re-apply can land on the wrong side
+    /// of that: the Mac then sleeps with the lid shut and the work is lost. So for half a
+    /// minute after a power change, while holding with the lid shut, the bit goes back twice
+    /// a second. Sixty cheap kernel calls, only in that window, and only then (rule 11).
+    private func guardTheBitAfterAPowerChange() {
+        burstTimer?.invalidate()
+        burstTimer = nil
+        guard applied, lidClosed else { return }
+        var remaining = 60
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard let self, self.applied, self.lidClosed, remaining > 0 else { timer.invalidate(); return }
+                remaining -= 1
+                self.hold.setLidSleepDisabled(true)
+            }
+        }
+        timer.tolerance = 0.1
+        RunLoop.main.add(timer, forMode: .common)
+        burstTimer = timer
     }
 
     private func evaluate() {

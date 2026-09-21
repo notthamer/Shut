@@ -33,6 +33,7 @@ public final class LidHold: LidHolding {
 
     private var connection: io_connect_t = 0
     private var assertion: IOPMAssertionID = 0
+    private var systemSleepAssertion: IOPMAssertionID = 0
     private var activity: NSObjectProtocol?
     private let log: (String) -> Void
     private let keeper: LidGuardKeeper?
@@ -85,6 +86,21 @@ public final class LidHold: LidHolding {
         } else if !prevented, assertion != 0 {
             IOPMAssertionRelease(assertion)
             assertion = 0
+        }
+        // PreventSystemSleep is what `caffeinate -s` takes. powerd honours it on the charger
+        // only, and there it turns lid sleep off by itself. That matters at the one moment our
+        // own bit is weakest: when the power source changes, powerd recomputes the shared lid
+        // bit and writes its answer over ours. With this assertion its answer on the charger
+        // is the same as ours. (Seen for real: charger plugged in with the lid shut, and the
+        // Mac was in Clamshell Sleep fifteen seconds later.)
+        if prevented, systemSleepAssertion == 0 {
+            let result = IOPMAssertionCreateWithName("PreventSystemSleep" as CFString,
+                                                     IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                                                     "Shut is keeping the Mac awake with the lid shut" as CFString, &systemSleepAssertion)
+            if result != kIOReturnSuccess { systemSleepAssertion = 0; log("system sleep assertion refused: 0x\(String(result, radix: 16))") }
+        } else if !prevented, systemSleepAssertion != 0 {
+            IOPMAssertionRelease(systemSleepAssertion)
+            systemSleepAssertion = 0
         }
     }
 

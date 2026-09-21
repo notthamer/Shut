@@ -201,6 +201,24 @@ nothing local to keep awake). Two keep-awake apps share the one kernel bit and c
 undo each other. Intel MacBooks are untested. Macs without a lid (mini, iMac, Studio)
 do not get the feature at all.
 
+## When the charger goes in or comes out with the lid shut
+
+The kernel keeps one lid bit for every userspace caller, and powerd is one of them. When
+the power source changes it recomputes that bit and writes its answer over ours; if its
+answer is "sleep" and ours is not back in time, the Mac goes into Clamshell Sleep with the
+work still running. (Seen for real: on battery, lid shut, charger plugged in, asleep
+fifteen seconds later.) Two things stand against that, neither needing root:
+
+- While holding, Shut also takes a `PreventSystemSleep` assertion, the one `caffeinate -s`
+  takes. powerd honours it on the charger only, and there it keeps lid sleep off by
+  itself, so after the charger goes in its answer is the same as ours.
+- For half a minute after any power change, while holding with the lid shut, Shut puts
+  the bit back twice a second (it used to put it back once, then every ten seconds).
+
+Pulling the charger out with the lid shut is the harder direction: on battery powerd does
+not honour that assertion, so only the second defence applies. It needs testing on a real
+lid before it is promised.
+
 ## If Shut dies while holding
 
 The kernel's lid bit outlives the process that set it, so every way Shut can end has
