@@ -80,8 +80,10 @@ struct AwakeEyes: View {
         .frame(width: 16 * pixel, height: Self.rows * pixel)
         .overlay(alignment: .topLeading) {
             if dreams, mood == .shut || mood == .asleep {
-                SleepingZs(pixel: pixel, tint: tint ?? theme.ink, still: !animated || reduceMotion)
-                    .offset(x: 17 * pixel, y: -1 * pixel)
+                // Half the size of the eyes' pixels, kept to whole device pixels so they stay crisp:
+                // an aside beside the face, not a second face.
+                SleepingZs(pixel: max((pixel).rounded() / 2, 1), tint: tint ?? theme.ink, still: !animated || reduceMotion)
+                    .offset(x: 17 * pixel, y: 1 * pixel)
             }
         }
         .accessibilityHidden(true)   // the sentence beside it says the same thing
