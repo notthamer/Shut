@@ -812,7 +812,7 @@ struct AwakeLimits: View {
         VStack(alignment: .leading, spacing: 4) {
             Eyebrow("Protects your Mac").padding(.bottom, 12)
             Explained(AwakeText.batteryTooLow(conditions: model.stayAwake.arbiter.conditions, limits: model.stayAwake.arbiter.limits)?.setting
-                      ?? "") {   // the row's own name says it all, until the battery is under it
+                      ?? AwakeText.batteryNow(model.stayAwake.arbiter.conditions)) {   // where the charge is against the level
                 StackedSlider("Sleep when battery reaches", valueText: "\(settings.batteryFloor) %",
                               value: Binding(get: { Double(settings.batteryFloor) }, set: { settings.batteryFloor = Int($0) }),
                               in: Double(HoldLimits.batteryFloorRange.lowerBound)...Double(HoldLimits.batteryFloorRange.upperBound),

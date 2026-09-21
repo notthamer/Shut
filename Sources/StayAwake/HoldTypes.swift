@@ -99,7 +99,7 @@ public struct HoldLimits: Equatable, Sendable {
         self.batteryCap = batteryCap
     }
 
-    public static let batteryFloorRange: ClosedRange<Int> = 10...50
+    public static let batteryFloorRange: ClosedRange<Int> = 5...100
     public static let graceChoices: [TimeInterval] = [60, 300, 900, 1800]
 }
 

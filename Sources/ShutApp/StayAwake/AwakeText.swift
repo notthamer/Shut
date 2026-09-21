@@ -78,6 +78,11 @@ enum AwakeText {
         var sentence: String { "Battery \(percent) % is under your \(floor) % limit · lid will sleep your Mac" }
     }
 
+    /// Under the battery slider: the charge right now, so the level is chosen against it.
+    static func batteryNow(_ conditions: PowerConditions) -> String {
+        conditions.batteryPercent.map { "Your battery is at \($0) % now." } ?? ""
+    }
+
     static func batteryTooLow(conditions: PowerConditions, limits: HoldLimits) -> BatteryTooLow? {
         guard !conditions.onCharger, let percent = conditions.batteryPercent, percent <= limits.batteryFloor else { return nil }
         return BatteryTooLow(percent: percent, floor: limits.batteryFloor)

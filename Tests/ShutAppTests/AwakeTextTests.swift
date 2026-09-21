@@ -137,6 +137,9 @@ final class AwakeTextTests: XCTestCase {
             XCTAssertEqual(rows.first?.meter, AwakeText.BatteryTooLow(percent: 18, floor: 20))
         }
         XCTAssertEqual(AwakeText.manualBlocked(.batteryFloor), "Not right now: the battery is too low. The time keeps counting.")
+        XCTAssertEqual(AwakeText.batteryNow(plugged), "Your battery is at 90 % now.")
+        XCTAssertEqual(AwakeText.batteryNow(PowerConditions(onCharger: true, batteryPercent: nil)), "", "a Mac with no battery")
+        XCTAssertEqual(HoldLimits.batteryFloorRange, 5...100)
         // Exactly at the level counts as under it; one above does not; nor does any level on the charger.
         XCTAssertNotNil(AwakeText.batteryTooLow(conditions: PowerConditions(onCharger: false, batteryPercent: 20), limits: limits))
         XCTAssertNil(AwakeText.batteryTooLow(conditions: PowerConditions(onCharger: false, batteryPercent: 21), limits: limits))
