@@ -14,6 +14,9 @@ enum AwakeText {
         let sentence: String
         /// The one button, when there is something to do.
         let action: Action?
+        /// A warning with the lid about to sleep the Mac (a limit has spoken): the eyes are
+        /// shut then. A warning while still holding (battery getting near) keeps them open.
+        var lidSleeps = false
     }
 
     enum Action: Equatable {
@@ -105,9 +108,9 @@ enum AwakeText {
             return Status(dot: .winding, sentence: "Finished · sleeping in \(duration(until.timeIntervalSince(now)))", action: .keepAwake)
         case .stopped(let reason):
             if reason == .batteryFloor, let low = batteryTooLow(conditions: conditions, limits: limits) {
-                return Status(dot: .warning, sentence: low.sentence, action: nil)
+                return Status(dot: .warning, sentence: low.sentence, action: nil, lidSleeps: true)
             }
-            return Status(dot: reason == .userLetItSleep ? .idle : .warning, sentence: stopped(reason, conditions: conditions), action: nil)
+            return Status(dot: reason == .userLetItSleep ? .idle : .warning, sentence: stopped(reason, conditions: conditions), action: nil, lidSleeps: true)
         }
     }
 
@@ -218,9 +221,14 @@ enum AwakeText {
         case .holding:
             let low = !conditions.onCharger && (conditions.batteryPercent.map { $0 <= limits.batteryFloor + 5 } ?? false)
             guard let first = reasons.first else { return Hero(headline: staysAwake, detail: "", showsCards: low) }
+            // A set time: the time it ends is the answer, so it goes in the headline, beside the eyes.
             if reasons.count == 1, first.kind == .manual {
-                return Hero(headline: staysAwake,
-                            detail: first.until.map { "Until \(clock($0))\(floor)." } ?? "Until you let it sleep\(floor).",
+                guard let until = first.until else {
+                    return Hero(headline: staysAwake, detail: "Until you choose Automatically\(floor).", showsCards: low)
+                }
+                return Hero(headline: "Your Mac stays awake until \(clock(until)).",
+                            detail: "Lid shut or open."
+                                + (conditions.batteryPercent == nil ? "" : " It also sleeps at \(limits.batteryFloor)\u{00A0}% battery."),
                             showsCards: low)
             }
             // Under Automatically the box beside this names who, with icon and time; said once.

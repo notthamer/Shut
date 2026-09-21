@@ -162,7 +162,11 @@ final class AwakeTextTests: XCTestCase {
         // With a set time running there is no box, so the answer still counts them.
         let manual = HoldReason(id: "manual", kind: .manual, title: "You", since: t0, until: t0.addingTimeInterval(3600))
         XCTAssertTrue(hero(.holding, [manual, work()]).detail.hasPrefix("2 things are keeping it awake."))
-        XCTAssertEqual(hero(.holding, [manual]).detail, "Until \(AwakeText.clock(t0.addingTimeInterval(3600))), or at 20\u{00A0}% battery.")
+        // A set time: when it ends is the headline, beside the eyes.
+        XCTAssertEqual(hero(.holding, [manual]).headline, "Your Mac stays awake until \(AwakeText.clock(t0.addingTimeInterval(3600))).")
+        XCTAssertEqual(hero(.holding, [manual]).detail, "Lid shut or open. It also sleeps at 20\u{00A0}% battery.")
+        let forever = HoldReason(id: "manual", kind: .manual, title: "You", since: t0)
+        XCTAssertEqual(hero(.holding, [forever]).headline, stays)
         XCTAssertEqual(AwakeText.live([work()], named: false, now: t0), "At work now")
         XCTAssertEqual(hero(.grace(until: t0.addingTimeInterval(240))).headline, "Your Mac will sleep in 4 min.")
         XCTAssertEqual(hero(.stopped(.tooHot)).headline, sleeps)

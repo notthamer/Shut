@@ -37,7 +37,7 @@ struct SectionTabs: View {
                            help: "Keep working with the lid shut: when, and its limits.") {
                     model.page = .awake
                 } icon: {
-                    AwakeEyes(mood: .init(status.dot, isOn: isOn), pixel: 1.25,
+                    AwakeEyes(mood: .init(status.dot, isOn: isOn, lidSleeps: status.lidSleeps), pixel: 1.25,
                               tint: status.dot == .idle ? theme.inkLabel : theme.ink)
                 }
             }

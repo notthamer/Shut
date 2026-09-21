@@ -93,7 +93,7 @@ private struct AwakeBand: View {
             VStack(alignment: .leading, spacing: 14) {
                 TimelineView(.periodic(from: .now, by: 30)) { _ in
                     let dot = awake.pendingApp == nil ? awake.status.dot : .idle
-                    AwakeEyes(mood: isOn ? .init(dot, isOn: true) : .asleep, pixel: 3,
+                    AwakeEyes(mood: isOn ? .init(dot, isOn: true, lidSleeps: awake.status.lidSleeps) : .asleep, pixel: 3,
                               tint: !isOn || dot == .idle ? theme.inkLabel : theme.ink, dreams: true)
                 }
                 if isOn { hero } else { pitch }
@@ -274,7 +274,8 @@ private struct AwakeControls: View {
         func live(_ kind: HoldReason.Kind) -> String? {
             guard isOn else { return nil }
             // Without a set time running, the box at the top names who; the row marks the rule.
-            return AwakeText.live(reasons.filter { $0.kind == kind }, named: reasons.contains { $0.kind == .manual }, now: now)
+            let boxed = model.stayAwake.arbiter.state.holdsLid && !reasons.contains { $0.kind == .manual }
+            return AwakeText.live(reasons.filter { $0.kind == kind }, named: !boxed, now: now)
         }
         return VStack(alignment: .leading, spacing: 4) {
             Eyebrow("Keep it awake while", number: "01").padding(.bottom, 8)
