@@ -250,14 +250,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         settings.lastSeenVersion = version
 
-        // Hidden: the letter t, in the panel or the menu, shows the first run again. It is the
-        // real flow (a style picked there is picked), but Start only closes it.
-        let replay: () -> Void = { [weak self] in
+        // TEMPORARY (remove before 0.3.0 ships): the two review buttons behind the gear. The
+        // welcome is the real flow (a style picked there is picked), but Start only closes it.
+        popoverModel.replayWelcome = { [weak self] in
             guard let self else { return }
+            self.popover.close()
             self.welcome.show(capability: capability, model: self.popoverModel) {}
         }
-        popover.onReplayWelcome = replay
-        menuBar.replayWelcome = replay
+        popoverModel.replayWhatsNew = { [weak self] in
+            self?.popover.close()
+            // A run from Xcode carries no notes (scripts/build.sh puts them in); the tour needs none.
+            let news = WhatsNew.bundled() ?? WhatsNew(title: "", lead: "", points: [])
+            let version = InstanceVersion.current.short
+            self?.whatsNew.show(news, version: WhatsNewTour.slides(for: version) != nil ? version : "0.3.0")
+        }
 
         if !settings.hasCompletedFirstRun {
             welcome.show(capability: capability, model: popoverModel) { [weak self] in

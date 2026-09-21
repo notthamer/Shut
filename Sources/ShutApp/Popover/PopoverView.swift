@@ -143,6 +143,10 @@ struct PopoverFooter: View {
                     }
                 }
                 Spacer()
+                // TEMPORARY (remove before 0.3.0 ships): a way to look at the first run and
+                // the update tour again while they are being reviewed.
+                QuietButton("Welcome") { model.replayWelcome() }
+                QuietButton("What’s new") { model.replayWhatsNew() }
                 QuietButton("Done") { showingSettings = false }
             } else {
                 IconButton("gearshape", help: "Open at login, Dock icon, updates.") { showingSettings = true }

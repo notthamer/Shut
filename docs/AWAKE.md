@@ -272,8 +272,6 @@ since (powerd rewrites it, another keep-awake app can clear it).
   watch it (the real gallery and preview); turn Stay awake on or leave it (turning it on here is
   the consent, same words and bag warning; the eyes wake); a last step that says both choices
   back. No lid, no Stay awake step. Back, dots, Continue; Return continues.
-  Hidden, for looking at it again: the letter t by itself, with the panel or the menu bar
-  menu open (not while typing in a field). It is the real flow; Start only closes it.
 - **Update tour** (`WhatsNewTour` in `WhatsNew.swift`): a release with something to see gets
   slides in the what's-new card instead of the changelog's words: a small stage with the real
   views drawn live (never a picture that can go out of date), a headline, one sentence. Two

@@ -130,13 +130,6 @@ final class PopoverController {
         if isShown { installMonitors() }
     }
 
-    /// The hidden way back to the first run: the letter t by itself.
-    var onReplayWelcome: (() -> Void)?
-    static func isReplayKey(_ event: NSEvent) -> Bool {
-        event.charactersIgnoringModifiers?.lowercased() == "t"
-            && event.modifierFlags.intersection([.command, .option, .control]).isEmpty
-    }
-
     /// Click anywhere outside, or Escape, closes the panel, like a menu.
     private func installMonitors() {
         removeMonitors()
@@ -147,12 +140,6 @@ final class PopoverController {
         let local = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown], handler: { [weak self] event in
             guard let self, let panel = self.panel else { return event }
             if event.type == .keyDown, event.keyCode == 53 { self.close(animated: false); return nil }   // Escape
-            // Hidden, for looking at the first run again: a plain "t" while nothing is being typed.
-            if event.type == .keyDown, Self.isReplayKey(event), !(panel.firstResponder is NSTextView) {
-                self.close(animated: false)
-                self.onReplayWelcome?()
-                return nil
-            }
             if event.type != .keyDown, event.window !== panel {
                 // A click on the status item itself is handled by the button (toggle).
                 if let button = self.anchorButton, event.window === button.window { return event }
