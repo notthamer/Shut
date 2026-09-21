@@ -38,7 +38,7 @@ final class AwakeSnapshotTests: XCTestCase {
         let plugged = PowerSourceMonitor(reader: { PowerConditions(onCharger: true, batteryPercent: 90) })
         let arbiter = HoldArbiter(hold: FakeHold(), marker: marker, monitor: plugged, mirror: AssertionMirror(defaults: nil, read: { asking ?? [] }),
                                   displays: DisplayConnected(read: { [] }))
-        let awake = StayAwakeController(settings: awakeSettings, arbiter: arbiter, hasLid: true)
+        let awake = StayAwakeController(settings: awakeSettings, arbiter: arbiter, hasLid: true, listensToTheRealLid: false)
         awake.start()
         if !reasons.isEmpty { arbiter.add(FixedSource(reasons)) }
 

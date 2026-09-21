@@ -37,8 +37,15 @@ public final class StayAwakeController: ObservableObject {
     /// arms there (their monitor would otherwise count as "a display is connected").
     let hasLid: Bool
 
-    public init(settings: StayAwakeSettings? = nil, arbiter: HoldArbiter? = nil, hasLid: Bool = LidStateProvider.isAvailable()) {
+    /// False in tests: they shut and open the lid themselves, and the real one (which may be
+    /// shut, on a docked Mac) must not get a word in. It once did, and the journey tests passed
+    /// or failed by whether the laptop running them was open.
+    private let listensToTheRealLid: Bool
+
+    public init(settings: StayAwakeSettings? = nil, arbiter: HoldArbiter? = nil, hasLid: Bool = LidStateProvider.isAvailable(),
+                listensToTheRealLid: Bool = true) {
         self.hasLid = hasLid
+        self.listensToTheRealLid = listensToTheRealLid
         self.settings = settings ?? StayAwakeSettings()
         journal = HoldJournal(defaults: settings == nil ? .standard : UserDefaults(suiteName: "StayAwakeJournal-\(UUID().uuidString)") ?? .standard)
         self.arbiter = arbiter ?? HoldArbiter(hold: LidHold(guardExecutable: Bundle.main.executableURL,
@@ -103,7 +110,7 @@ public final class StayAwakeController: ObservableObject {
 
     /// The lid switch, as an event. Only listened to while the feature is on.
     private func watchLidEdges(_ on: Bool) {
-        if on, lidEdges == nil {
+        if on, lidEdges == nil, listensToTheRealLid {
             let provider = LidStateProvider()
             let started = provider.start { [weak self] isOpen in
                 DispatchQueue.main.async { self?.lidEdge(isOpen: isOpen) }

@@ -38,7 +38,7 @@ final class AwakeJourneyTests: XCTestCase {
                                   monitor: PowerSourceMonitor(reader: { world.power }),
                                   mirror: AssertionMirror(defaults: nil, read: { world.asking }),
                                   displays: DisplayConnected(read: { world.displays }))
-        let awake = StayAwakeController(settings: settings, arbiter: arbiter, hasLid: hasLid)
+        let awake = StayAwakeController(settings: settings, arbiter: arbiter, hasLid: hasLid, listensToTheRealLid: false)
         awake.start()
         spin(0.05)   // settings reach the arbiter on the next main-queue turn
         return awake
