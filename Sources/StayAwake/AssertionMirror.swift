@@ -94,6 +94,9 @@ public enum AssertionAttribution {
         "claude": "Claude Code", "codex": "Codex", "gemini": "Gemini CLI", "aider": "Aider",
         "opencode": "OpenCode", "cursor-agent": "Cursor Agent", "goose": "Goose", "amp": "Amp",
         "copilot": "Copilot CLI", "qwen": "Qwen Code",
+        // Local models. Neither asks macOS to stay awake by itself (checked with Ollama while it
+        // generated), so they are seen when run under `caffeinate`, or picked under "An app is open".
+        "ollama": "Ollama", "lms": "LM Studio",
     ]
 
     /// Runtimes that are not the tool: the tool is the script they run.

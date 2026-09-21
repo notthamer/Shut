@@ -187,6 +187,8 @@ final class AssertionAttributionTests: XCTestCase {
         // The npm build of Codex runs a binary named after its platform.
         XCTAssertEqual(AssertionAttribution.toolName(processName: "codex-aarch64-apple-darwin", path: nil), "Codex")
         XCTAssertEqual(AssertionAttribution.toolName(processName: "cursor-agent", path: nil), "Cursor Agent")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "ollama", path: "/Applications/Ollama.app/Contents/Resources/ollama"), "Ollama")
+        XCTAssertEqual(AssertionAttribution.toolName(processName: "lms", path: nil), "LM Studio")
         // Cursor's command-line tool is a script under a folder named after its version, run by
         // a node that may be its own or Homebrew's: the name comes from the script's path.
         XCTAssertEqual(AssertionAttribution.toolName(processName: "node", path: "/opt/homebrew/bin/node",

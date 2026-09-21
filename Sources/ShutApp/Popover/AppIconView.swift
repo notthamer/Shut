@@ -31,6 +31,8 @@ enum AppIcons {
         "Claude Code": ["com.anthropic.claudefordesktop"],
         "Codex": ["com.openai.codex", "com.openai.chat"],
         "Cursor Agent": ["com.todesktop.230313mzl4w4u92"],
+        "Ollama": ["com.electron.ollama"],
+        "LM Studio": ["ai.elementlabs.lmstudio"],
     ]
 
     static func icon(for bundleID: String?) -> NSImage? {
