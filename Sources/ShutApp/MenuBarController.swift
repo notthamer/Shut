@@ -41,6 +41,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     var showAwakePage: (() -> Void)?
     /// "What's New…": the card an update shows once, on request.
     var showWhatsNew: (() -> Void)?
+    /// Hidden: a plain "t" while the menu is open shows the first run again.
+    var replayWelcome: (() -> Void)?
 
     /// Set once by the app. The mark carries a small badge that says what the lid will do,
     /// in the one place that is always on screen: a dot while holding, a ring while winding
@@ -191,6 +193,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             news.target = self
             menu.addItem(news)
         }
+        let replay = NSMenuItem(title: "Show the Welcome Again", action: #selector(replayWelcomeAction), keyEquivalent: "t")
+        replay.keyEquivalentModifierMask = []
+        replay.isHidden = true
+        replay.allowsKeyEquivalentWhenHidden = true
+        replay.target = self
+        menu.addItem(replay)
         menu.addItem(quitItem)
     }
 
@@ -280,6 +288,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
     @objc private func toggleLaunchAtLogin() { LaunchAtLogin.toggle() }
     @objc private func openWhatsNew() { showWhatsNew?() }
+    @objc private func replayWelcomeAction() { replayWelcome?() }
     @objc private func letItSleep() { stayAwake?.perform(.letItSleep) }
     @objc private func toggleStayAwake() {
         guard let stayAwake else { return }

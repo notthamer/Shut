@@ -250,6 +250,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         settings.lastSeenVersion = version
 
+        // Hidden: the letter t, in the panel or the menu, shows the first run again. It is the
+        // real flow (a style picked there is picked), but Start only closes it.
+        let replay: () -> Void = { [weak self] in
+            guard let self else { return }
+            self.welcome.show(capability: capability, model: self.popoverModel) {}
+        }
+        popover.onReplayWelcome = replay
+        menuBar.replayWelcome = replay
+
         if !settings.hasCompletedFirstRun {
             welcome.show(capability: capability, model: popoverModel) { [weak self] in
                 self?.settings.isEnabled = true

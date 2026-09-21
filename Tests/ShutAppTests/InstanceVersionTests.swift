@@ -94,4 +94,18 @@ final class InstanceVersionTests: XCTestCase {
         XCTAssertTrue(WhatsNew.isDue(current: "0.3.0", lastSeen: "0.2.1", hasCompletedFirstRun: true))
         XCTAssertFalse(WhatsNew.isDue(current: "0.3.0", lastSeen: "0.3.0", hasCompletedFirstRun: true), "never twice")
     }
+
+    /// The hidden way back to the first run is the letter t by itself, never a shortcut
+    /// that is already someone else's (Command-T opens the Tuner).
+    @MainActor func testTheReplayKeyIsAPlainT() throws {
+        func key(_ characters: String, _ flags: NSEvent.ModifierFlags = []) throws -> NSEvent {
+            try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags, timestamp: 0, windowNumber: 0,
+                                           context: nil, characters: characters, charactersIgnoringModifiers: characters.lowercased(),
+                                           isARepeat: false, keyCode: 17))
+        }
+        XCTAssertTrue(PopoverController.isReplayKey(try key("t")))
+        XCTAssertTrue(PopoverController.isReplayKey(try key("T", .shift)))
+        XCTAssertFalse(PopoverController.isReplayKey(try key("t", .command)))
+        XCTAssertFalse(PopoverController.isReplayKey(try key("r")))
+    }
 }
