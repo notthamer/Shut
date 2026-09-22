@@ -66,6 +66,13 @@ struct AwakeEyes: View {
     /// A soft "z z z" rising from sleeping eyes. For the large eyes on the page, which have
     /// room beside them; in a tab the letters would sit on the tab's name.
     var dreams = false
+    /// Awake eyes that look at the pointer while it is near: the sprite has one frame for
+    /// each corner, so the look is to whichever quarter the pointer is in. For the big eyes
+    /// on the page; the small ones in a tab are too small to be looked at.
+    var follows = false
+    /// How far around the eyes "near" reaches, in points.
+    static let reach: CGFloat = 56
+    @State private var gaze: Frame?
     @Environment(\.tunerTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -76,11 +83,26 @@ struct AwakeEyes: View {
             } else {
                 // Only a face that moves needs a clock, and only while it is on screen.
                 TimelineView(.periodic(from: .now, by: 0.15)) { context in
-                    image(Self.frame(mood, at: context.date.timeIntervalSinceReferenceDate))
+                    let timed = Self.frame(mood, at: context.date.timeIntervalSinceReferenceDate)
+                    // A look at the pointer still blinks.
+                    image(gaze.map { timed == .blink ? .blink : $0 } ?? timed)
                 }
             }
         }
         .frame(width: 16 * pixel, height: Self.rows * pixel)
+        .overlay {
+            if follows, animated, !reduceMotion, mood == .awake {
+                // A wider, invisible ring around the eyes tracks the pointer; it changes no layout.
+                let width = 16 * pixel + 2 * Self.reach, height = Self.rows * pixel + 2 * Self.reach
+                Color.clear.frame(width: width, height: height).contentShape(Rectangle())
+                    .onContinuousHover(coordinateSpace: .local) { phase in
+                        switch phase {
+                        case .active(let point): gaze = Self.gaze(dx: point.x - width / 2, dy: point.y - height / 2)
+                        case .ended: gaze = nil
+                        }
+                    }
+            }
+        }
         .overlay(alignment: .topLeading) {
             if dreams, mood == .shut || mood == .asleep {
                 // Half the size of the eyes' pixels, kept to whole device pixels so they stay crisp:
@@ -112,6 +134,11 @@ struct AwakeEyes: View {
         let ys = pixels(frame).map(\.y)
         guard let top = ys.min(), let bottom = ys.max() else { return 0 }
         return ((top + bottom + 1) / 2 - rows / 2).rounded()
+    }
+
+    /// The corner the pointer is in, from the eyes' centre. Down is the bigger y (SwiftUI's).
+    static func gaze(dx: CGFloat, dy: CGFloat) -> Frame {
+        dy < 0 ? (dx < 0 ? .upLeft : .upRight) : (dx < 0 ? .downLeft : .downRight)
     }
 
     static func restingFrame(_ mood: Mood) -> Frame {

@@ -110,7 +110,7 @@ private struct AwakeBand: View {
                 TimelineView(.periodic(from: .now, by: 30)) { _ in
                     let dot = awake.pendingApp == nil ? awake.status.dot : .idle
                     AwakeEyes(mood: isOn ? .init(dot, isOn: true, lidSleeps: awake.status.lidSleeps) : .asleep, pixel: 3,
-                              tint: !isOn || dot == .idle ? theme.inkLabel : theme.ink, dreams: true)
+                              tint: !isOn || dot == .idle ? theme.inkLabel : theme.ink, dreams: true, follows: true)
                 }
                 if isOn { hero } else { pitch }
             }

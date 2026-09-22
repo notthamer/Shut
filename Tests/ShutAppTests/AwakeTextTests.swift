@@ -231,6 +231,11 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertEqual(AwakeEyes.Mood(.idle, isOn: true), .shut)
         XCTAssertEqual(AwakeEyes.Mood(.idle, isOn: false), .asleep)
         XCTAssertEqual(AwakeEyes.frame(.awake, at: 1), .downRight, "resting: looking at the words")
+        // Near the pointer, the eyes look to its corner.
+        XCTAssertEqual(AwakeEyes.gaze(dx: -10, dy: -10), .upLeft)
+        XCTAssertEqual(AwakeEyes.gaze(dx: 10, dy: -10), .upRight)
+        XCTAssertEqual(AwakeEyes.gaze(dx: -10, dy: 10), .downLeft)
+        XCTAssertEqual(AwakeEyes.gaze(dx: 10, dy: 10), .downRight)
         XCTAssertEqual(AwakeEyes.frame(.awake, at: 603.2), .upRight)
         XCTAssertEqual(AwakeEyes.frame(.awake, at: 3.6), .upLeft)
         XCTAssertEqual(AwakeEyes.frame(.awake, at: 4.0), .downLeft)
