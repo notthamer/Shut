@@ -23,12 +23,12 @@ struct AwakeEyes: View {
 
         /// Open eyes promise one thing: closing the lid keeps the Mac awake. A warning that
         /// comes with a sleeping lid shuts them.
-        init(_ dot: AwakeText.Dot, isOn: Bool, lidSleeps: Bool = false) {
+        init(_ dot: AwakeText.Dot, isOn: Bool, lidSleeps: Bool = false, lidHolds: Bool = false) {
             switch dot {
             case .warning: self = lidSleeps ? .shut : .awake
             case .holding: self = .awake
             case .winding: self = .drowsy
-            case .idle: self = isOn ? .shut : .asleep
+            case .idle: self = lidHolds ? .awake : (isOn ? .shut : .asleep)
             }
         }
     }

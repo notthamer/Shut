@@ -109,8 +109,9 @@ private struct AwakeBand: View {
             VStack(alignment: .leading, spacing: 14) {
                 TimelineView(.periodic(from: .now, by: 30)) { _ in
                     let dot = awake.pendingApp == nil ? awake.status.dot : .idle
-                    AwakeEyes(mood: isOn ? .init(dot, isOn: true, lidSleeps: awake.status.lidSleeps) : .asleep, pixel: 3,
-                              tint: !isOn || dot == .idle ? theme.inkLabel : theme.ink, dreams: true, follows: true)
+                    let status = awake.status
+                    AwakeEyes(mood: isOn ? .init(dot, isOn: true, lidSleeps: status.lidSleeps, lidHolds: status.lidHolds) : .asleep, pixel: 3,
+                              tint: !isOn || (dot == .idle && !status.lidHolds) ? theme.inkLabel : theme.ink, dreams: true, follows: true)
                 }
                 if isOn { hero } else { pitch }
             }
@@ -220,7 +221,7 @@ private struct AwakeBand: View {
             let pending = awake.pendingApp
             let copy = pending.map { AwakeText.pendingHero($0.name) }
                 ?? AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
-                                  limits: arbiter.limits, watchingApps: settings.whenWorking, now: context.date)
+                                  limits: arbiter.limits, watchingApps: settings.whenWorking, armed: awake.armed, now: context.date)
             let status = awake.status
             VStack(alignment: .leading, spacing: 14) {
                 // The eyes are beside this block, in the band. Here: the answer and why, with the icon
@@ -413,7 +414,7 @@ private struct KeepAwakeMode: View {
     @Environment(\.tunerTheme) private var theme
 
     private var settings: StayAwakeSettings { awake.settings }
-    private var timed: Bool { awake.manualHold != nil || dragged != nil }
+    private var timed: Bool { settings.timedMode || dragged != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -486,8 +487,9 @@ private struct KeepAwakeMode: View {
                     .font(TunerTheme.bodySmall).foregroundStyle(theme.ink)
                     .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
             } else {
-                Text(AwakeText.manualCaption(stop: stop, running: dragged == nil && awake.manualHold != nil,
-                                             until: awake.manualHold?.until, now: now))
+                Text(dragged == nil && awake.manualHold != nil
+                     ? AwakeText.manualCaption(stop: stop, running: true, until: awake.manualHold?.until, now: now)
+                     : AwakeText.armedCaption(stop: stop))
                     .font(TunerTheme.bodySmall).foregroundStyle(theme.ink)
                     .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)

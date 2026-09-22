@@ -261,13 +261,22 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
-    /// The dial starts, changes and ends the manual hold.
+    /// The dial arms a time; the time runs while the lid is shut, and the dial changes it.
     func testTheDialHoldsForWhatItSays() throws {
         let (model, awake) = try makeModel(on: true, reasons: [], asking: [])
         XCTAssertEqual(awake.manualStop(), 0)
         let ninety = AwakeText.manualStop(remaining: 90 * 60)
         awake.setManualHold(stop: ninety)
+        XCTAssertEqual(awake.arbiter.state, .ready, "with the lid open nothing runs yet")
+        XCTAssertEqual(awake.armed, .forDuration(90 * 60))
+        XCTAssertEqual(awake.manualStop(), ninety, "the dial shows the armed time")
+        XCTAssertEqual(awake.status.sentence, "Closing the lid keeps it awake for 90 min")
+        XCTAssertTrue(awake.status.lidHolds, "so the eyes are open")
+        model.page = .awake
+        try render(model, name: "page-armed")
+        awake.lidEdge(isOpen: false)
         XCTAssertEqual(awake.arbiter.state, .holding)
+        XCTAssertNil(awake.armed, "running now: the reason says it")
         let hold = try XCTUnwrap(awake.manualHold)
         XCTAssertEqual(try XCTUnwrap(hold.until).timeIntervalSince(hold.since), 90 * 60, accuracy: 1)
         XCTAssertEqual(awake.manualStop(), ninety)
@@ -276,8 +285,12 @@ final class AwakeSnapshotTests: XCTestCase {
         try render(model, name: "page-manual")
 
         awake.setManualHold(stop: AwakeText.manualLastStop)
-        XCTAssertNil(try XCTUnwrap(awake.manualHold).until, "until stopped")
+        XCTAssertNil(try XCTUnwrap(awake.manualHold).until, "until stopped, started afresh with the lid shut")
+        awake.lidEdge(isOpen: true)
+        XCTAssertNil(awake.manualHold, "opening the lid ends the time")
+        XCTAssertEqual(awake.armed, .untilStopped, "and the next close starts it again")
         awake.setManualHold(stop: 0)
+        XCTAssertNil(awake.armed)
         XCTAssertEqual(awake.arbiter.state, .ready)
         awake.shutDown()
     }
@@ -341,20 +354,23 @@ final class AwakeSnapshotTests: XCTestCase {
         try render(model, name: "page-automatic")
 
         awake.startTimedHold()
-        let hour = try XCTUnwrap(awake.manualHold)
-        XCTAssertEqual(try XCTUnwrap(hour.until).timeIntervalSince(hour.since), 3600, accuracy: 1, "one hour until the user picks otherwise")
-        XCTAssertEqual(awake.arbiter.state, .holding)
+        XCTAssertEqual(awake.armed, .forDuration(3600), "one hour until the user picks otherwise")
+        XCTAssertTrue(awake.settings.timedMode)
 
         awake.setManualHold(stop: 2)            // the dial: 10 min
         awake.returnToAutomatic()
-        XCTAssertNil(awake.manualHold)
+        XCTAssertNil(awake.armed)
+        XCTAssertFalse(awake.settings.timedMode)
         XCTAssertEqual(awake.arbiter.state, .ready, "the rules decide again")
 
         awake.startTimedHold()
-        let again = try XCTUnwrap(awake.manualHold)
-        XCTAssertEqual(try XCTUnwrap(again.until).timeIntervalSince(again.since), 600, accuracy: 1, "the time last used")
+        XCTAssertEqual(awake.armed, .forDuration(600), "the time last used")
         XCTAssertEqual(awake.settings.lastManualStop, 2)
+        awake.lidEdge(isOpen: false)
+        let again = try XCTUnwrap(awake.manualHold)
+        XCTAssertEqual(try XCTUnwrap(again.until).timeIntervalSince(again.since), 600, accuracy: 1, "the clock starts at the close")
         try render(model, name: "page-set-time")
+        XCTAssertTrue(StayAwakeSettings(defaults: awake.settings.defaults).timedMode, "a standing rule, kept")
         awake.shutDown()
     }
 
@@ -412,6 +428,7 @@ final class AwakeSnapshotTests: XCTestCase {
         try render(model, name: "page-battery-low-settings")
         model.showingAwakeSettings = false
         awake.startTimedHold()
+        awake.lidEdge(isOpen: false)
         XCTAssertEqual(awake.arbiter.state, .stopped(.batteryFloor))
         try render(model, name: "page-battery-low-set-time")
         awake.shutDown()

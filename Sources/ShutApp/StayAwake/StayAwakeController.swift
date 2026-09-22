@@ -133,6 +133,8 @@ public final class StayAwakeController: ObservableObject {
         let battery = arbiter.conditions.batteryPercent
         Log.awake.notice("lid \(isOpen ? "opened" : "shut", privacy: .public): \(String(describing: self.arbiter.state), privacy: .public), battery \(battery ?? -1) %")
         if isOpen {
+            // The clock only runs while the lid is shut; the next close starts it again.
+            if settings.timedMode { arbiter.manual.end() }
             journal.lidOpened(battery: battery, now: now)
             // Option flipped this one close to "sleep"; the next close decides afresh.
             if flip == .toSleep { arbiter.undoLetItSleep() }
@@ -144,6 +146,7 @@ public final class StayAwakeController: ObservableObject {
             }
             objectWillChange.send()
         } else {
+            if manualHold == nil { beginArmedTime(now: now) }
             journal.lidShut(holding: arbiter.state.holdsLid, reasons: arbiter.reasons, battery: battery, now: now)
         }
         guard !isOpen, arbiter.state.holdsLid, settings.lockWhenShut else { return }
@@ -169,6 +172,8 @@ public final class StayAwakeController: ObservableObject {
     /// From `AppController`, as the overlay is about to appear. Holding Option flips
     /// the decision for this one close; the caption then says which way it went.
     func closeBeginning() {
+        // A set time starts as the lid begins to close, before it is down.
+        beginArmedTime()
         flip = nil
         if NSEvent.modifierFlags.contains(.option) { flipDecision() }
     }
@@ -216,7 +221,8 @@ public final class StayAwakeController: ObservableObject {
         }
         if let pendingApp { return AwakeText.pending(pendingApp.name) }
         return AwakeText.status(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
-                         limits: arbiter.limits, canUndo: arbiter.canUndoLetItSleep, everTurnedOn: settings.hasConsented, now: Date())
+                         limits: arbiter.limits, canUndo: arbiter.canUndoLetItSleep, everTurnedOn: settings.hasConsented,
+                         armed: armed, now: Date())
     }
 
     /// An app to ask about, only while nothing is holding the lid: a question must never
@@ -262,11 +268,32 @@ public final class StayAwakeController: ObservableObject {
 
     /// The "You say so" dial: stop 0 ends the hold, the last stop holds until stopped, the
     /// ones between hold for `AwakeText.manualDurations`.
+    /// The dial. Stop 0 is "Automatically". Any other stop arms that time: it starts at the
+    /// next close of the lid, or now if the lid is already shut (a change while it runs
+    /// starts it afresh).
     func setManualHold(stop: Int) {
-        if stop > 0 { settings.lastManualStop = min(stop, AwakeText.manualLastStop) }
-        if stop <= 0 { arbiter.manual.end() }
-        else if stop >= AwakeText.manualLastStop { arbiter.manual.begin(for: nil) }
-        else { arbiter.manual.begin(for: AwakeText.manualDurations[stop - 1]) }
+        guard stop > 0 else {
+            settings.timedMode = false
+            arbiter.manual.end()
+            return
+        }
+        settings.lastManualStop = min(stop, AwakeText.manualLastStop)
+        settings.timedMode = true
+        if arbiter.lidClosed { beginArmedTime() } else { arbiter.manual.end() }
+    }
+
+    /// What "For a set time" will do at the next close; nil when Automatically is chosen,
+    /// or while the time is already running (then the reason itself says it).
+    var armed: AwakeText.Armed? {
+        guard settings.timedMode, arbiter.limits.isOn, manualHold == nil else { return nil }
+        let stop = settings.lastManualStop
+        return stop >= AwakeText.manualLastStop ? .untilStopped : .forDuration(AwakeText.manualDurations[max(stop, 1) - 1])
+    }
+
+    private func beginArmedTime(now: Date = Date()) {
+        guard settings.timedMode, arbiter.limits.isOn else { return }
+        let stop = settings.lastManualStop
+        arbiter.manual.begin(for: stop >= AwakeText.manualLastStop ? nil : AwakeText.manualDurations[max(stop, 1) - 1], now: now)
     }
 
     /// The first time Settings opens, the battery level starts from the charge right now, so
@@ -304,7 +331,7 @@ public final class StayAwakeController: ObservableObject {
         objectWillChange.send()
     }
 
-    /// "For a set time", one click: the last duration chosen, starting now.
+    /// "For a set time", one click: the last duration chosen, armed for the next close.
     func startTimedHold() { setManualHold(stop: max(settings.lastManualStop, 1)) }
 
     /// "Automatically", one click: the timer ends and the rules decide again.
@@ -314,7 +341,7 @@ public final class StayAwakeController: ObservableObject {
     var manualHold: HoldReason? { arbiter.manual.reasons.first }
 
     func manualStop(now: Date = Date()) -> Int {
-        guard let hold = manualHold else { return 0 }
+        guard let hold = manualHold else { return settings.timedMode ? max(settings.lastManualStop, 1) : 0 }
         return AwakeText.manualStop(remaining: hold.until.map { $0.timeIntervalSince(now) })
     }
 }

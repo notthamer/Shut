@@ -199,7 +199,7 @@ enum WhatsNewTour {
             Slide(stage: .lidAnswer, headline: "You always know what the lid will do.",
                   detail: "Eyes open, it stays awake. Eyes shut, the lid sleeps it. Try it."),
             Slide(stage: .twoWays, headline: "Automatic, or for a set time.",
-                  detail: "Let your apps decide, or keep it awake for as long as you say. One click either way."),
+                  detail: "Let your apps decide, or keep it awake for as long as you say after each close. One click either way."),
             Slide(stage: .batteryAndReceipt, headline: "It minds the battery, and tells you what happened.",
                   detail: "It lets your Mac sleep under a battery level you choose. When you open the lid again, a note says how it went."),
         ]
@@ -302,7 +302,7 @@ struct TourStage: View {
         case .twoWays:
             VStack(alignment: .leading, spacing: 12) {
                 ModeSwitch(options: ["Automatically", "For a set time"], selection: timed ? 1 : 0) { timed = $0 == 1 }
-                Text(timed ? "Your Mac stays awake until \(AwakeText.clock(Date().addingTimeInterval(3600)))."
+                Text(timed ? "Closing the lid keeps your Mac awake for 1 h. The time starts when the lid shuts."
                            : "Stays awake while an app is busy, and sleeps by itself when that ends.")
                     .font(TunerTheme.body).foregroundStyle(theme.ink).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)

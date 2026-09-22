@@ -9,11 +9,24 @@ import StayAwake
 enum AwakeText {
     enum Dot: Equatable { case idle, holding, winding, warning }
 
+    /// "For a set time", with the lid open: what the next close will do. nil = until stopped.
+    enum Armed: Equatable {
+        case forDuration(TimeInterval), untilStopped
+        var phrase: String {
+            switch self {
+            case .forDuration(let seconds): return "for \(AwakeText.manualValue(stop: AwakeText.manualStop(remaining: seconds)))"
+            case .untilStopped: return "until you choose Automatically"
+            }
+        }
+    }
+
     struct Status: Equatable {
         let dot: Dot
         let sentence: String
         /// The one button, when there is something to do.
         let action: Action?
+        /// Nothing holds now, but closing the lid will (a set time is armed): the eyes are open.
+        var lidHolds = false
         /// A warning with the lid about to sleep the Mac (a limit has spoken): the eyes are
         /// shut then. A warning while still holding (battery getting near) keeps them open.
         var lidSleeps = false
@@ -94,7 +107,7 @@ enum AwakeText {
     /// `everTurnedOn`: the user has been through the consent sheet. Someone who switched
     /// the feature off knows what it is; the bar stops offering it and just says so.
     static func status(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
-                       canUndo: Bool, everTurnedOn: Bool = false, now: Date) -> Status {
+                       canUndo: Bool, everTurnedOn: Bool = false, armed: Armed? = nil, now: Date) -> Status {
         if canUndo, !state.holdsLid {
             return Status(dot: .idle, sentence: "Letting it sleep", action: .undo)
         }
@@ -106,6 +119,7 @@ enum AwakeText {
             if let low = batteryTooLow(conditions: conditions, limits: limits) {
                 return Status(dot: .idle, sentence: low.sentence, action: nil)
             }
+            if let armed { return Status(dot: .idle, sentence: "Closing the lid keeps it awake \(armed.phrase)", action: nil, lidHolds: true) }
             return Status(dot: .idle, sentence: "Closing the lid will sleep your Mac", action: nil)
         case .holding:
             if !conditions.onCharger, let percent = conditions.batteryPercent, percent <= limits.batteryFloor + 5 {
@@ -125,11 +139,15 @@ enum AwakeText {
     /// The "Stay awake" tab's second line: its state in three or four words, so the tab is
     /// plainly a section with a life of its own, and the state shows from the other section.
     static func tabLine(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
-                        pendingApp: String? = nil, now: Date) -> String {
+                        pendingApp: String? = nil, armed: Armed? = nil, now: Date) -> String {
         if let pendingApp, state == .ready { return "\(pendingApp) is asking" }
         switch state {
         case .off: return "Off"
-        case .ready: return batteryTooLow(conditions: conditions, limits: limits)?.tab ?? "Lid will sleep your Mac"
+        case .ready:
+            if let low = batteryTooLow(conditions: conditions, limits: limits) { return low.tab }
+            if case .forDuration(let seconds)? = armed { return "Lid keeps it awake \(manualValue(stop: manualStop(remaining: seconds)))" }
+            if armed != nil { return "Lid keeps it awake" }
+            return "Lid will sleep your Mac"
         case .grace(let until): return "Sleeping in \(duration(until.timeIntervalSince(now)))"
         case .stopped(let reason):
             switch reason {
@@ -195,7 +213,7 @@ enum AwakeText {
     /// `watchingApps`: "An app is busy" is on. When it is not, the page says so, because then
     /// an agent or a build will not keep the Mac awake and nothing else would mention it.
     static func hero(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
-                     watchingApps: Bool = true, now: Date) -> Hero {
+                     watchingApps: Bool = true, armed: Armed? = nil, now: Date) -> Hero {
         let willSleep = "Closing the lid will sleep your Mac."
         let staysAwake = "Closing the lid keeps your Mac awake."
         // A no-break space: "20" at the end of one line and "% battery" on the next reads badly.
@@ -213,6 +231,13 @@ enum AwakeText {
             }
             if case .stopped(let reason) = state {
                 return Hero(headline: willSleep, detail: stopped(reason, conditions: conditions) + ". That limit always wins.", showsCards: false)
+            }
+            // A set time, armed: the time starts at the close, so with the lid open there is
+            // nothing to count, only what the close will do.
+            if let armed {
+                return Hero(headline: "Closing the lid keeps your Mac awake \(armed.phrase).",
+                            detail: "The time starts when the lid shuts, every time\(floor).",
+                            showsCards: false)
             }
             return Hero(headline: willSleep,
                         detail: watchingApps ? "Nothing is keeping it awake right now."
@@ -235,7 +260,7 @@ enum AwakeText {
                     return Hero(headline: staysAwake, detail: "Until you choose Automatically\(floor).", showsCards: low)
                 }
                 return Hero(headline: "Your Mac stays awake until \(clock(until)).",
-                            detail: "Lid shut or open."
+                            detail: "While the lid is shut. Opening it ends the time; the next close starts it again."
                                 + (conditions.batteryPercent == nil ? "" : " It also sleeps at \(limits.batteryFloor)\u{00A0}% battery."),
                             showsCards: low)
             }
@@ -417,13 +442,19 @@ enum AwakeText {
 
     /// The line under the dial. `stop` is where the thumb is (while dragging, where it would
     /// land); `until` is the running hold's end, nil for none or for "until I stop".
+    /// Under the dial with the lid open: what the next close will do.
+    static func armedCaption(stop: Int) -> String {
+        if stop >= manualLastStop { return "Awake while the lid is shut, until you choose Automatically." }
+        return "Starts when you close the lid."
+    }
+
     static func manualCaption(stop: Int, running: Bool, until: Date?, now: Date) -> String {
         if stop <= 0 { return "Drag to pick how long, whatever is running." }
         if stop >= manualLastStop { return running ? "Awake until you choose Automatically." : "Until you choose Automatically." }
         if running, let until {
-            return "\(duration(until.timeIntervalSince(now))) left, then back to automatic."
+            return "\(duration(until.timeIntervalSince(now))) left."
         }
-        return "Until \(clock(now.addingTimeInterval(manualDurations[stop - 1]))), then back to automatic."
+        return armedCaption(stop: stop)
     }
 
     /// A set time that a limit overrules: say which, and that the time is still running.

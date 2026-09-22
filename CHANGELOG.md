@@ -4,7 +4,7 @@
 
 **Stay awake.** Close the lid while something is working and your Mac stays awake, then goes to sleep by itself when the work is done. Off until you turn it on. No password, no helper to install.
 
-- Reasons, not timers. Your Mac stays awake while an app is busy (a coding agent, a build, a render, a download), while an external display is connected, while apps you pick are open, or for a set time: one click, from five minutes to twelve hours or until you stop it, and one click back to automatic.
+- Reasons, not timers. Your Mac stays awake while an app is busy (a coding agent, a build, a render, a download), while an external display is connected, while apps you pick are open, or for a set time: one click, from five minutes to twelve hours or until you stop it, and the time starts each time you close the lid, so "two hours" means two hours after you shut it. One click back to automatic.
 - You always know what the lid will do. Shut has two sections now, Lid effects and Stay awake, named in the header, and a pair of eyes beside the second: open, your Mac will stay awake; shut, the lid will sleep it. The page says it in words too: "Closing the lid keeps your Mac awake." The menu bar icon carries a dot while holding, a ring while winding down, and Saffron when a limit is near.
 - The closing screen says what will happen. "Staying awake · Claude Code is working", readable on any wallpaper. Hold Option at any point of the close to do the opposite, just that once.
 - When you come back, Shut tells you what happened. A slip under the menu bar icon: how long, from when to when, for what, and the battery it used.

@@ -162,8 +162,9 @@ final class AwakeJourneyTests: XCTestCase {
         let world = World()
         let awake = start(world)
         awake.setManualHold(stop: AwakeText.manualStop(remaining: 3600))
-        XCTAssertEqual(awake.arbiter.state, .holding)
+        XCTAssertEqual(awake.arbiter.state, .ready, "armed: the time starts at the close")
         awake.lidEdge(isOpen: false, now: Date().addingTimeInterval(-600))
+        XCTAssertEqual(awake.arbiter.state, .holding)
         awake.macWillSleep()
         var handed: HoldReceipt?
         awake.onReturn = { handed = $0 }

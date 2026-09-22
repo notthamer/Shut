@@ -32,13 +32,13 @@ struct SectionTabs: View {
                 SectionTab(title: "Stay awake",
                            line: AwakeText.tabLine(state: awake.arbiter.state, reasons: awake.arbiter.reasons,
                                                    conditions: awake.arbiter.conditions, limits: awake.arbiter.limits,
-                                                   pendingApp: awake.pendingApp?.name, now: context.date),
+                                                   pendingApp: awake.pendingApp?.name, armed: awake.armed, now: context.date),
                            isSelected: model.page == .awake, emphasised: status.dot != .idle || awake.pendingApp != nil,
                            help: "Keep working with the lid shut: when, and its limits.") {
                     model.page = .awake
                 } icon: {
-                    AwakeEyes(mood: .init(status.dot, isOn: isOn, lidSleeps: status.lidSleeps), pixel: 1.25,
-                              tint: status.dot == .idle ? theme.inkLabel : theme.ink)
+                    AwakeEyes(mood: .init(status.dot, isOn: isOn, lidSleeps: status.lidSleeps, lidHolds: status.lidHolds), pixel: 1.25,
+                              tint: status.dot == .idle && !status.lidHolds ? theme.inkLabel : theme.ink)
                 }
             }
             .tunerAnimation(TunerTheme.ease, value: status)

@@ -89,9 +89,9 @@ final class AwakeTextTests: XCTestCase {
         // The caption says it whole.
         let until = t0.addingTimeInterval(72 * 60)
         XCTAssertEqual(AwakeText.manualCaption(stop: stop(90), running: true, until: until, now: t0),
-                       "1 h 12 min left, then back to automatic.", "the answer beside it has the time it ends")
-        XCTAssertEqual(AwakeText.manualCaption(stop: stop(60), running: false, until: nil, now: t0),
-                       "Until \(AwakeText.clock(t0.addingTimeInterval(3600))), then back to automatic.")
+                       "1 h 12 min left.", "the answer beside it has the time it ends")
+        XCTAssertEqual(AwakeText.manualCaption(stop: stop(60), running: false, until: nil, now: t0), "Starts when you close the lid.")
+        XCTAssertEqual(AwakeText.armedCaption(stop: AwakeText.manualLastStop), "Awake while the lid is shut, until you choose Automatically.")
         XCTAssertTrue(AwakeText.manualCaption(stop: 0, running: false, until: nil, now: t0).hasPrefix("Drag to pick"))
         XCTAssertEqual(AwakeText.manualCaption(stop: AwakeText.manualLastStop, running: true, until: nil, now: t0),
                        "Awake until you choose Automatically.")
@@ -167,7 +167,14 @@ final class AwakeTextTests: XCTestCase {
         XCTAssertTrue(hero(.holding, [manual, work()]).detail.hasPrefix("2 things are keeping it awake."))
         // A set time: when it ends is the headline, beside the eyes.
         XCTAssertEqual(hero(.holding, [manual]).headline, "Your Mac stays awake until \(AwakeText.clock(t0.addingTimeInterval(3600))).")
-        XCTAssertEqual(hero(.holding, [manual]).detail, "Lid shut or open. It also sleeps at 20\u{00A0}% battery.")
+        XCTAssertEqual(hero(.holding, [manual]).detail, "While the lid is shut. Opening it ends the time; the next close starts it again. It also sleeps at 20\u{00A0}% battery.")
+        // Armed, lid open: the answer is what the close will do; nothing is counting yet.
+        let armed = AwakeText.hero(state: .ready, reasons: [], conditions: plugged, limits: limits, armed: .forDuration(7200), now: t0)
+        XCTAssertEqual(armed.headline, "Closing the lid keeps your Mac awake for 2 h.")
+        XCTAssertEqual(AwakeText.tabLine(state: .ready, reasons: [], conditions: plugged, limits: limits, armed: .forDuration(7200), now: t0), "Lid keeps it awake 2 h")
+        XCTAssertEqual(AwakeText.tabLine(state: .ready, reasons: [], conditions: plugged, limits: limits, armed: .untilStopped, now: t0), "Lid keeps it awake")
+        XCTAssertEqual(AwakeText.status(state: .ready, reasons: [], conditions: plugged, limits: limits, canUndo: false, armed: .untilStopped, now: t0).sentence,
+                       "Closing the lid keeps it awake until you choose Automatically")
         let forever = HoldReason(id: "manual", kind: .manual, title: "You", since: t0)
         XCTAssertEqual(hero(.holding, [forever]).headline, stays)
         XCTAssertEqual(AwakeText.live([work()], named: false, now: t0), "At work now")

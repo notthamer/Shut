@@ -57,7 +57,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                     let dot = AwakeText.badge(state: arbiter.state, conditions: arbiter.conditions, limits: arbiter.limits)
                     // The headline has no running time in it, so a tooltip set now stays true.
                     let headline = AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
-                                                  limits: arbiter.limits, now: Date()).headline
+                                                  limits: arbiter.limits, armed: stayAwake.armed, now: Date()).headline
                     return Badge(dot: dot, toolTip: arbiter.limits.isOn ? "Shut · \(headline)" : "Shut")
                 }
                 .removeDuplicates()

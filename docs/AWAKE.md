@@ -67,8 +67,10 @@ screen.
   "Automatically" (the rules below decide; one sentence says which are on, and while they are
   keeping the Mac awake a box under the choice, "Keeping it awake now", lists who with
   icon and time, three at most and "and N more") and "For a set
-  time" (one click starts the time last used, a dial under it changes it from 5 min to
-  12 h or until stopped; when it runs out the page is automatic again), so going from one
+  time" (a standing rule: every close of the lid starts the time on the dial, 5 min to 12 h
+  or until stopped; opening the lid ends it and the next close starts it again; with the lid
+  open nothing counts and the page says what the close will do, eyes open; it stays chosen
+  until Automatically is), so going from one
   to the other is one click either way, and, only while
   closing will keep the Mac awake, a small preview of the close with its caption. Under
   a hairline, the rules in two numbered sections like the Lid effects page: "01 Keep it
