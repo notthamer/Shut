@@ -80,6 +80,18 @@ public final class AppController: ObservableObject {
         renderer.snapshot != nil && Date().timeIntervalSince(lastCaptureDate) < snapshotMaxAge
     }
 
+    /// Stay awake listens here: the lid has started to come down, which is the
+    /// moment to take a fresh reading of what is working.
+    var onLidStartedClosing: (() -> Void)?
+    /// The overlay is about to appear. Stay awake reads the Option key here (it
+    /// flips the decision for this one close) and then supplies the caption.
+    var onCloseBeginning: (() -> Void)?
+    /// `beginning`: the first request of a close, as opposed to one after Option was pressed.
+    var closingCaption: ((_ beginning: Bool) -> AwakeText.Caption?)?
+    /// Option went down while the lid was coming down. True when the decision changed.
+    var onOptionWhileClosing: (() -> Bool)?
+    private var optionWasDown = false
+
     /// Set by the Tuner host so the panel can hide while a real transition plays.
     public var onTransitionVisibilityChanged: ((Bool) -> Void)?
     public var followLag: Double = 0.03
@@ -253,6 +265,7 @@ public final class AppController: ObservableObject {
         state = .armed
         armedAt = Date()
         sensor.keepAwake = true
+        onLidStartedClosing?()
         if registry.effectiveForLid.needsSnapshot { capture() }
     }
 
@@ -318,6 +331,10 @@ public final class AppController: ObservableObject {
         overlay?.metalView.transition = transition
         overlay?.metalView.context = context
         overlay?.metalView.progress = driver.progress
+        onCloseBeginning?()
+        optionWasDown = NSEvent.modifierFlags.contains(.option)
+        overlay?.setCaption(closingCaption?(true))
+        overlay?.setCaptionProgress(driver.progress)
         overlay?.metalView.render()
         let placement = overlay?.show(on: screen) ?? .offActiveSpace
         shownAt = Date()
@@ -387,6 +404,16 @@ public final class AppController: ObservableObject {
             }
         }
 
+        // Option can flip the decision at any point on the way down. Read on frames that
+        // are being drawn anyway: no timer, no event tap, no permission.
+        if state == .closing {
+            let optionDown = NSEvent.modifierFlags.contains(.option)
+            if optionDown != optionWasDown {
+                optionWasDown = optionDown
+                if optionDown, onOptionWhileClosing?() == true { overlay.setCaption(closingCaption?(false), animated: true) }
+            }
+        }
+
         var p = driver.step(dt: dt, hinge: hinge?.progress)
         if state == .pouring { p = max(p, -pourOutOvershoot) }
 
@@ -399,6 +426,7 @@ public final class AppController: ObservableObject {
         if changed || lastRenderedProgress == nil {
             progress = p
             overlay.metalView.progress = p
+            overlay.setCaptionProgress(state == .closing ? p : 0)
             overlay.metalView.context.time = Float(Date().timeIntervalSince(shownAt ?? Date()))
             overlay.metalView.context.velocity = Float(progressVelocity)
             overlay.metalView.render()
@@ -458,6 +486,7 @@ public final class AppController: ObservableObject {
                                     context: makeContext(screen: screen))
         }
         overlay?.setTransparent(false)
+        overlay?.setCaption(nil)
         overlay?.metalView.isBlackedOut = true
         overlay?.metalView.render()
         let placement = overlay?.show(on: screen) ?? .offActiveSpace
@@ -470,6 +499,15 @@ public final class AppController: ObservableObject {
         state = .drained
         startSafetyTimer()
         Log.overlay.info("drained: black overlay in place")
+    }
+
+    /// Stay awake held the Mac through a lid close and locked the screen. No sleep
+    /// will come to put the black overlay up, so do it now: the opening then waits
+    /// for the unlock exactly as it does after a real sleep.
+    func holdBlackUntilUnlock() {
+        guard state == .closing || state == .armed else { return }
+        unlock.refresh()
+        enterDrained()
     }
 
     /// External displays. The effect belongs to the lid's own panel and never

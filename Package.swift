@@ -10,6 +10,7 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "LidSensor", targets: ["LidSensor"]),
+        .library(name: "StayAwake", targets: ["StayAwake"]),
         .library(name: "TransitionKit", targets: ["TransitionKit"]),
         .library(name: "Tuner", targets: ["Tuner"]),
         .library(name: "ShutApp", targets: ["ShutApp"]),
@@ -29,6 +30,13 @@ let package = Package(
         .executableTarget(
             name: "lidangle-cli",
             dependencies: ["LidSensor"]
+        ),
+
+        // Staying awake with the lid shut: reasons, limits, and the one kernel call.
+        // No dependency on the rest of the project, like LidSensor.
+        .target(
+            name: "StayAwake",
+            linkerSettings: [.linkedFramework("IOKit"), .linkedFramework("AppKit")]
         ),
 
         // Rendering: Transition protocol, shared Metal renderer, the transitions.
@@ -57,7 +65,7 @@ let package = Package(
         // executable are a 3-line shim over it.
         .target(
             name: "ShutApp",
-            dependencies: ["LidSensor", "TransitionKit", "Tuner", .product(name: "Sparkle", package: "Sparkle")],
+            dependencies: ["LidSensor", "StayAwake", "TransitionKit", "Tuner", .product(name: "Sparkle", package: "Sparkle")],
             resources: [.copy("Resources")],
             linkerSettings: [
                 .linkedFramework("AppKit"),
@@ -74,6 +82,7 @@ let package = Package(
         ),
 
         .testTarget(name: "LidSensorTests", dependencies: ["LidSensor"]),
+        .testTarget(name: "StayAwakeTests", dependencies: ["StayAwake"]),
         .testTarget(name: "TransitionKitTests", dependencies: ["TransitionKit"]),
         .testTarget(name: "TunerTests", dependencies: ["Tuner"]),
         .testTarget(name: "ShutAppTests", dependencies: ["ShutApp"]),

@@ -9,6 +9,31 @@ enum AppAssets {
         return NSImage(contentsOf: url)
     }()
 
+    /// The Stay awake eyes: six 16 × 12 frames cut from one sheet (see `AwakeEyes`), each
+    /// as the list of its inked pixels. Kept as pixels rather than images because SwiftUI
+    /// smooths a scaled template image whatever `interpolation` says; squares drawn one
+    /// by one stay squares at any size.
+    static let eyesFrameWidth = 16
+    static let eyes: [[CGPoint]] = {
+        guard let url = resourceBundle()?.url(forResource: "Resources/eyes", withExtension: "png")
+                ?? resourceBundle()?.url(forResource: "eyes", withExtension: "png"),
+              let sheet = NSImage(contentsOf: url)?.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return [] }
+        let w = sheet.width, h = sheet.height
+        var pixels = [UInt8](repeating: 0, count: w * h * 4)
+        guard let context = CGContext(data: &pixels, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return [] }
+        context.draw(sheet, in: CGRect(x: 0, y: 0, width: w, height: h))
+        let side = eyesFrameWidth
+        return stride(from: 0, to: w, by: side).map { left in
+            var inked: [CGPoint] = []
+            for y in 0..<h { for x in 0..<side where pixels[(y * w + left + x) * 4 + 3] > 127 {
+                inked.append(CGPoint(x: x, y: y))
+            } }
+            return inked
+        }
+    }()
+
     /// The clean mark (a black glyph on transparency), for the menu bar.
     static let mark: NSImage? = {
         guard let url = resourceBundle()?.url(forResource: "Resources/mark", withExtension: "png")

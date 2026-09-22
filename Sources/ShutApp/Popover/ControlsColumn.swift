@@ -2,8 +2,8 @@ import SwiftUI
 import TransitionKit
 import Tuner
 
-/// Right column: gallery, Speed, the style's featured dials, Animate opening,
-/// and the permission card when the chosen style can't run yet.
+/// Right column: gallery, the permission card when the chosen style can't run yet, the
+/// style's dials, presets. Timing lives under the preview, which is what it changes.
 struct ControlsColumn: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
@@ -21,14 +21,6 @@ struct ControlsColumn: View {
                         .transition(.opacity)
                 }
 
-                VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
-                    Eyebrow("Timing", number: "02").padding(.bottom, 2)
-                    SpeedRow(model: model)
-                    ToggleRow("Animate opening",
-                              isOn: Binding(get: { model.settings.animateOpening }, set: { model.settings.animateOpening = $0 }),
-                              help: "Play the style backwards when the lid opens or the Mac unlocks.")
-                }
-
                 FeelSection(model: model)
                     .id(model.registry.current.id)
                     .transition(.blurFade)
@@ -43,6 +35,17 @@ struct ControlsColumn: View {
             .tunerAnimation(TunerTheme.ease, value: model.registry.current.id)
             .tunerAnimation(TunerTheme.ease, value: model.needsPermissionCard)
         }
+        .fadesAtTheFold()
+    }
+}
+
+extension View {
+    /// A scrolling column ends in a short fade, so a row cut by the bottom edge reads as
+    /// "there is more" instead of as a mistake. A mask, because the panel is glass: there
+    /// is no paper colour to paint over it.
+    func fadesAtTheFold() -> some View {
+        mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.975),
+                                    .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
     }
 }
 
@@ -127,7 +130,7 @@ struct SpeedRow: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
     /// Same as the row's label column, so the end labels sit under the track.
-    private let labelWidth: CGFloat = 96
+    var labelWidth: CGFloat = 96
 
     var body: some View {
         VStack(spacing: 0) {
@@ -160,7 +163,7 @@ struct FeelSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
             HStack {
-                Eyebrow("Adjust \(model.registry.current.displayName)", number: "03")
+                Eyebrow("Adjust \(model.registry.current.displayName)", number: "02")
                 Spacer()
                 QuietButton(showAll ? "Main dials" : "All dials") { showAll.toggle() }
                 QuietButton("Reset") { model.resetStyle(model.registry.current.id) }
@@ -186,7 +189,7 @@ struct ShareSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: TunerTheme.rowGap) {
             HStack {
-                Eyebrow("Presets", number: "04")
+                Eyebrow("Presets", number: "03")
                 Spacer()
                 QuietButton(expanded ? "Done" : "Share…") { expanded.toggle() }
                     .help("Copy or export this preset, or paste and import one.")
@@ -197,24 +200,42 @@ struct ShareSection: View {
     }
 }
 
+/// A style that needs a still of the desktop plays as a plain fade until Screen Recording
+/// is allowed. Not an emergency, so not a Saffron block: a card with a Saffron dot, one
+/// sentence, and one next step at a time. macOS only honours the permission after a
+/// restart, so once "Allow…" has been used the step becomes the restart.
 struct PermissionCard: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Circle().fill(TunerTheme.saffron).frame(width: 7, height: 7)
-                Text("\(model.registry.current.displayName) is showing as a plain fade").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
+        let asked = model.askedForScreenRecording
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Circle().fill(TunerTheme.saffron).overlay(Circle().strokeBorder(theme.ink.opacity(0.5), lineWidth: 1))
+                    .frame(width: 7, height: 7).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\(model.registry.current.displayName) is showing as a plain fade")
+                        .font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
+                    Text(asked ? "Allowed it? macOS applies the permission when Shut restarts."
+                               : "It needs Screen Recording for one still of your desktop. Nothing is saved.")
+                        .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            Text("It needs Screen Recording to take one still of your desktop as the lid moves. Nothing is saved. macOS checks the permission when the app starts, so restart it after allowing.")
-                .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: TunerTheme.rowGap) {
-                ActionRow("Allow…") { model.allowScreenRecording() }
-                ActionRow("Restart") { model.relaunch() }
+            HStack(spacing: 14) {
+                if asked {
+                    PrimaryButton("Restart Shut") { model.relaunch() }
+                    QuietButton("Open Settings again") { model.allowScreenRecording() }
+                } else {
+                    PrimaryButton("Allow…") { model.askedForScreenRecording = true; model.allowScreenRecording() }
+                }
             }
+            .padding(.leading, 15)
         }
-        .padding(16)
-        .surface(.wash(theme.washSaffron), radius: TunerTheme.cardRadius)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .surface(.card, radius: TunerTheme.cardRadius)
+        .tunerAnimation(TunerTheme.ease, value: asked)
     }
 }

@@ -30,6 +30,8 @@ public struct SegmentedRow: View {
                         Text(name)
                             .font(TunerTheme.body)
                             .foregroundStyle(index == selection ? theme.ink : theme.inkLabel)
+                            // Short words that must never become "…": the label gives way, not these.
+                            .lineLimit(1).fixedSize()
                             .padding(.horizontal, 12)
                             .padding(.vertical, 5)
                             .background {
@@ -60,11 +62,12 @@ public struct SegmentedRow: View {
     }
 }
 
-/// A Bool as Off / On segments.
+/// A Bool: its label and the switch. (It was Off / On segments; see `TunerSwitch`.)
 public struct ToggleRow: View {
     let label: String
     @Binding var isOn: Bool
     let help: String
+    @Environment(\.tunerTheme) private var theme
 
     public init(_ label: String, isOn: Binding<Bool>, help: String = "") {
         self.label = label
@@ -73,7 +76,15 @@ public struct ToggleRow: View {
     }
 
     public var body: some View {
-        SegmentedRow(label, options: ["Off", "On"],
-                     selection: Binding(get: { isOn ? 1 : 0 }, set: { isOn = $0 == 1 }), help: help)
+        HStack(spacing: 12) {
+            Text(label).font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineLimit(1)
+            Spacer(minLength: 4)
+            TunerSwitch(isOn: isOn, size: .regular) { isOn.toggle() }
+        }
+        .frame(height: TunerTheme.rowHeight)
+        .contentShape(Rectangle())
+        .help(help)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(label)
     }
 }

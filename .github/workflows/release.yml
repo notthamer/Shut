@@ -63,17 +63,17 @@ jobs:
           GEN=$(find .build/artifacts -type f -name generate_appcast | head -1)
           KEYFILE=$(mktemp) && chmod 600 "$KEYFILE" && trap 'rm -f "$KEYFILE"' EXIT
           printf '%s' "$SPARKLE_PRIVATE_KEY" > "$KEYFILE"
-          "$GEN" --ed-key-file "$KEYFILE" \
+          # Release notes for the update window: generate_appcast picks up a file named like the
+          # archive, and --embed-release-notes puts it inside the appcast (nothing else to host).
+          scripts/release-notes.sh "${{ needs.decide.outputs.version }}" --html > "build/releases/Shut-${{ needs.decide.outputs.version }}.html"
+          "$GEN" --embed-release-notes --ed-key-file "$KEYFILE" \
             --download-url-prefix "https://github.com/${{ github.repository }}/releases/download/v${{ needs.decide.outputs.version }}/" \
             --link "https://github.com/${{ github.repository }}/releases" \
             build/releases
           ls build/releases
       - name: Release notes
         run: |
-          awk -v v="${{ needs.decide.outputs.version }}" '
-            $0 ~ "^## " { on = ($2 == v) ; next }
-            on { print }' CHANGELOG.md > build/releases/notes.md
-          [ -s build/releases/notes.md ] || echo "Shut ${{ needs.decide.outputs.version }}" > build/releases/notes.md
+          scripts/release-notes.sh "${{ needs.decide.outputs.version }}" > build/releases/notes.md
           cat build/releases/notes.md
       - name: Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2

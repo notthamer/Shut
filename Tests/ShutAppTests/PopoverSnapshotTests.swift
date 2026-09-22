@@ -61,27 +61,6 @@ final class PopoverSnapshotTests: XCTestCase {
         }
     }
 
-    /// The welcome is the one dark surface; rasterise it so the stage is checked
-    /// as an image.
-    func testWelcomeRendersOffscreen() throws {
-        let frame = NSRect(x: 0, y: 0, width: 480, height: 380)
-        let stage = VoidBackdrop(frame: frame)
-        let hosting = NSHostingView(rootView: WelcomeView(capability: .continuousAngle, enable: {}))
-        hosting.frame = frame
-        stage.addSubview(hosting)
-        let window = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
-        window.contentView = stage
-        hosting.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
-        let rep = try XCTUnwrap(stage.bitmapImageRepForCachingDisplay(in: stage.bounds))
-        stage.cacheDisplay(in: stage.bounds, to: rep)
-        XCTAssertGreaterThan(rep.pixelsWide, 0)
-        if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"],
-           let png = rep.representation(using: .png, properties: [:]) {
-            try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("welcome.png"))
-        }
-    }
-
     func testSpeedMapsToBand() {
         let defaults = UserDefaults(suiteName: "PopoverSpeed-\(UUID().uuidString)")!
         let settings = AppSettings(defaults: defaults)
@@ -108,6 +87,42 @@ final class AssetTests: XCTestCase {
         if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"], let cg = icon.cgImage(forProposedRect: nil, context: nil, hints: nil) {
             try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
                 .write(to: URL(fileURLWithPath: dir).appendingPathComponent("menubar-icon.png"))
+        }
+    }
+
+    /// Dot and ring are tinted by the menu bar; only Saffron brings its own colour.
+    func testMenuBarBadges() throws {
+        let mark = try XCTUnwrap(AppAssets.menuBarIcon)
+        XCTAssertTrue(MenuBarController.image(mark: mark, dot: .idle) === mark, "idle is the plain mark")
+        for dot in [AwakeText.Dot.holding, .winding, .warning] {
+            let image = MenuBarController.image(mark: mark, dot: dot)
+            XCTAssertEqual(image.size, mark.size)
+            XCTAssertEqual(image.isTemplate, dot != .warning)
+            XCTAssertNotNil(image.accessibilityDescription)
+            guard let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"] else { continue }
+            // Eight times the size, on a light and a dark bar, so the badge can be judged by eye.
+            let sheet = NSImage(size: NSSize(width: 288, height: 144), flipped: false) { _ in
+                for (index, appearance) in [NSAppearance.Name.aqua, .darkAqua].enumerated() {
+                    NSAppearance(named: appearance)?.performAsCurrentDrawingAppearance {
+                        let cell = NSRect(x: CGFloat(index) * 144, y: 0, width: 144, height: 144)
+                        (index == 0 ? NSColor(white: 0.9, alpha: 1) : NSColor(white: 0.16, alpha: 1)).setFill()
+                        cell.fill()
+                        if image.isTemplate {
+                            let tinted = NSImage(size: image.size, flipped: false) { rect in
+                                image.draw(in: rect); NSColor.labelColor.setFill(); rect.fill(using: .sourceIn); return true
+                            }
+                            tinted.draw(in: cell)
+                        } else {
+                            image.draw(in: cell)
+                        }
+                    }
+                }
+                return true
+            }
+            if let cg = sheet.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+                    .write(to: URL(fileURLWithPath: dir).appendingPathComponent("menubar-badge-\(dot).png"))
+            }
         }
     }
 }

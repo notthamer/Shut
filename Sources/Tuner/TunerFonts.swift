@@ -117,6 +117,12 @@ public enum TunerFonts {
         Font.system(size: size, weight: weight, design: .monospaced)
     }
 
+    /// The AppKit counterpart of `display`.
+    public static func nsDisplay(_ size: CGFloat) -> NSFont {
+        (availableFaces.contains(displayPostScriptName) ? NSFont(name: displayPostScriptName, size: size) : nil)
+            ?? NSFont.systemFont(ofSize: size, weight: .regular)
+    }
+
     /// The AppKit counterpart of `font`, for places that draw with NSFont.
     public static func nsFont(_ size: CGFloat, weight: Font.Weight = .regular) -> NSFont {
         nsFont(named: postScriptName(for: weight), size: size, weight: weight)

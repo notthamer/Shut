@@ -30,7 +30,7 @@ public struct TunerTheme {
     public static let voidBlack = Color(red: 0.008, green: 0.008, blue: 0.016)   // #020204 the dark stage (welcome)
     public static let pureBlack = Color.black                                   // #000000 primary text, icons, fills
     public static let carbon = Color(red: 0.388, green: 0.388, blue: 0.388)     // #636363 secondary text
-    public static let slate = Color(red: 0.533, green: 0.533, blue: 0.533)      // #888888 tertiary text, disabled
+    public static let slate = Color(red: 0.463, green: 0.463, blue: 0.463)      // #767676 eyebrows, scales, disabled. Text that carries meaning is Carbon: #888888 here was 3.2:1 on the paper
     public static let silver = Color(red: 0.776, green: 0.776, blue: 0.776)     // #C6C6C6 borders, dividers, ticks
     public static let softGraphite = Color(red: 0.341, green: 0.341, blue: 0.341) // #575757 dark button fill
     public static let paperWhite = Color.white                                  // #FFFFFF cards, the primary button

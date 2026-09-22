@@ -11,6 +11,35 @@ import TransitionKit
 final class OverlayWindowTests: XCTestCase {
     /// GitHub-hosted macOS runners have no GPU. Skip, do not fail.
     override func setUpWithError() throws { try XCTSkipUnless(MTLCreateSystemDefaultDevice() != nil, "No Metal device on this machine") }
+    /// The caption over the worst wallpaper there is: plain white. The gradient under it
+    /// has to carry it. Dumped for the eye; asserted by sampling the pixels behind the text.
+    func testCaptionHoldsOnAWhiteDesktop() throws {
+        let frame = NSRect(x: 0, y: 0, width: 1512, height: 982)
+        let container = NSView(frame: frame)
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor.white.cgColor
+        let view = ClosingCaptionView(frame: frame)
+        container.addSubview(view)
+        for (name, caption) in [
+            ("holding", AwakeText.Caption(text: "Staying awake · Claude Code is working", warning: false, hint: "Hold ⌥ to let it sleep instead")),
+            ("warning", AwakeText.Caption(text: "Sleeping · battery is at 18 %", warning: true, hint: nil)),
+        ] {
+            view.caption = caption
+            view.progress = 1
+            view.layoutSubtreeIfNeeded()
+            let rep = try XCTUnwrap(container.bitmapImageRepForCachingDisplay(in: frame))
+            container.cacheDisplay(in: frame, to: rep)
+            // Just left of the text, low in the band: white paper darkened by the gradient.
+            let behind = try XCTUnwrap(rep.colorAt(x: 40, y: rep.pixelsHigh - Int(Double(rep.pixelsHigh) * 0.08)))
+            XCTAssertLessThan(behind.brightnessComponent, 0.6, "the gradient darkens a white desktop under the caption")
+            if let dir = ProcessInfo.processInfo.environment["SHUT_FRAME_DUMP"], let png = rep.representation(using: .png, properties: [:]) {
+                try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("caption-white-\(name).png"))
+            }
+        }
+        view.caption = nil
+        view.layoutSubtreeIfNeeded()
+    }
+
     func testOverlayWindowConstructs() throws {
         let renderer = try TransitionRenderer()
         let screen = try XCTUnwrap(BuiltInDisplay.screen ?? NSScreen.main)

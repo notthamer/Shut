@@ -49,7 +49,10 @@ jobs:
           [ -n "$SPARKLE_PRIVATE_KEY" ] || { echo "::error::SPARKLE_PRIVATE_KEY secret is not set"; exit 1; }
           KEYFILE=$(mktemp) && chmod 600 "$KEYFILE" && trap 'rm -f "$KEYFILE"' EXIT
           printf '%s' "$SPARKLE_PRIVATE_KEY" > "$KEYFILE"
-          "$GEN" --ed-key-file "$KEYFILE" \
+          # Release notes for the update window: generate_appcast picks up a file named like the
+          # archive, and --embed-release-notes puts it inside the appcast (nothing else to host).
+          scripts/release-notes.sh "${{ steps.v.outputs.version }}" --html > "build/releases/Shut-${{ steps.v.outputs.version }}.html"
+          "$GEN" --embed-release-notes --ed-key-file "$KEYFILE" \
             --download-url-prefix "https://github.com/${{ github.repository }}/releases/download/v${{ steps.v.outputs.version }}/" \
             --link "https://github.com/${{ github.repository }}/releases" \
             build/releases

@@ -8,6 +8,9 @@ final class DockPresence {
     private var visible = Set<String>()
     /// The user's choice: a Dock icon at all times, or menu bar only.
     var alwaysVisible = true { didSet { apply() } }
+    /// Told when the first of Shut's windows opens and when the last one closes,
+    /// so live readouts only run while there is someone to read them.
+    var onSurfacesChanged: ((Bool) -> Void)?
 
     func retain(_ key: String) {
         visible.insert(key)
@@ -19,7 +22,14 @@ final class DockPresence {
         apply()
     }
 
+    private var hadSurfaces = false
+
     private func apply() {
+        let hasSurfaces = visible.contains("popover") || visible.contains("window")
+        if hasSurfaces != hadSurfaces {
+            hadSurfaces = hasSurfaces
+            onSurfacesChanged?(hasSurfaces)
+        }
         let wanted: NSApplication.ActivationPolicy = (alwaysVisible || !visible.isEmpty) ? .regular : .accessory
         if NSApp.activationPolicy() != wanted { NSApp.setActivationPolicy(wanted) }
     }

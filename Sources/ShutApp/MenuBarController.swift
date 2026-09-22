@@ -1,6 +1,8 @@
 import AppKit
 import Combine
+import SwiftUI
 import TransitionKit
+import Tuner
 
 /// The status item and its menu. The angle readout only updates while the menu
 /// is open, so an idle app does no menu work at all.
@@ -20,6 +22,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let transitionMenu = NSMenu()
     private let presetMenu = NSMenu()
     private let presetItem = NSMenuItem(title: "Preset", action: nil, keyEquivalent: "")
+    private let awakeStatusItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let letItSleepItem = NSMenuItem(title: "Let It Sleep Now", action: #selector(letItSleep), keyEquivalent: "")
+    private let stayAwakeItem = NSMenuItem(title: "Stay Awake with the Lid Shut", action: #selector(toggleStayAwake), keyEquivalent: "")
     private let permissionItem = NSMenuItem(title: "Grant Screen Recording…", action: #selector(openPermission), keyEquivalent: "")
 
     /// Wired by the app once the Tuner host exists.
@@ -32,6 +37,93 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     var launchAtLoginItem: NSMenuItem?
     /// Left click on the icon. The menu stays on right click for keyboard users.
     var togglePopover: ((NSStatusBarButton) -> Void)?
+    /// The first switch-on needs the consent sheet, which lives in the panel.
+    var showAwakePage: (() -> Void)?
+    /// "What's New…": the card an update shows once, on request.
+    var showWhatsNew: (() -> Void)?
+
+    /// Set once by the app. The mark carries a small badge that says what the lid will do,
+    /// in the one place that is always on screen: a dot while holding, a ring while winding
+    /// down, Saffron when a limit is near or has spoken. It follows the controller's changes
+    /// as events, never a timer.
+    var stayAwake: StayAwakeController? {
+        didSet {
+            guard let stayAwake else { return }
+            stayAwake.objectWillChange
+                .receive(on: RunLoop.main)   // willChange: read the new values on the next turn
+                .map { [weak stayAwake] _ -> Badge in
+                    guard let stayAwake else { return Badge(dot: .idle, toolTip: "Shut") }
+                    let arbiter = stayAwake.arbiter
+                    let dot = AwakeText.badge(state: arbiter.state, conditions: arbiter.conditions, limits: arbiter.limits)
+                    // The headline has no running time in it, so a tooltip set now stays true.
+                    let headline = AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
+                                                  limits: arbiter.limits, armed: stayAwake.armed, now: Date()).headline
+                    return Badge(dot: dot, toolTip: arbiter.limits.isOn ? "Shut · \(headline)" : "Shut")
+                }
+                .removeDuplicates()
+                .sink { [weak self] badge in self?.show(badge) }
+                .store(in: &cancellables)
+        }
+    }
+
+    private struct Badge: Equatable {
+        let dot: AwakeText.Dot
+        let toolTip: String
+    }
+
+    private func show(_ badge: Badge) {
+        guard let button = statusItem.button, let mark = AppAssets.menuBarIcon else { return }
+        button.toolTip = badge.toolTip
+        button.image = Self.image(mark: mark, dot: badge.dot)
+    }
+
+    /// The mark with its badge. Dot and ring stay template images, so the menu bar tints
+    /// them. Saffron cannot be a template: there the mark is filled with `labelColor`
+    /// inside the drawing handler, which AppKit runs again whenever the menu bar turns
+    /// light or dark.
+    static func image(mark: NSImage, dot: AwakeText.Dot) -> NSImage {
+        guard dot != .idle else { return mark }
+        let image = NSImage(size: mark.size, flipped: false) { rect in
+            mark.draw(in: rect)
+            if dot == .warning {
+                NSColor.labelColor.setFill()
+                rect.fill(using: .sourceIn)
+            }
+            let spot = NSRect(x: rect.maxX - 6, y: rect.maxY - 6, width: 5.5, height: 5.5)
+            // A sliver of nothing around the badge, so it reads as a badge and not as
+            // part of the mark it overlaps.
+            NSGraphicsContext.current?.compositingOperation = .clear
+            NSBezierPath(ovalIn: spot.insetBy(dx: -1.25, dy: -1.25)).fill()
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            switch dot {
+            case .idle: break
+            case .holding:
+                NSColor.black.setFill()
+                NSBezierPath(ovalIn: spot).fill()
+            case .winding:
+                NSColor.black.setStroke()
+                let ring = NSBezierPath(ovalIn: spot.insetBy(dx: 0.6, dy: 0.6))
+                ring.lineWidth = 1.2
+                ring.stroke()
+            case .warning:
+                NSColor(TunerTheme.saffron).setFill()
+                NSBezierPath(ovalIn: spot.insetBy(dx: -0.5, dy: -0.5)).fill()
+                NSColor.labelColor.withAlphaComponent(0.55).setStroke()
+                let edge = NSBezierPath(ovalIn: spot.insetBy(dx: -0.5, dy: -0.5))
+                edge.lineWidth = 0.75
+                edge.stroke()
+            }
+            return true
+        }
+        image.isTemplate = dot != .warning
+        switch dot {
+        case .idle: break
+        case .holding: image.accessibilityDescription = "Shut, keeping the Mac awake"
+        case .winding: image.accessibilityDescription = "Shut, about to let the Mac sleep"
+        case .warning: image.accessibilityDescription = "Shut, not keeping the Mac awake: a limit was reached or is near"
+        }
+        return image
+    }
 
     init(controller: AppController, settings: AppSettings, registry: TransitionRegistry) {
         self.controller = controller
@@ -62,6 +154,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(angleItem)
         menu.addItem(.separator())
 
+        awakeStatusItem.isEnabled = false
+        menu.addItem(awakeStatusItem)
+        letItSleepItem.target = self
+        menu.addItem(letItSleepItem)
+        stayAwakeItem.target = self
+        menu.addItem(stayAwakeItem)
+        menu.addItem(.separator())
+
         let transitionItem = NSMenuItem(title: "Transition", action: nil, keyEquivalent: "")
         transitionItem.submenu = transitionMenu
         menu.addItem(transitionItem)
@@ -85,6 +185,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(login)
         menu.addItem(.separator())
 
+        // Only in a packaged app: the notes are put there by scripts/build.sh.
+        if WhatsNew.bundled() != nil || WhatsNewTour.slides(for: InstanceVersion.current.short) != nil {
+            let news = NSMenuItem(title: "What’s New in Shut \(InstanceVersion.current.short)…", action: #selector(openWhatsNew), keyEquivalent: "")
+            news.target = self
+            menu.addItem(news)
+        }
         menu.addItem(quitItem)
     }
 
@@ -117,6 +223,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         permissionItem.isHidden = ScreenRecordingPermission.isGranted
         launchAtLoginItem?.state = LaunchAtLogin.isEnabled ? .on : .off
+        if let stayAwake {
+            let status = stayAwake.status
+            let on = stayAwake.settings.isOn && stayAwake.settings.hasConsented
+            awakeStatusItem.title = status.sentence
+            awakeStatusItem.isHidden = !on
+            letItSleepItem.isHidden = status.action != .letItSleep
+            stayAwakeItem.state = on ? .on : .off
+            stayAwakeItem.isHidden = !stayAwake.hasLid
+        }
         presetMenu.removeAllItems()
         let items = presetMenuProvider?() ?? []
         presetItem.isHidden = items.isEmpty
@@ -164,4 +279,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         settings.transitionID = id
     }
     @objc private func toggleLaunchAtLogin() { LaunchAtLogin.toggle() }
+    @objc private func openWhatsNew() { showWhatsNew?() }
+    @objc private func letItSleep() { stayAwake?.perform(.letItSleep) }
+    @objc private func toggleStayAwake() {
+        guard let stayAwake else { return }
+        if stayAwake.needsConsent { showAwakePage?() } else { stayAwake.settings.isOn.toggle() }
+    }
 }

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import LidSensor
+import StayAwake
 import SwiftUI
 import TransitionKit
 import Tuner
@@ -8,6 +9,17 @@ import Tuner
 /// Entry point shared by the Xcode app target and the SwiftPM `shut`
 /// executable. Both call `ShutApp.run()` and nothing else.
 public enum ShutApp {
+    /// `shut hold …` is a command, not a launch. Handled before the app starts, so it
+    /// never meets the single-instance handover; returns only when there was no command.
+    public static func runCommandIfAny() {
+        let arguments = CommandLine.arguments
+        // The guard a holding Shut keeps beside it (see `LidGuard`). First, and before
+        // anything of the app exists: this process must never become a second Shut.
+        if arguments.contains(LidGuard.argument) { LidGuard.run(arguments: arguments) }
+        guard arguments.count >= 2, arguments[1] == "hold" else { return }
+        exit(HoldCommand.run(Array(arguments.dropFirst(2))))
+    }
+
     /// Writes every built-in preset to `dir/<transition>/<name>.json`, the same
     /// format Tuner saves and the repo's presets/ folder uses.
     public static func exportBuiltInPresets(to dir: URL) throws -> [URL] {
@@ -43,7 +55,7 @@ public enum ShutApp {
             ("fonts, every face\(missing.isEmpty ? "" : ": missing " + missing.joined(separator: ", "))", missing.isEmpty),
             ("fonts, system font stands in for a missing face", TunerFonts.systemFallbackWorks),
             ("shaders (Shut_TransitionKit.bundle)", TransitionRenderer.shaderSourcesArePresent),
-            ("images (Shut_ShutApp.bundle)", AppAssets.logo != nil && AppAssets.mark != nil),
+            ("images (Shut_ShutApp.bundle)", AppAssets.logo != nil && AppAssets.mark != nil && AppAssets.eyes.count == 6),
         ]
         for (name, passed) in checks { print("\(passed ? "ok  " : "FAIL") \(name)") }
         return checks.allSatisfy(\.1) ? 0 : 1
@@ -67,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var registry: TransitionRegistry!
     private var renderer: TransitionRenderer!
     private var controller: AppController!
+    private var stayAwake: StayAwakeController!
     private var menuBar: MenuBarController!
     private var previewModel: PreviewModel!
     private var tunerHost: TunerHost?
@@ -74,6 +87,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popoverModel: PopoverModel!
     private var popover: PopoverController!
     private var mainWindow: MainWindowController!
+    private var receiptSlip: ReceiptSlip!
+    private let whatsNew = WhatsNewCard()
     private let welcome = WelcomeWindow()
     private let dock = DockPresence()
     private let updater = Updater()
@@ -125,7 +140,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         controller = AppController(settings: settings, sensor: sensor, registry: registry, renderer: renderer)
+        // Stay awake starts by undoing anything a crashed run left behind, so it
+        // comes up before the lid can move.
+        stayAwake = StayAwakeController()
+        controller.onLidStartedClosing = { [weak self] in self?.stayAwake.lidStartedClosing() }
+        controller.onCloseBeginning = { [weak self] in self?.stayAwake.closeBeginning() }
+        controller.closingCaption = { [weak self] beginning in self?.stayAwake.closingCaption(beginning: beginning) }
+        controller.onOptionWhileClosing = { [weak self] in self?.stayAwake.flipDecision() ?? false }
+        stayAwake.onLockedWhileShut = { [weak self] in self?.controller.holdBlackUntilUnlock() }
+        stayAwake.start()
         menuBar = MenuBarController(controller: controller, settings: settings, registry: registry)
+        menuBar.stayAwake = stayAwake
+        // The cards count minutes and show what is working right now; only worth
+        // reading while one of Shut's windows is open.
+        dock.onSurfacesChanged = { [weak self] open in self?.stayAwake.arbiter.setLiveUpdates(open) }
 
         tunerHost = TunerHost(registry: registry, previewModel: previewModel, controller: controller, settings: settings)
         menuBar.openTuner = { [weak self] in self?.tunerHost?.toggle() }
@@ -137,7 +165,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.lid.info("hinge capability: \(capability.rawValue, privacy: .public)")
 
         thumbnails = try? TransitionThumbnailRenderer()
-        popoverModel = PopoverModel(settings: settings, registry: registry, preview: previewModel, sensor: sensor, thumbnails: thumbnails)
+        popoverModel = PopoverModel(settings: settings, registry: registry, preview: previewModel, sensor: sensor,
+                                    thumbnails: thumbnails, stayAwake: stayAwake)
         popoverModel.openTuner = { [weak self] in self?.popover.close(); self?.tunerHost?.toggle() }
         popoverModel.allowScreenRecording = {
             ScreenRecordingPermission.request()
@@ -186,6 +215,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.checkPermissionNow()
             if mainWindow.isShown { popover.close(); mainWindow.show() } else { popover.toggle(relativeTo: button) }
         }
+        // Coming back to a Mac that stayed awake: the receipt is handed over, not filed.
+        receiptSlip = ReceiptSlip(stayAwake: stayAwake,
+                                  anotherSurfaceIsOpen: { [weak self] in self?.popover.isShown == true })
+        receiptSlip.anchor = { [weak self] in self?.menuBar.statusButton }
+        receiptSlip.openAwakePage = { [weak self] in self?.menuBar.showAwakePage?() }
+        stayAwake.onReturn = { [weak self] receipt in self?.receiptSlip.lidOpened(receipt) }
+
+        menuBar.showAwakePage = { [weak self] in
+            guard let self else { return }
+            popoverModel.page = .awake
+            popoverModel.showingAwakeConsent = stayAwake.needsConsent
+            mainWindow.show()
+        }
         menuBar.showPermissionWindow = { [weak self] in
             guard let self else { return }
             if mainWindow.isShown { mainWindow.show() }
@@ -194,8 +236,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Zero prompts at launch. Permissions are explained in the popover, only
         // when a chosen style needs them.
+        // Someone who already had Shut, on the first launch of a new version: what changed.
+        whatsNew.anchor = { [weak self] in self?.menuBar.statusButton }
+        whatsNew.showMe = { [weak self] in self?.menuBar.showAwakePage?() }
+        popoverModel.showWhatsNew = { [weak self] in
+            self?.popover.close()
+            self?.menuBar.showWhatsNew?()
+        }
+        menuBar.showWhatsNew = { [weak self] in
+            // A tour needs no notes, so it shows in a run from Xcode too (the notes are put in by scripts/build.sh).
+            let version = InstanceVersion.current.short
+            if let news = WhatsNew.bundled() ?? (WhatsNewTour.slides(for: version) != nil ? WhatsNew(title: "", lead: "", points: []) : nil) {
+                self?.whatsNew.show(news, version: version)
+            }
+        }
+        let version = InstanceVersion.current.short
+        if WhatsNew.isDue(current: version, lastSeen: settings.lastSeenVersion, hasCompletedFirstRun: settings.hasCompletedFirstRun),
+           let news = WhatsNew.bundled() {
+            // After the menu bar has settled, so the card lands under the icon.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.whatsNew.show(news, version: version) }
+        }
+        settings.lastSeenVersion = version
+
         if !settings.hasCompletedFirstRun {
-            welcome.show(capability: capability) { [weak self] in
+            welcome.show(capability: capability, model: popoverModel) { [weak self] in
                 self?.settings.isEnabled = true
                 self?.settings.hasCompletedFirstRun = true
                 self?.mainWindow.show()
@@ -228,6 +292,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // Quit, an update relaunch, a newer copy taking over: the lid goes back to normal.
+        stayAwake?.shutDown()
         controller?.teardown(reason: "quit")
         sensor?.stop()
     }

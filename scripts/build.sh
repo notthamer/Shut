@@ -27,6 +27,8 @@ for bundle in $BUNDLES; do
   [ -d "$bundle" ] && cp -R "$bundle" "$APP/Contents/Resources/"
 done
 cp App/Shut.icns "$APP/Contents/Resources/Shut.icns"
+# This version's section of the changelog, for the "What's new" card shown once after an update.
+scripts/release-notes.sh "$VERSION" > "$APP/Contents/Resources/WhatsNew.md"
 
 # The typefaces are part of the product. Every font in the source tree has to be in
 # the app, at the path Info.plist's ATSApplicationFontsPath points macOS to.

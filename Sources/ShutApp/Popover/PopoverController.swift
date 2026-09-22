@@ -26,6 +26,19 @@ final class PopoverController {
         if isShown { close() } else { show(relativeTo: button) }
     }
 
+    /// 8 pt under the status item, centred on it, clamped to the screen. Without a status
+    /// item (it can be hidden by a full menu bar): the top right corner, where it would be.
+    static func origin(for size: NSSize, under button: NSStatusBarButton?) -> NSPoint {
+        if let button, let window = button.window {
+            let rect = window.convertToScreen(button.convert(button.bounds, to: nil))
+            let screen = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+            return NSPoint(x: min(max(rect.midX - size.width / 2, screen.minX + 8), screen.maxX - size.width - 8),
+                           y: rect.minY - 8 - size.height)
+        }
+        let screen = NSScreen.main?.visibleFrame ?? .zero
+        return NSPoint(x: screen.maxX - size.width - 8, y: screen.maxY - 8 - size.height)
+    }
+
     func show(relativeTo button: NSStatusBarButton) {
         let panel = self.panel ?? makePanel()
         self.panel = panel
@@ -34,16 +47,7 @@ final class PopoverController {
         // Always fresh: the desktop behind the panel is what the effect will play on.
         model.preview.capture()
 
-        // Sit 8 pt under the status item, centred on it, clamped to the screen.
-        let size = panel.frame.size
-        var origin = NSPoint(x: 0, y: 0)
-        if let window = button.window {
-            let rect = window.convertToScreen(button.convert(button.bounds, to: nil))
-            let screen = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
-            origin.x = min(max(rect.midX - size.width / 2, screen.minX + 8), screen.maxX - size.width - 8)
-            origin.y = rect.minY - 8 - size.height
-        }
-        panel.setFrameOrigin(origin)
+        panel.setFrameOrigin(Self.origin(for: panel.frame.size, under: button))
 
         button.highlight(true)
         dock.retain("popover")
@@ -86,7 +90,7 @@ final class PopoverController {
 
     private static let ease = CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1)
     private static var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
-    private static func duration(_ seconds: Double) -> Double { seconds * TunerTheme.motionScale }
+    static func duration(_ seconds: Double) -> Double { seconds * TunerTheme.motionScale }
 
 
     private func makePanel() -> NSPanel {

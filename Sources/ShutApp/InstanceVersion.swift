@@ -24,6 +24,27 @@ struct InstanceVersion: Equatable {
         self.build = build
     }
 
+    /// "v0.2.1": what the footer shows.
+    var label: String { "v\(short)" }
+
+    /// Everything a bug report needs, on one line, for the clipboard:
+    /// "Shut 0.2.1 (3) · macOS 26.6.2 (25G83) · Mac16,5". Nothing that identifies a person.
+    func report(os: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion,
+                osBuild: String = InstanceVersion.systemString("kern.osversion"),
+                model: String = InstanceVersion.systemString("hw.model")) -> String {
+        let system = "macOS \(os.majorVersion).\(os.minorVersion)" + (os.patchVersion > 0 ? ".\(os.patchVersion)" : "")
+        return ["Shut \(short) (\(build))", osBuild.isEmpty ? system : "\(system) (\(osBuild))", model]
+            .filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    static func systemString(_ name: String) -> String {
+        var size = 0
+        guard sysctlbyname(name, nil, &size, nil, 0) == 0, size > 0 else { return "" }
+        var bytes = [CChar](repeating: 0, count: size)
+        guard sysctlbyname(name, &bytes, &size, nil, 0) == 0 else { return "" }
+        return String(cString: bytes)
+    }
+
     /// True under the debugger (Xcode's Run). `P_TRACED` on our own kinfo_proc.
     static var isBeingDebugged: Bool {
         var info = kinfo_proc()

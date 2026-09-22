@@ -14,10 +14,13 @@ final class PopoverModel: ObservableObject {
     let preview: PreviewModel
     let sensor: LidSensorMonitor
     let thumbnails: TransitionThumbnailRenderer?
+    let stayAwake: StayAwakeController
 
     /// Actions supplied by the app; tests pass no-ops.
     var openTuner: () -> Void = {}
     var openWindow: () -> Void = {}
+    /// "What's new" behind the gear: the same card the menu bar menu opens.
+    var showWhatsNew: () -> Void = {}
     var quit: () -> Void = { DispatchQueue.main.async { NSApp.terminate(nil) } }
     var allowScreenRecording: () -> Void = {}
     var relaunch: () -> Void = {}
@@ -34,14 +37,22 @@ final class PopoverModel: ObservableObject {
     var shareView: (String, Binding<Bool>) -> AnyView = { _, _ in AnyView(EmptyView()) }
     var resetStyle: (String) -> Void = { _ in }
 
+    /// The panel has two pages of the same size: the lid styles, and Stay awake.
+    enum Page { case styles, awake }
+    @Published var page: Page = .styles
+    @Published var showingAwakeConsent = false
+
     @Published var stateDescription = "idle"
     @Published var thumbnailGeneration = 0
     /// Per-style counters so a changed dial re-draws one card, not the grid.
     @Published private(set) var thumbnailVersions: [String: Int] = [:]
     private var cancellables = Set<AnyCancellable>()
 
+    /// Tests pass no `stayAwake` and get one on throwaway defaults that is never started.
     init(settings: AppSettings, registry: TransitionRegistry, preview: PreviewModel, sensor: LidSensorMonitor,
-         thumbnails: TransitionThumbnailRenderer?) {
+         thumbnails: TransitionThumbnailRenderer?, stayAwake: StayAwakeController? = nil) {
+        self.stayAwake = stayAwake ?? StayAwakeController(
+            settings: StayAwakeSettings(defaults: UserDefaults(suiteName: "StayAwake-\(UUID().uuidString)") ?? .standard))
         self.settings = settings
         self.registry = registry
         self.preview = preview
@@ -58,9 +69,25 @@ final class PopoverModel: ObservableObject {
             }
         }
         settings.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        self.stayAwake.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         sensor.$capability.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+    }
+
+    /// The status line's button. The first switch-on opens the page and explains itself.
+    func performAwake(_ action: AwakeText.Action) {
+        if action == .turnOn, stayAwake.needsConsent {
+            page = .awake
+            showingAwakeConsent = true
+        } else {
+            stayAwake.perform(action)
+        }
+    }
+
+    func toggleAwake() {
+        if stayAwake.needsConsent { showingAwakeConsent = true }
+        else { stayAwake.settings.isOn.toggle() }
     }
 
     var statusLine: String {
@@ -76,6 +103,34 @@ final class PopoverModel: ObservableObject {
         case .unsupported: return "Preview only: no lid sensor on this Mac"
         }
         return BuiltInDisplay.externalCount > 0 ? "\(base), on the built-in display" : base
+    }
+
+    /// Running and doing what it says: nothing the header needs to spell out. The
+    /// permission card speaks for a style that is standing in, so that counts too.
+    var statusIsOrdinary: Bool {
+        guard settings.isEnabled else { return false }
+        if BuiltInDisplay.screen == nil, BuiltInDisplay.externalCount > 0 { return false }
+        return sensor.capability != .unsupported
+    }
+
+    /// The "Lid effects" tab's second line: the style and whether it is running, or why not.
+    var lidEffectsLine: String {
+        let style = registry.current.displayName
+        if !settings.isEnabled { return "\(style) · Paused" }
+        if BuiltInDisplay.screen == nil, BuiltInDisplay.externalCount > 0 { return "Lid shut · nothing to play" }
+        if registry.isSubstituting { return "\(style) · plain fade for now" }
+        if sensor.capability == .unsupported { return "\(style) · preview only" }
+        return "\(style) · On"
+    }
+
+    /// Set once "Allow…" has opened System Settings: from then on the card's next step is
+    /// the restart macOS needs before the permission counts.
+    @Published var askedForScreenRecording = false
+    /// The list of apps under "An app is busy".
+    @Published var showingAllowedApps = false
+    /// The folded Settings on the Awake page.
+    @Published var showingAwakeSettings = false {
+        didSet { if showingAwakeSettings, !oldValue { stayAwake.startTheBatteryLevelFromTheChargeOnce() } }
     }
 
     var needsPermissionCard: Bool {
