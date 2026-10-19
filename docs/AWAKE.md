@@ -11,11 +11,22 @@ Shut never asks "for how long?". It keeps the Mac awake with the lid shut while 
 | Something is working | an app you allowed is asking macOS to stay awake: a coding agent in a terminal, a render, an export, a download |
 | A display is connected | an external display is plugged in (macOS only allows this on a charger with a keyboard and mouse; Shut lifts both conditions) |
 | These apps are open | an app you picked is running |
-| I say so | an hour, four hours, or until you stop it |
+| I say so | a time on the dial, from five minutes to twelve hours, or until the lid opens |
 | A command says so | `shut hold` on the command line |
 
 It is off until you turn it on, and the first time it says what it does on one
 screen.
+
+## One arming is one close
+
+The switch is armed for the next close of the lid and nothing more. When the lid
+opens again it goes back to Off by itself, the eyes go to sleep, and a launch never
+finds it on: the switch is the one setting that is not saved. (It used to be saved
+like the rest, and a switch forgotten on kept a Mac awake through every close for
+days, until the battery gave out. A switch that has to be set each time cannot be
+forgotten.) The way chosen, Automatically or for a set time, and the time on the
+dial are remembered, so arming again is one flick. "Until I stop" on the dial
+therefore means until the lid opens.
 
 ## What you see
 

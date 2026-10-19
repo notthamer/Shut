@@ -127,6 +127,9 @@ public final class StayAwakeController: ObservableObject {
     func lidEdge(isOpen: Bool, now: Date = Date()) {
         // macOS has been seen to deliver the same edge twice, 8 ms apart.
         guard isOpen != lastLidWasOpen else { return }
+        // The provider also says the lid's state once as it starts, which is not an edge:
+        // only an open that follows a shut ends an arming.
+        let wasShut = lastLidWasOpen == false
         lastLidWasOpen = isOpen
         arbiter.refreshPower()
         arbiter.lidChanged(closed: !isOpen)
@@ -143,6 +146,13 @@ public final class StayAwakeController: ObservableObject {
             // a receipt read the moment it draws it, and that must not swallow the slip.
             if let receipt = journal.last, !receipt.read, receipt.openedAt.map({ now.timeIntervalSince($0) < 5 }) == true {
                 onReturn?(receipt)
+            }
+            // One arming is one close. The lid is open again, so the switch goes back to Off by
+            // itself; whoever wants the next close held sets it again, and nobody is kept awake
+            // by a switch they forgot.
+            if wasShut, settings.isOn {
+                settings.isOn = false
+                Log.awake.notice("lid opened: Stay awake switched itself off")
             }
             objectWillChange.send()
         } else {

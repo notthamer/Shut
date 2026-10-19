@@ -288,10 +288,8 @@ final class AwakeSnapshotTests: XCTestCase {
         XCTAssertNil(try XCTUnwrap(awake.manualHold).until, "until stopped, started afresh with the lid shut")
         awake.lidEdge(isOpen: true)
         XCTAssertNil(awake.manualHold, "opening the lid ends the time")
-        XCTAssertEqual(awake.armed, .untilStopped, "and the next close starts it again")
-        awake.setManualHold(stop: 0)
-        XCTAssertNil(awake.armed)
-        XCTAssertEqual(awake.arbiter.state, .ready)
+        XCTAssertFalse(awake.settings.isOn, "and switches Stay awake off: one arming is one close")
+        XCTAssertTrue(awake.settings.timedMode, "the way chosen is remembered for the next arming")
         awake.shutDown()
     }
 

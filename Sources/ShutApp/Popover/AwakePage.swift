@@ -204,7 +204,7 @@ private struct AwakeBand: View {
             Text("Keep working with the lid shut.")
                 .font(TunerTheme.display(24)).tracking(-0.6).foregroundStyle(theme.ink).lineSpacing(1)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done.")
+            Text("Switch it on before you close the lid. Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done. When you open the lid again it switches itself off.")
                 .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
             // The ellipsis promises a sheet; there is one only the first time.
@@ -477,7 +477,7 @@ private struct KeepAwakeMode: View {
                           in: 1...Double(AwakeText.manualLastStop), step: 1, onEditingEnded: commit)
             // The scale, so nobody has to drag to learn it (as Slow and Fast do for Speed).
             HStack {
-                Text("5 min"); Spacer(); Text("12 h · until I stop")
+                Text("5 min"); Spacer(); Text("12 h · until the lid opens")
             }
             .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
             // A limit that forbids staying awake wins over the timer, and the line says so

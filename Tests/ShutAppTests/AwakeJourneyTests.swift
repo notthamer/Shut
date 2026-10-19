@@ -296,3 +296,35 @@ final class AwakeJourneyTests: XCTestCase {
         awake.shutDown()
     }
 }
+
+extension AwakeJourneyTests {
+    // MARK: 6. One arming is one close: the switch clears itself when the lid opens
+
+    /// A switch left on for days once kept a Mac awake through every close until the battery
+    /// gave out. Now the lid opening is what turns it off, and a launch never finds it on.
+    func testOpeningTheLidSwitchesTheFeatureOff() throws {
+        let world = World()
+        world.asking = [owner("com.todesktop.230313mzl4w4u92", "Cursor", developerTool: true, tool: "Claude Code")]
+        let awake = start(world)
+        let defaults = awake.settings.defaults
+
+        // The lid provider says the current state once as it starts; that is not an opening.
+        awake.lidEdge(isOpen: true)
+        XCTAssertTrue(awake.settings.isOn, "the first report of an open lid is not an edge")
+        XCTAssertEqual(awake.arbiter.state, .holding)
+
+        awake.lidEdge(isOpen: false)
+        XCTAssertTrue(awake.arbiter.lidClosed)
+        awake.lidEdge(isOpen: true)
+        XCTAssertFalse(awake.settings.isOn, "the lid opened after a close: off by itself")
+        spin(0.1)
+        XCTAssertEqual(awake.arbiter.state, .off)
+        XCTAssertFalse(StayAwakeSettings(defaults: defaults).isOn, "and never saved: a launch starts off")
+
+        // Armed again: the next close is held like the first.
+        awake.settings.isOn = true
+        spin(0.1)
+        XCTAssertEqual(awake.arbiter.state, .holding)
+        awake.shutDown()
+    }
+}

@@ -15,7 +15,7 @@ enum AwakeText {
         var phrase: String {
             switch self {
             case .forDuration(let seconds): return "for \(AwakeText.manualValue(stop: AwakeText.manualStop(remaining: seconds)))"
-            case .untilStopped: return "until you choose Automatically"
+            case .untilStopped: return "until you open it again"
             }
         }
     }
@@ -167,7 +167,7 @@ enum AwakeText {
             switch first.kind {
             case .working, .command: return "\(subject(first)) · \(duration(now.timeIntervalSince(first.since)))"
             case .display, .appOpen: return first.title
-            case .manual: return first.until.map { "Until \(clock($0))" } ?? "Until you stop it"
+            case .manual: return first.until.map { "Until \(clock($0))" } ?? "Until you open the lid"
             }
         }
     }
@@ -236,7 +236,7 @@ enum AwakeText {
             // nothing to count, only what the close will do.
             if let armed {
                 return Hero(headline: "Closing the lid keeps your Mac awake \(armed.phrase).",
-                            detail: "The time starts when the lid shuts, every time\(floor).",
+                            detail: "The time starts when the lid shuts\(floor). Opening the lid switches Stay awake off again.",
                             showsCards: false)
             }
             return Hero(headline: willSleep,
@@ -257,10 +257,10 @@ enum AwakeText {
             // A set time: the time it ends is the answer, so it goes in the headline, beside the eyes.
             if reasons.count == 1, first.kind == .manual {
                 guard let until = first.until else {
-                    return Hero(headline: staysAwake, detail: "Until you choose Automatically\(floor).", showsCards: low)
+                    return Hero(headline: staysAwake, detail: "Until you open the lid\(floor).", showsCards: low)
                 }
                 return Hero(headline: "Your Mac stays awake until \(clock(until)).",
-                            detail: "While the lid is shut. Opening it ends the time; the next close starts it again."
+                            detail: "While the lid is shut. Opening it ends the time and switches Stay awake off."
                                 + (conditions.batteryPercent == nil ? "" : " It also sleeps at \(limits.batteryFloor)\u{00A0}% battery."),
                             showsCards: low)
             }
@@ -444,13 +444,13 @@ enum AwakeText {
     /// land); `until` is the running hold's end, nil for none or for "until I stop".
     /// Under the dial with the lid open: what the next close will do.
     static func armedCaption(stop: Int) -> String {
-        if stop >= manualLastStop { return "Awake while the lid is shut, until you choose Automatically." }
+        if stop >= manualLastStop { return "Awake while the lid is shut, until you open it." }
         return "Starts when you close the lid."
     }
 
     static func manualCaption(stop: Int, running: Bool, until: Date?, now: Date) -> String {
         if stop <= 0 { return "Drag to pick how long, whatever is running." }
-        if stop >= manualLastStop { return running ? "Awake until you choose Automatically." : "Until you choose Automatically." }
+        if stop >= manualLastStop { return running ? "Awake until you open the lid." : "Until you open the lid." }
         if running, let until {
             return "\(duration(until.timeIntervalSince(now))) left."
         }

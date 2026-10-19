@@ -95,7 +95,7 @@ struct PopoverHeader: View {
                 let on = model.stayAwake.settings.isOn && model.stayAwake.settings.hasConsented
                 Text(on ? "On" : "Off").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                 SmallPill(isOn: on, size: .regular) { model.toggleAwake() }
-                    .help("Keep the Mac awake with the lid shut while something is working.")
+                    .help("Keep your Mac awake the next time you close the lid. It switches itself off when you open the lid again.")
                     .accessibilityLabel("Stay awake")
             } else {
                 Text(model.settings.isEnabled ? "On" : "Off").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
