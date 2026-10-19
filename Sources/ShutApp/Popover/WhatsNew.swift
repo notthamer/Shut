@@ -301,7 +301,7 @@ struct TourStage: View {
             .tunerAnimation(TunerTheme.ease, value: on)
         case .twoWays:
             VStack(alignment: .leading, spacing: 12) {
-                ModeSwitch(options: ["Automatically", "For a set time"], selection: timed ? 1 : 0) { timed = $0 == 1 }
+                ModeSwitch(options: ["For a set time", "Automatically"], selection: timed ? 0 : 1) { timed = $0 == 0 }
                 Text(timed ? "Closing the lid keeps your Mac awake for 1 h. The time starts when the lid shuts."
                            : "Stays awake while an app is busy, and sleeps by itself when that ends.")
                     .font(TunerTheme.body).foregroundStyle(theme.ink).lineSpacing(3)

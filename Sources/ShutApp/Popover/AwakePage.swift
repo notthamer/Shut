@@ -419,9 +419,10 @@ private struct KeepAwakeMode: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Keep it awake").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
-            ModeSwitch(options: ["Automatically", "For a set time"], selection: timed ? 1 : 0) { index in
+            // A set time first: it is the one people reach for when they arm a close by hand.
+            ModeSwitch(options: ["For a set time", "Automatically"], selection: timed ? 0 : 1) { index in
                 settle?.cancel(); dragged = nil
-                if index == 1 { awake.startTimedHold() } else { awake.returnToAutomatic() }
+                if index == 0 { awake.startTimedHold() } else { awake.returnToAutomatic() }
             }
             if timed { dial } else if !holders.isEmpty { holding } else {
                 Text(AwakeText.automaticSummary(working: settings.whenWorking, display: settings.whenDisplayConnected,
