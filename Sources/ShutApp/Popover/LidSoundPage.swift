@@ -41,9 +41,6 @@ private struct LidSoundBand: View {
     @ObservedObject var sound: LidSoundController
     @Environment(\.tunerTheme) private var theme
 
-    /// Shorter than the Stay awake band: the answer on the left and two controls on the
-    /// right fit in it, and what is saved goes to the list, which needs the room more.
-    static let height: CGFloat = 248
 
     init(model: PopoverModel) {
         self.model = model
@@ -56,8 +53,10 @@ private struct LidSoundBand: View {
     var body: some View {
         let situation = model.lidSoundSituation()
         let copy = LidSoundText.copy(situation)
+        // As tall as the taller cell and no taller: a three-line answer or the slow-sleep
+        // card makes the band grow and the list below give way, so nothing is ever clipped
+        // and nothing in the band scrolls.
         HStack(alignment: .top, spacing: 0) {
-            ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 12) {
                     // On: it breathes, leans toward the pointer, and a click plays the sound.
                     LidSoundGlyph(playing: sound.playing != nil, height: 26, tint: isOn ? theme.ink : theme.inkLabel,
@@ -77,9 +76,7 @@ private struct LidSoundBand: View {
                 }
                 .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 16)
                 .frame(width: AwakePage.statusWidth, alignment: .topLeading)
-            }
-            .frame(width: AwakePage.statusWidth)
-            .frame(maxHeight: .infinity, alignment: .topLeading)
+                .frame(maxHeight: .infinity, alignment: .topLeading)
 
             Rectangle().fill(theme.hairline).frame(width: 1)
 
@@ -108,8 +105,7 @@ private struct LidSoundBand: View {
             .frame(width: PopoverView.width - AwakePage.statusWidth - 1, alignment: .topLeading)
             .frame(maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(height: Self.height)
-        .clipped()
+        .fixedSize(horizontal: false, vertical: true)
         .tunerAnimation(TunerTheme.ease, value: isOn)
     }
 

@@ -81,14 +81,17 @@ enum LidSoundText {
             return Copy(headline: silent, detail: s.scopeName.map { "Nothing to play in \($0): switch a sound on, or choose All." }
                                                   ?? "No sound is switched on. Switch one on below.")
         }
-        let from = s.scopeName.map { " from \($0)" } ?? ""
+        // The pack's name goes before "sounds", not after: "5 Adhkar sounds" keeps the line
+        // to two, where "5 sounds from Adhkar in turn" ran to three and pushed the button
+        // out of the band.
+        let sounds = s.scopeName.map { "\(s.candidates.count) \($0) sounds" } ?? "\(s.candidates.count) sounds"
         let headline: String
         if s.candidates.count == 1 {
             headline = "Closing the lid plays \(first)."
         } else if s.mode == .random {
-            headline = "Closing the lid plays one of \(s.candidates.count) sounds\(from)."
+            headline = "Closing the lid plays one of \(sounds)."
         } else {
-            headline = "Closing the lid plays \(s.candidates.count) sounds\(from) in turn."
+            headline = "Closing the lid plays \(sounds) in turn."
         }
         var parts: [String] = []
         if s.capability == .lidStateOnly {

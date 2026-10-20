@@ -22,7 +22,7 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertEqual(LidSoundText.tabLine(situation(shown: 0, candidates: [])), "No sounds yet")
         var scoped = situation(); scoped.scopeName = "Adhkar"
         XCTAssertEqual(LidSoundText.tabLine(scoped), "Adhkar · random")
-        XCTAssertEqual(LidSoundText.copy(scoped).headline, "Closing the lid plays one of 3 sounds from Adhkar.")
+        XCTAssertEqual(LidSoundText.copy(scoped).headline, "Closing the lid plays one of 3 Adhkar sounds.")
         var empty = situation(candidates: []); empty.scopeName = "Voices"
         XCTAssertEqual(LidSoundText.tabLine(empty), "Nothing to play in Voices")
         XCTAssertEqual(LidSoundText.copy(empty).detail, "Nothing to play in Voices: switch a sound on, or choose All.")
