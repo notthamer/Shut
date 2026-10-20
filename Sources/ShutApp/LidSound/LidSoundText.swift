@@ -130,7 +130,7 @@ enum LidSoundText {
     static func cutName(of source: String, from: TimeInterval, to: TimeInterval) -> String {
         "\(source) · \(clockText(from))–\(clockText(to))"
     }
-    static let cutAbout = "Choose the part, give it a name, and add it as a sound of its own. Cut as many parts from one file as you like; they share the file."
+    static let cutAbout = "Drag the edges around the part you want, give it a name, and add it as a sound of its own. Cut as many parts from one file as you like; they share the file."
     static func cutRefusal(_ error: LidSoundLibrary.CutError) -> String {
         switch error {
         case .tooShort: return "A part is half a second at least."

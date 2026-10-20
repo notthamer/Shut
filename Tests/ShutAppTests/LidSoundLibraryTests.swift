@@ -87,6 +87,20 @@ final class LidSoundLibraryTests: XCTestCase {
         XCTAssertEqual(library.state(of: song), .missing, "the last row playing the file takes it with it")
     }
 
+    /// The shape: one peak per slice, loudest at 1, and a louder second half shows as such.
+    func testTheShapeOfASound() throws {
+        let quietThenLoud = try wav(seconds: 2, name: "Swell.wav")
+        let peaks = try XCTUnwrap(LidSoundLibrary.peaks(of: quietThenLoud, buckets: 20))
+        XCTAssertEqual(peaks.count, 20)
+        XCTAssertEqual(peaks.max(), 1)
+        XCTAssertTrue(peaks.allSatisfy { $0 >= 0 && $0 <= 1 })
+        XCTAssertNil(LidSoundLibrary.peaks(of: folder.appendingPathComponent("nothing.wav"), buckets: 20))
+        let click = LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle())
+        let starter = LidSoundItem(id: UUID(), fileName: "Click.wav", displayName: "Click", enabled: true, isStarter: true)
+        let shape = try XCTUnwrap(LidSoundLibrary.peaks(of: try XCTUnwrap(click.url(for: starter)), buckets: 140))
+        XCTAssertGreaterThan(shape[0], shape[139], "a click is loud at once and gone by the end")
+    }
+
     func testUniqueNames() {
         XCTAssertEqual(LidSoundLibrary.uniqueName("Rain", among: []), "Rain")
         XCTAssertEqual(LidSoundLibrary.uniqueName("rain", among: ["Rain"]), "rain 2", "case does not make a new name")

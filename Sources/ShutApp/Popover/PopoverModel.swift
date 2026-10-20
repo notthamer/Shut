@@ -104,6 +104,8 @@ final class PopoverModel: ObservableObject {
     @Published var showingSoundSettings = false
     /// One line under the list after an import that was refused; nil when there is none.
     @Published var importNote: String?
+    /// A row whose cut editor is open, for a test that draws the page.
+    @Published var cuttingSoundForTest: UUID?
 
     /// Copies the files in and says, once, why any was refused.
     func importSounds(_ urls: [URL]) {

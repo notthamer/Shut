@@ -74,6 +74,32 @@ final class LidSoundLibrary {
         return Double(file.length) / file.processingFormat.sampleRate
     }
 
+    /// The sound's shape: the loudest moment in each of `buckets` slices of the file, 0…1,
+    /// so a part can be chosen by eye. Read once, kept in memory, never written anywhere.
+    static func peaks(of url: URL, buckets: Int) -> [Float]? {
+        guard buckets > 0, let file = try? AVAudioFile(forReading: url) else { return nil }
+        let format = file.processingFormat
+        let total = Int(file.length)
+        guard total > 0, let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(min(total, 65_536))) else { return nil }
+        let perBucket = max(1, Int((Double(total) / Double(buckets)).rounded(.up)))
+        var peaks = [Float](repeating: 0, count: buckets)
+        var frame = 0
+        while frame < total {
+            do { try file.read(into: buffer) } catch { break }
+            let count = Int(buffer.frameLength)
+            guard count > 0, let channels = buffer.floatChannelData else { break }
+            for i in 0..<count {
+                let bucket = min(buckets - 1, (frame + i) / perBucket)
+                var loudest: Float = 0
+                for channel in 0..<Int(format.channelCount) { loudest = max(loudest, abs(channels[channel][i])) }
+                if loudest > peaks[bucket] { peaks[bucket] = loudest }
+            }
+            frame += count
+        }
+        let top = peaks.max() ?? 0
+        return top > 0 ? peaks.map { $0 / top } : peaks
+    }
+
     static func hash(of url: URL) -> String? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()

@@ -110,6 +110,13 @@ final class LidSoundSnapshotTests: XCTestCase {
         XCTAssertEqual(on.importNote, "A part is half a second at least.")
         on.importNote = nil
         try render(on, name: "parts")
+        // The editor open on a row: the shape of the sound, with the part on it.
+        sound.readWaveformNow(for: sound.settings.shown[2])
+        XCTAssertEqual(sound.waveforms["Breath.wav"]?.count, LidSoundController.waveformBuckets)
+        XCTAssertNotNil(sound.waveform(for: sound.settings.shown[2]), "read once, kept")
+        on.cuttingSoundForTest = sound.settings.shown[2].id
+        try render(on, name: "cut")
+        on.cuttingSoundForTest = nil
         on.removeSound(sound.settings.shown[0])
         XCTAssertEqual(sound.library.state(of: sound.settings.shown[0]), .ok, "the part outlives its source row")
         on.removeSound(sound.settings.shown[0])

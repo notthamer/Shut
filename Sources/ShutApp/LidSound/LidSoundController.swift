@@ -24,6 +24,11 @@ final class LidSoundController: ObservableObject {
     @Published private(set) var canSetVolume = true
     /// The Mac's volume as last read, 0…1, for the page.
     @Published private(set) var macVolume: Float?
+    /// The shapes of sounds whose part is being chosen, by file, read off the main thread
+    /// the first time they are asked for and kept only in memory.
+    @Published private(set) var waveforms: [String: [Float]] = [:]
+    private var waveformsLoading: Set<String> = []
+    static let waveformBuckets = 140
 
     private let appSettings: AppSettings
     private let sensor: LidSensorMonitor
@@ -213,6 +218,28 @@ final class LidSoundController: ObservableObject {
         canUnmute = output.canSetMute
         canSetVolume = output.canSetVolume
         macVolume = output.volume
+    }
+
+    /// The sound's shape, or nil while it is being read (the page draws again when it is in).
+    func waveform(for item: LidSoundItem) -> [Float]? {
+        if let peaks = waveforms[item.fileName] { return peaks }
+        guard !waveformsLoading.contains(item.fileName), let url = library.url(for: item) else { return nil }
+        waveformsLoading.insert(item.fileName)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let peaks = LidSoundLibrary.peaks(of: url, buckets: Self.waveformBuckets) ?? []
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.waveforms[item.fileName] = peaks
+                self.waveformsLoading.remove(item.fileName)
+            }
+        }
+        return nil
+    }
+
+    /// The same, read here and now: for a test that draws the page once.
+    func readWaveformNow(for item: LidSoundItem) {
+        guard let url = library.url(for: item) else { return }
+        waveforms[item.fileName] = LidSoundLibrary.peaks(of: url, buckets: Self.waveformBuckets) ?? []
     }
 
     /// Everything the words need, gathered once.

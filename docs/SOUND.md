@@ -135,9 +135,13 @@ refused over ten minutes, and copied into `~/Library/Application Support/Shut/So
 their own name ("Rain.wav", then "Rain 2.wav"); the same bytes added twice (SHA-256) is one
 row. The original is never needed again. Removing a row deletes Shut's copy.
 
-**Any sound long enough can be cut.** A row at least a second long has "Cut": two dials,
-From and To (letting go of either hears the part), and a name, which starts as "Song ·
-0:03–0:07". "Add as a sound" makes the part a row of its own, right under its source, with
+**Any sound long enough can be cut.** A row at least a second long has "Cut" (in the
+length's slot, with the pointer near): the sound's shape as bars, one per slice of the
+file, read once off the main thread and kept only in memory, with the part on a Lime Wash
+between two edges. Drag an edge to move it, or the part itself to slide it along; letting
+go hears the part; the readout under it says from, to and how long. VoiceOver gets the
+part as an adjustable element. Then a name, which starts as "Song · 0:03–0:07" and follows
+the edges until the user writes one. "Add as a sound" makes the part a row of its own, right under its source, with
 the source's file and no file of its own: cut as many parts from one file as you like, in
 any order, and rename them; the file is deleted only when the last row playing it goes.
 "Play only this part" makes the row itself play the part; "Whole file" undoes that. A part

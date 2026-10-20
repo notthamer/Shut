@@ -297,6 +297,7 @@ private struct LidSoundList: View {
     var body: some View {
         let sound = model.lidSound
         let items = sound.settings.shown
+        let clipping = self.clipping ?? model.cuttingSoundForTest
         VStack(spacing: 0) {
             if items.isEmpty {
                 Text("No sounds yet. Add one, or restore the starters under Settings.")
@@ -306,7 +307,7 @@ private struct LidSoundList: View {
             let rows = VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
-                    LidSoundRow(model: model, item: item, clipping: Binding(get: { clipping == item.id }, set: { clipping = $0 ? item.id : nil }),
+                    LidSoundRow(model: model, item: item, clipping: Binding(get: { clipping == item.id }, set: { self.clipping = $0 ? item.id : nil }),
                                 carried: carry?.id == item.id, canMove: items.count > 1 && clipping == nil,
                                 hold: { carry = Carry(id: item.id, from: index) },
                                 drag: { offset in if carry?.id == item.id { carry?.offset = clamped(offset, from: index, count: items.count) } },
@@ -314,7 +315,7 @@ private struct LidSoundList: View {
                                 move: { up in model.moveSound(from: index, to: max(0, min(items.count - 1, index + (up ? -1 : 1)))) })
                         .offset(y: shift(of: index, count: items.count))
                         .zIndex(carry?.id == item.id ? 1 : 0)
-                    if clipping == item.id { LidSoundCut(model: model, item: item, done: { clipping = nil }).transition(.blurFade) }
+                    if clipping == item.id { LidSoundCut(model: model, item: item, done: { self.clipping = nil; model.cuttingSoundForTest = nil }).transition(.blurFade) }
                 }
             }
             if CGFloat(items.count) > Self.visibleRows || clipping != nil {
@@ -326,6 +327,7 @@ private struct LidSoundList: View {
         // A carried row whose list changed under it (removed, re-sorted) is let go of, so
         // nothing is ever left floating out of view.
         .onChange(of: items.map(\.id)) { _, ids in if let carry, !ids.contains(carry.id) { self.carry = nil } }
+
         .surface(.well, radius: TunerTheme.wellRadius)
         .overlay(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous)
             .strokeBorder(theme.ink, lineWidth: 1).opacity(dropTargeted ? 1 : 0))
@@ -462,20 +464,24 @@ private struct LidSoundRow: View {
     }
 }
 
-/// Under a row: a part of the sound, from and to, with a name. "Add as a sound" makes it a
-/// row of its own under this one (they share the file); "Play only this part" makes this row
-/// play it. Letting go of either dial hears the part from its start.
+/// Under a row: the sound's shape, with the part to play chosen on it by eye. Drag either
+/// edge to move it, or the part itself to slide it along; letting go hears the part. A
+/// name, and "Add as a sound" makes the part a row of its own under this one (they share
+/// the file); "Play only this part" makes this row play it.
 private struct LidSoundCut: View {
     @ObservedObject var model: PopoverModel
+    @ObservedObject var sound: LidSoundController
     let item: LidSoundItem
     let done: () -> Void
     @State private var from: Double
     @State private var to: Double
     @State private var name: String
+    @State private var named = false
     @Environment(\.tunerTheme) private var theme
 
     init(model: PopoverModel, item: LidSoundItem, done: @escaping () -> Void) {
         self.model = model; self.item = item; self.done = done
+        sound = model.lidSound
         let duration = item.duration ?? LidSoundLibrary.clipLength
         let start = item.clipStart, end = item.clipEnd ?? min(duration, start + LidSoundLibrary.clipLength)
         _from = State(initialValue: start)
@@ -484,32 +490,44 @@ private struct LidSoundCut: View {
     }
 
     private var duration: Double { item.duration ?? LidSoundLibrary.clipLength }
-    private var step: Double { duration > 60 ? 1 : 0.1 }
 
     private func hear() {
         var part = item; part.clipStart = from; part.clipEnd = to
         model.lidSound.preview(part)
     }
 
+    private func moved() {
+        // The name follows the part until the user has written one of their own.
+        if !named { name = LidSoundText.cutName(of: item.displayName, from: from, to: to) }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            StackedSlider("From", valueText: LidSoundText.clockText(from),
-                          value: Binding(get: { from }, set: { from = min($0, to - LidSoundLibrary.shortestCut); name = LidSoundText.cutName(of: item.displayName, from: from, to: to) }),
-                          in: 0...max(0, duration - LidSoundLibrary.shortestCut), step: step, onEditingEnded: hear)
-            StackedSlider("To", valueText: LidSoundText.clockText(to) + " of " + LidSoundText.clockText(duration),
-                          value: Binding(get: { to }, set: { to = max($0, from + LidSoundLibrary.shortestCut); name = LidSoundText.cutName(of: item.displayName, from: from, to: to) }),
-                          in: min(LidSoundLibrary.shortestCut, duration)...duration, step: step, onEditingEnded: hear)
+        VStack(alignment: .leading, spacing: 6) {
+            LidSoundWaveform(peaks: sound.waveform(for: item), duration: duration,
+                             from: Binding(get: { from }, set: { from = $0; moved() }),
+                             to: Binding(get: { to }, set: { to = $0; moved() }),
+                             onEditingEnded: hear)
+                .frame(height: 64)
+            HStack {
+                Text("From \(LidSoundText.clockText(from))")
+                Spacer()
+                Text(LidSoundText.durationText(to - from)).foregroundStyle(theme.ink)
+                Spacer()
+                Text("To \(LidSoundText.clockText(to)) of \(LidSoundText.clockText(duration))")
+            }
+            .font(TunerTheme.mono(10)).foregroundStyle(theme.inkLabel)
             HStack(spacing: 8) {
                 Text("Name").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
-                TextField("Name", text: $name).textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
+                TextField("Name", text: Binding(get: { name }, set: { name = $0; named = true }))
+                    .textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
                     .padding(.horizontal, 10).frame(height: 30)
                     .surface(.pill)
                     .help("What the part is called in the list.")
             }
-            .padding(.top, 6)
+            .padding(.top, 4)
             Text(LidSoundText.cutAbout)
                 .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 2)
             HStack(spacing: 10) {
                 SecondaryButton("Add as a sound", prominent: true) {
                     model.cutSound(item, from: from, to: to, name: name)
@@ -521,7 +539,7 @@ private struct LidSoundCut: View {
                     model.lidSound.settings.update(changed)
                     done()
                 }
-                .help("This row plays only the part, from and to the dials.")
+                .help("This row plays only the part, between the two edges.")
                 if item.clipEnd != nil || item.clipStart > 0 {
                     QuietButton("Whole file") {
                         var changed = item; changed.clipStart = 0; changed.clipEnd = nil
@@ -531,11 +549,112 @@ private struct LidSoundCut: View {
                     .help("This row plays the whole file again.")
                 }
             }
-            .padding(.top, 8)
+            .padding(.top, 6)
         }
-        .padding(.horizontal, 12).padding(.top, 2).padding(.bottom, 10)
+        .padding(.horizontal, 12).padding(.top, 6).padding(.bottom, 10)
         .background(theme.linen.opacity(0.5))
     }
+}
+
+/// The shape of a sound as bars, one per slice of the file, in ink inside the chosen part
+/// and quiet outside it, on a Lime Wash where the part is (the selection colour, as
+/// everywhere). Two edges, each a hairline with a grab zone; the part between them slides
+/// as one. Everything follows the pointer one to one, as the sliders do. Nothing is read
+/// from the file here: the peaks come in ready, and until they do the bars are a flat line.
+struct LidSoundWaveform: View {
+    let peaks: [Float]?
+    let duration: TimeInterval
+    @Binding var from: TimeInterval
+    @Binding var to: TimeInterval
+    var onEditingEnded: () -> Void = {}
+    @State private var grip: Grip?
+    @Environment(\.tunerTheme) private var theme
+
+    /// What the pointer took hold of: an edge, or the whole part (with the offsets it had).
+    private enum Grip: Equatable { case from, to, part(fromAt: Double, toAt: Double, pointerAt: Double) }
+    /// Points either side of an edge that count as taking hold of it.
+    static let edgeReach: CGFloat = 8
+
+    private func time(at x: CGFloat, width: CGFloat) -> Double {
+        max(0, min(duration, Double(x / max(width, 1)) * duration))
+    }
+
+    private func snapped(_ t: Double) -> Double { (t * 10).rounded() / 10 }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width, height = geometry.size.height
+            let fromX = CGFloat(from / max(duration, 0.001)) * width, toX = CGFloat(to / max(duration, 0.001)) * width
+            ZStack(alignment: .leading) {
+                // The part, as the selection colour, under the bars.
+                Rectangle().fill(theme.washLime).frame(width: max(0, toX - fromX)).offset(x: fromX)
+                bars(width: width, height: height, fromX: fromX, toX: toX)
+                // The edges.
+                Rectangle().fill(theme.ink).frame(width: 1.5).offset(x: fromX - 0.75)
+                Rectangle().fill(theme.ink).frame(width: 1.5).offset(x: toX - 0.75)
+                if peaks == nil {
+                    Text("Reading the file…").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                .onChanged { value in
+                    let x = value.location.x
+                    if grip == nil {
+                        if abs(x - fromX) <= Self.edgeReach { grip = .from }
+                        else if abs(x - toX) <= Self.edgeReach { grip = .to }
+                        else if x > fromX, x < toX { grip = .part(fromAt: from, toAt: to, pointerAt: time(at: value.startLocation.x, width: width)) }
+                        else { grip = abs(x - fromX) < abs(x - toX) ? .from : .to }
+                    }
+                    let t = snapped(time(at: x, width: width))
+                    switch grip {
+                    case .from: from = min(t, to - LidSoundLibrary.shortestCut)
+                    case .to: to = max(t, from + LidSoundLibrary.shortestCut)
+                    case .part(let fromAt, let toAt, let pointerAt):
+                        let length = toAt - fromAt
+                        let start = snapped(max(0, min(duration - length, fromAt + (time(at: x, width: width) - pointerAt))))
+                        from = start; to = start + length
+                    case nil: break
+                    }
+                }
+                .onEnded { _ in grip = nil; onEditingEnded() })
+        }
+        .background(theme.linen)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(theme.border, lineWidth: 1))
+        .help("Drag an edge to move it, or the part itself to slide it along. Let go to hear the part.")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("The part to play, from \(LidSoundText.clockText(from)) to \(LidSoundText.clockText(to))")
+        .accessibilityAdjustableAction { direction in
+            let step = max(0.1, duration / 50)
+            switch direction {
+            case .increment: let f = min(from + step, to - LidSoundLibrary.shortestCut); let t = min(duration, to + step); from = f; to = t
+            case .decrement: from = max(0, from - step); to = max(from + LidSoundLibrary.shortestCut, to - step)
+            @unknown default: break
+            }
+            onEditingEnded()
+        }
+    }
+
+    private func bars(width: CGFloat, height: CGFloat, fromX: CGFloat, toX: CGFloat) -> some View {
+        let count = max(peaks?.count ?? LidSoundController.waveformBuckets, 1)
+        let slot = width / CGFloat(count), bar = max(1, slot * 0.6)
+        return Canvas { context, _ in
+            for i in 0..<count {
+                let peak = CGFloat(peaks?[safe: i] ?? 0.04)
+                let x = CGFloat(i) * slot + (slot - bar) / 2
+                let h = max(2, (height - 12) * peak)
+                let rect = CGRect(x: x, y: (height - h) / 2, width: bar, height: h)
+                let inside = x + bar / 2 >= fromX && x + bar / 2 <= toX
+                context.fill(Path(roundedRect: rect, cornerRadius: bar / 2), with: .color(inside ? theme.ink : theme.inkTertiary))
+            }
+        }
+    }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }
 
 /// The folded part of the page, in plain words, every row with a line under its name.
