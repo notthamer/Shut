@@ -71,6 +71,8 @@ let package = Package(
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("ServiceManagement"),
+                .linkedFramework("AVFAudio"),      // Lid sound: playback
+                .linkedFramework("CoreAudio"),    // Lid sound: the output device's mute and name
             ]
         ),
         .executableTarget(

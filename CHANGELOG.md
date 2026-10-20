@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0
+
+**Lid sound.** Close the lid and a sound plays: it starts as the lid comes down and ends as it lands. Eight sounds come with the app, five adhkar among them; add your own, and with several Shut picks one each time. Off until you turn it on.
+
+- It ends with the lid. The sound starts the moment the closing effect does and fades out in the last few degrees, so it lands with the lid whatever its length. Lift the lid back up and it fades out. Or, under Extras, Play to the end: your Mac waits for the sound, then sleeps at once, so a two-second sound is heard whole however fast the lid comes down.
+- Your sounds. Add a sound… or drop files on the list: mp3, m4a, wav or aiff, copied into Shut so the original can move. Each has its own switch, a ▶ to hear it, and an × to remove it. Cut parts out of any sound on its waveform, as many as you like, each with its own name, or let Shut find the parts by the silence between them and name them in one go; double-click a name to rename it. A long file plays from where you choose, up to 30 seconds.
+- Random, or in order. Random never plays the same sound twice running; in order goes down the list, and the list reorders by hold and drag.
+- Packs. Sounds come in packs (Click, Breath, Hum to begin; the adhkar folded under the list as More from Shut, for whoever wants them) and yours live in Mine; make more, move sounds between them, take any pack out with one click, and choose what the lid plays from: every pack, or one. A library keeps a sound for later, out of the list, one click from coming back.
+- Starts at: the angle where the sound begins, always shown as a number. The same as the screen effect's Speed, so the two begin together, or an angle of its own.
+- Its own volume: Shut sets your Mac's volume to the dial for the sound and puts it back when it ends, so the dial is the level you hear whatever the Mac is set to. Or, under Settings, a share of the Mac's volume as it is. Let go of the slider to hear it.
+- Muted Mac: your call. Stay quiet (the page and the tab say "Muted"), or Unmute for it, and mute comes back when the sound ends.
+- Also on open: a sound as the desktop pours back in after you unlock. The close's pick again, or one in particular.
+- A third tab, Lid sound, beside Lid effects and Stay awake, with the three bars that move while a sound plays, and "Play a Sound on Close" in the menu. The page scrolls once per column: the list is as long as it is, with Add a sound… in its heading, and Starts at has its own place on the right over Settings.
+
+**Also**
+
+- When a sleep is still finishing from the last close (an app that never answers macOS holds every sleep open for 30 s; Logitech Options+ and G Hub do), the lid does nothing: the tabs, both pages, the closing caption and the menu bar mark now say "Still going to sleep", and after such a sleep a note names who held it up.
+- Stay awake is on for one close at a time: switch it on before you close the lid; when you open the lid again it switches itself off, and a launch never finds it on. A switch left on by mistake had kept a Mac awake through every close for days. The way you chose and the time on the dial are remembered. "Until I stop" on the dial now means until the lid opens.
+
 ## 0.3.0
 
 **Stay awake.** Close the lid while something is working and your Mac stays awake, then goes to sleep by itself when the work is done. Off until you turn it on. No password, no helper to install.

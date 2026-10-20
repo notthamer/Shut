@@ -92,7 +92,9 @@ enum AppAssets {
         return image
     }()
 
-    private static func resourceBundle() -> Bundle? {
+    /// The package's resource bundle, wherever this copy of the app was built (see CLAUDE.md
+    /// rule 12). Shared with the starter sounds.
+    static func resourceBundle() -> Bundle? {
         let name = "Shut_ShutApp.bundle"
         var candidates: [URL] = []
         if let url = Bundle.main.resourceURL { candidates.append(url) }

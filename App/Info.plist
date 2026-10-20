@@ -21,9 +21,9 @@
 	<key>ATSApplicationFontsPath</key>
 	<string>Shut_Tuner.bundle/Fonts</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.3.0</string>
+	<string>0.4.0</string>
 	<key>CFBundleVersion</key>
-	<string>4</string>
+	<string>5</string>
 	<key>LSAppNapIsDisabled</key>
 	<true/>
 	<key>LSApplicationCategoryType</key>

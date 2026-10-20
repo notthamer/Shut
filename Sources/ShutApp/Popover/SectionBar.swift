@@ -2,10 +2,10 @@ import StayAwake
 import SwiftUI
 import Tuner
 
-/// The app's two sections, in the header, as two tabs that each carry their own state:
+/// The app's three sections, in the header, as tabs that each carry their own state:
 ///
-///     ▭ Lid effects        ◉◉ Stay awake
-///     Fold · On            Claude Code · 47 min
+///     ▭ Lid effects     ))) Lid sound          ◉◉ Stay awake
+///     Fold · On         3 sounds · random      Claude Code · 47 min
 ///
 /// A name alone read as a subtitle of "Shut.", not as somewhere to go. An icon, a second
 /// line that changes, a filled ground under the chosen one and the spectrum line beneath it
@@ -22,19 +22,31 @@ struct SectionTabs: View {
             let awake = model.stayAwake
             let status = awake.status
             let isOn = awake.settings.isOn && awake.settings.hasConsented
-            HStack(spacing: 6) {
-                SectionTab(title: "Lid effects", line: model.lidEffectsLine, isSelected: model.page == .styles,
-                           help: "Ways to close your Mac: the style and how it plays.") {
+            let width = Self.tabWidth(count: 3)
+            HStack(spacing: Self.gap) {
+                SectionTab(title: "Lid effects", line: model.lidEffectsLine, isSelected: model.page == .styles, maxWidth: width,
+                           help: "Ways to close your Mac: the style and how it plays. " + model.lidEffectsLine) {
                     model.page = .styles
                 } icon: {
                     Image(systemName: "laptopcomputer").font(.system(size: 12, weight: .medium))
                 }
+                let sound = model.lidSound
+                let soundLine = model.lidSoundTabLine
+                SectionTab(title: "Lid sound", line: soundLine, isSelected: model.page == .sound,
+                           emphasised: sound.playing != nil, maxWidth: width,
+                           help: "A sound as the lid closes: which, and how loud. " + soundLine) {
+                    model.page = .sound
+                } icon: {
+                    LidSoundGlyph(playing: sound.playing != nil, height: 13,
+                                  tint: sound.settings.isOn ? theme.ink : theme.inkLabel, breathes: sound.settings.isOn)
+                }
                 SectionTab(title: "Stay awake",
                            line: AwakeText.tabLine(state: awake.arbiter.state, reasons: awake.arbiter.reasons,
                                                    conditions: awake.arbiter.conditions, limits: awake.arbiter.limits,
-                                                   pendingApp: awake.pendingApp?.name, armed: awake.armed, now: context.date),
-                           isSelected: model.page == .awake, emphasised: status.dot != .idle || awake.pendingApp != nil,
-                           help: "Keep working with the lid shut: when, and its limits.") {
+                                                   pendingApp: awake.pendingApp?.name, armed: awake.armed,
+                                                   sleepPendingSeconds: model.sleepPendingSeconds(now: context.date), now: context.date),
+                           isSelected: model.page == .awake, emphasised: status.dot != .idle || awake.pendingApp != nil, maxWidth: width,
+                           help: "Keep working with the lid shut: when, and its limits. " + AwakeText.tabLine(state: awake.arbiter.state, reasons: awake.arbiter.reasons, conditions: awake.arbiter.conditions, limits: awake.arbiter.limits, pendingApp: awake.pendingApp?.name, armed: awake.armed, now: context.date)) {
                     model.page = .awake
                 } icon: {
                     AwakeEyes(mood: .init(status.dot, isOn: isOn, lidSleeps: status.lidSleeps, lidHolds: status.lidHolds), pixel: 1.25,
@@ -44,6 +56,12 @@ struct SectionTabs: View {
             .tunerAnimation(TunerTheme.ease, value: status)
         }
     }
+
+    static let gap: CGFloat = 4
+    /// Two tabs had 168 each; three share the same header, beside the wordmark, the window
+    /// button and the switch, so each gets less and its second line truncates (the whole of
+    /// it is in the tooltip and the accessibility label).
+    static func tabWidth(count: Int) -> CGFloat { count >= 3 ? 96 : 168 }
 }
 
 /// One tab: icon and name, its state under them. Chosen: a Linen ground and the spectrum.
@@ -52,6 +70,7 @@ private struct SectionTab<Icon: View>: View {
     let line: String
     let isSelected: Bool
     var emphasised = false
+    var maxWidth: CGFloat = 168
     let help: String
     let action: () -> Void
     @ViewBuilder let icon: () -> Icon
@@ -72,9 +91,9 @@ private struct SectionTab<Icon: View>: View {
                     .lineLimit(1).truncationMode(.tail)
                     .id(line).transition(.opacity)
             }
-            .frame(maxWidth: 168, alignment: .leading)
+            .frame(maxWidth: maxWidth, alignment: .leading)
             .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 10).padding(.vertical, 6)
+            .padding(.horizontal, 8).padding(.vertical, 6)
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(theme.linen).opacity(isSelected ? 1 : (hover ? 0.6 : 0)))
             .frame(height: PopoverHeader.height)

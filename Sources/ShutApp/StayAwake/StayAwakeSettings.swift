@@ -8,8 +8,12 @@ import StayAwake
 public final class StayAwakeSettings: ObservableObject {
     let defaults: UserDefaults
 
-    /// The master switch. Off until the user has read what it does (`hasConsented`).
-    @Published public var isOn: Bool { didSet { defaults.set(isOn, forKey: "stayAwake.isOn") } }
+    /// The master switch, armed for the next close of the lid and nothing more: it clears
+    /// itself when the lid opens again, and a launch always starts with it off. It used to be
+    /// saved like the other settings, and a switch forgotten on kept a Mac awake through
+    /// every close for days; one that has to be set each time cannot be forgotten. Off until
+    /// the user has read what it does (`hasConsented`).
+    @Published public var isOn = false
     @Published public var hasConsented: Bool { didSet { defaults.set(hasConsented, forKey: "stayAwake.hasConsented") } }
 
     // Reasons
@@ -42,7 +46,6 @@ public final class StayAwakeSettings: ObservableObject {
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         func bool(_ key: String, _ fallback: Bool) -> Bool { defaults.object(forKey: key) as? Bool ?? fallback }
-        isOn = bool("stayAwake.isOn", false)
         hasConsented = bool("stayAwake.hasConsented", false)
         whenWorking = bool("stayAwake.whenWorking", true)
         whenDisplayConnected = bool("stayAwake.whenDisplay", true)

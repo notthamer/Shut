@@ -114,6 +114,9 @@ private struct AwakeBand: View {
                               tint: !isOn || (dot == .idle && !status.lidHolds) ? theme.inkLabel : theme.ink, dreams: true, follows: true)
                 }
                 if isOn { hero } else { pitch }
+                if let slow = model.sleep.slow {
+                    SlowSleepCard(slow: slow) { model.sleep.dismissSlow() }
+                }
             }
             .padding(.horizontal, 20).padding(.vertical, 22)
             .frame(width: AwakePage.statusWidth, alignment: .topLeading)
@@ -204,7 +207,7 @@ private struct AwakeBand: View {
             Text("Keep working with the lid shut.")
                 .font(TunerTheme.display(24)).tracking(-0.6).foregroundStyle(theme.ink).lineSpacing(1)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done.")
+            Text("Switch it on before you close the lid. Shut keeps your Mac awake only while something is working, and lets it sleep by itself when that is done. When you open the lid again it switches itself off.")
                 .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
             // The ellipsis promises a sheet; there is one only the first time.
@@ -221,7 +224,8 @@ private struct AwakeBand: View {
             let pending = awake.pendingApp
             let copy = pending.map { AwakeText.pendingHero($0.name) }
                 ?? AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
-                                  limits: arbiter.limits, watchingApps: settings.whenWorking, armed: awake.armed, now: context.date)
+                                  limits: arbiter.limits, watchingApps: settings.whenWorking, armed: awake.armed,
+                                  sleepPendingSeconds: model.sleepPendingSeconds(now: context.date), now: context.date)
             let status = awake.status
             VStack(alignment: .leading, spacing: 14) {
                 // The eyes are beside this block, in the band. Here: the answer and why, with the icon
@@ -331,23 +335,9 @@ private struct AwakeControls: View {
     /// stay out of the way; the summary says the two worth knowing without opening it.
     private var options: some View {
         VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
-            Button { model.showingAwakeSettings.toggle() } label: {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Eyebrow("Settings", number: "02")
-                        Image(systemName: model.showingAwakeSettings ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.inkTertiary)
-                        Spacer()
-                    }
-                    if !model.showingAwakeSettings {
-                        Text(optionsSummary).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(PressStyle())
-            .help("Battery, power and lock limits, and a few extras.")
+            FoldedSection("Settings", number: "02", summary: optionsSummary,
+                          isOpen: Binding(get: { model.showingAwakeSettings }, set: { model.showingAwakeSettings = $0 }),
+                          help: "Battery, power and lock limits, and a few extras.")
 
             if model.showingAwakeSettings { AwakeLimits(model: model).transition(.blurFade) }
         }
@@ -419,9 +409,10 @@ private struct KeepAwakeMode: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Keep it awake").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
-            ModeSwitch(options: ["Automatically", "For a set time"], selection: timed ? 1 : 0) { index in
+            // A set time first: it is the one people reach for when they arm a close by hand.
+            ModeSwitch(options: ["For a set time", "Automatically"], selection: timed ? 0 : 1) { index in
                 settle?.cancel(); dragged = nil
-                if index == 1 { awake.startTimedHold() } else { awake.returnToAutomatic() }
+                if index == 0 { awake.startTimedHold() } else { awake.returnToAutomatic() }
             }
             if timed { dial } else if !holders.isEmpty { holding } else {
                 Text(AwakeText.automaticSummary(working: settings.whenWorking, display: settings.whenDisplayConnected,
@@ -477,7 +468,7 @@ private struct KeepAwakeMode: View {
                           in: 1...Double(AwakeText.manualLastStop), step: 1, onEditingEnded: commit)
             // The scale, so nobody has to drag to learn it (as Slow and Fast do for Speed).
             HStack {
-                Text("5 min"); Spacer(); Text("12 h · until I stop")
+                Text("5 min"); Spacer(); Text("12 h · until the lid opens")
             }
             .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
             // A limit that forbids staying awake wins over the timer, and the line says so
@@ -549,7 +540,7 @@ struct ModeSwitch: View {
 
 /// One trigger: its name, one line about it (or, when it is the one at work, who and
 /// "now"), an optional "3 apps ›" disclosure, and its switch.
-private struct TriggerRow: View {
+struct TriggerRow: View {
     let label: String
     let about: String
     let live: String?
@@ -710,7 +701,7 @@ struct BatteryMeter: View {
 /// and a half rows (the half says "there is more") and scrolls inside itself beyond that;
 /// past eight apps it grows a filter. Unbounded, seven apps already pushed the rows below
 /// it off the page, and a list of thirty would have been the page.
-private struct AppList: View {
+struct AppList: View {
     struct Item: Identifiable { let id: String; let name: String; let isOn: Bool; var note: String? = nil }
 
     let intro: String
@@ -886,7 +877,7 @@ struct AwakeLimits: View {
 }
 
 /// A slider or a segmented row with its one line of explanation underneath.
-private struct Explained<Row: View>: View {
+struct Explained<Row: View>: View {
     let caption: String
     /// One quiet thing to do about the caption, at its end ("Use 60 %").
     let link: (title: String, action: () -> Void)?

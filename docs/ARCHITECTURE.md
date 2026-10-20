@@ -101,6 +101,18 @@ open), because macOS sends no event when one app's request ends; a 10 s tolerant
 re-apply only while holding with the lid shut, because `powerd` can clear the
 shared kernel bit. With the feature off none of them run.
 
+## Lid sound
+
+A sound as the lid closes, in `Sources/ShutApp/LidSound`. `LidSoundCue` is a value
+type: the hinge's progress and direction and the lid controller's moments in, one of
+four commands out (prepare, play, fade, drop). `LidSoundController` performs them with
+an `AVAudioPlayer` behind a protocol, reads the default output's name and mute through
+CoreAudio behind another, and is what the tab, the page and the menu read.
+`AppController` gained two hooks for it: a close that ended without the lid shutting,
+and the opening beginning. The hinge, not the overlay's driver, is the fade source, so
+nothing is read per frame; with Lid effects off the same cue starts the sound from the
+hinge. `docs/SOUND.md` has the timing table, the mute rule and the files.
+
 ## UI
 
 - **`PopoverView`** is the whole panel: header, `PreviewColumn`, `ControlsColumn`,

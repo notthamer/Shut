@@ -183,7 +183,7 @@ struct WhatsNewView: View {
 /// can go out of date), a headline, and one sentence. Some stages can be played with; what
 /// they change is only the slide.
 enum WhatsNewTour {
-    enum Stage: Equatable { case eyesWake, lidAnswer, twoWays, batteryAndReceipt }
+    enum Stage: Equatable { case eyesWake, lidAnswer, twoWays, batteryAndReceipt, soundPlays }
 
     struct Slide: Equatable {
         let stage: Stage
@@ -192,6 +192,12 @@ enum WhatsNewTour {
     }
 
     static func slides(for version: String) -> [Slide]? {
+        if version.hasPrefix("0.4") {
+            return [
+                Slide(stage: .soundPlays, headline: "Close the lid. Hear it land.",
+                      detail: "New: Lid sound. A sound starts as the lid comes down and ends as it lands. Add your own, or let it pick one at random. Off until you turn it on."),
+            ]
+        }
         guard version.hasPrefix("0.3") else { return nil }
         return [
             Slide(stage: .eyesWake, headline: "Close the lid. It keeps working.",
@@ -278,6 +284,9 @@ struct TourStage: View {
     let stage: WhatsNewTour.Stage
     @State private var on = false
     @State private var timed = false
+    /// The sound stage's own player: what it plays touches no setting.
+    @State private var stagePlayer: AudioPlayer?
+    @State private var stagePlaying = false
     @Environment(\.tunerTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -301,7 +310,7 @@ struct TourStage: View {
             .tunerAnimation(TunerTheme.ease, value: on)
         case .twoWays:
             VStack(alignment: .leading, spacing: 12) {
-                ModeSwitch(options: ["Automatically", "For a set time"], selection: timed ? 1 : 0) { timed = $0 == 1 }
+                ModeSwitch(options: ["For a set time", "Automatically"], selection: timed ? 0 : 1) { timed = $0 == 0 }
                 Text(timed ? "Closing the lid keeps your Mac awake for 1 h. The time starts when the lid shuts."
                            : "Stays awake while an app is busy, and sleeps by itself when that ends.")
                     .font(TunerTheme.body).foregroundStyle(theme.ink).lineSpacing(3)
@@ -310,6 +319,22 @@ struct TourStage: View {
             }
             .frame(width: 340)
             .tunerAnimation(TunerTheme.ease, value: timed)
+        case .soundPlays:
+            VStack(spacing: 14) {
+                LidSoundGlyph(playing: stagePlaying, height: 34, tint: theme.ink)
+                Text("Closing the lid plays Click.")
+                    .font(TunerTheme.display(17)).tracking(-0.3).foregroundStyle(theme.ink)
+                SecondaryButton(stagePlaying ? "Playing…" : "Play", prominent: true) {
+                    guard !stagePlaying, let url = LidSoundLibrary().starterURLs().first, let player = try? AudioPlayer(url: url) else { return }
+                    stagePlayer = player
+                    stagePlaying = true
+                    player.onFinish = { stagePlaying = false; stagePlayer = nil }
+                    player.play()
+                } icon: {
+                    Image(systemName: "play.fill").font(.system(size: 9, weight: .bold))
+                }
+            }
+            .tunerAnimation(TunerTheme.ease, value: stagePlaying)
         case .batteryAndReceipt:
             VStack(alignment: .leading, spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {

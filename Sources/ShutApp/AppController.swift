@@ -86,6 +86,14 @@ public final class AppController: ObservableObject {
     /// The overlay is about to appear. Stay awake reads the Option key here (it
     /// flips the decision for this one close) and then supplies the caption.
     var onCloseBeginning: (() -> Void)?
+    /// A close that was armed or on screen ended without the lid shutting: reopened to the
+    /// top, the sensor went quiet, the built-in display left, the feature was switched off,
+    /// quit. Lid sound fades out here. Not called for a sleep: the Mac is going down and
+    /// whatever was playing goes with it.
+    var onCloseEnded: ((_ reason: String) -> Void)?
+    /// The opening is starting: the pour-out, or the moment it would have started with
+    /// Animate opening off. Lid sound's "Also on open".
+    var onOpeningBeginning: (() -> Void)?
     /// `beginning`: the first request of a close, as opposed to one after Option was pressed.
     var closingCaption: ((_ beginning: Bool) -> AwakeText.Caption?)?
     /// Option went down while the lid was coming down. True when the decision changed.
@@ -274,6 +282,7 @@ public final class AppController: ObservableObject {
         captureTask = nil
         renderer.clearSnapshot()
         state = .idle
+        onCloseEnded?("disarmed")
     }
 
     private func capture() {
@@ -369,6 +378,7 @@ public final class AppController: ObservableObject {
 
     /// Hide everything and drop the snapshot. Safe to call from any state.
     func teardown(reason: String) {
+        let wasClosing = state == .armed || state == .closing
         displayLink?.stop()
         stopSafetyTimer()
         sensor.keepAwake = false
@@ -388,6 +398,7 @@ public final class AppController: ObservableObject {
         shownAt = nil
         progress = 0
         state = .idle
+        if wasClosing { onCloseEnded?(reason) }
     }
 
     // MARK: - Per frame
@@ -551,7 +562,7 @@ public final class AppController: ObservableObject {
 
     private func sessionUnlocked() {
         guard state == .drained, !screensAsleep else { return }
-        guard settings.animateOpening else { teardown(reason: "opening animation off"); return }
+        guard settings.animateOpening else { onOpeningBeginning?(); teardown(reason: "opening animation off"); return }
         let delay = registry.effectiveForLid.doubleParam("pourOutDelayMs", default: 0) / 1000
         pourOutWorkItem?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.beginPourOut() }
@@ -606,6 +617,7 @@ public final class AppController: ObservableObject {
         blackSince = nil
         shownAt = Date()
         Log.overlay.info("pour-out started (\(transition.id, privacy: .public))")
+        onOpeningBeginning?()
 
         if displayLink == nil { displayLink = DisplayLinkDriver(screen: screen) }
         displayLink?.onFrame = { [weak self] dt in self?.frame(dt: dt) }

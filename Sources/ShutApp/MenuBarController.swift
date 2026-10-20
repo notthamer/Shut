@@ -25,6 +25,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let awakeStatusItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let letItSleepItem = NSMenuItem(title: "Let It Sleep Now", action: #selector(letItSleep), keyEquivalent: "")
     private let stayAwakeItem = NSMenuItem(title: "Stay Awake with the Lid Shut", action: #selector(toggleStayAwake), keyEquivalent: "")
+    private let lidSoundItem = NSMenuItem(title: "Play a Sound on Close", action: #selector(toggleLidSound), keyEquivalent: "")
     private let permissionItem = NSMenuItem(title: "Grant Screen Recording…", action: #selector(openPermission), keyEquivalent: "")
 
     /// Wired by the app once the Tuner host exists.
@@ -41,6 +42,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     var showAwakePage: (() -> Void)?
     /// "What's New…": the card an update shows once, on request.
     var showWhatsNew: (() -> Void)?
+    /// Set once by the app: the menu's checkmark follows its switch.
+    var lidSound: LidSoundController?
+    /// Set once by the app: a sleep still going is a warning on the mark.
+    var sleep: SleepWatch? {
+        didSet {
+            sleep?.objectWillChange.receive(on: RunLoop.main).sink { [weak self] _ in self?.stayAwake?.objectWillChange.send() }.store(in: &cancellables)
+        }
+    }
 
     /// Set once by the app. The mark carries a small badge that says what the lid will do,
     /// in the one place that is always on screen: a dot while holding, a ring while winding
@@ -51,10 +60,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             guard let stayAwake else { return }
             stayAwake.objectWillChange
                 .receive(on: RunLoop.main)   // willChange: read the new values on the next turn
-                .map { [weak stayAwake] _ -> Badge in
+                .map { [weak self, weak stayAwake] _ -> Badge in
                     guard let stayAwake else { return Badge(dot: .idle, toolTip: "Shut") }
                     let arbiter = stayAwake.arbiter
-                    let dot = AwakeText.badge(state: arbiter.state, conditions: arbiter.conditions, limits: arbiter.limits)
+                    let dot = AwakeText.badge(state: arbiter.state, conditions: arbiter.conditions, limits: arbiter.limits,
+                                              sleepPending: self?.sleep?.pendingSince != nil)
                     // The headline has no running time in it, so a tooltip set now stays true.
                     let headline = AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
                                                   limits: arbiter.limits, armed: stayAwake.armed, now: Date()).headline
@@ -154,6 +164,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(angleItem)
         menu.addItem(.separator())
 
+        lidSoundItem.target = self
+        menu.addItem(lidSoundItem)
+        menu.addItem(.separator())
+
         awakeStatusItem.isEnabled = false
         menu.addItem(awakeStatusItem)
         letItSleepItem.target = self
@@ -232,6 +246,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             stayAwakeItem.state = on ? .on : .off
             stayAwakeItem.isHidden = !stayAwake.hasLid
         }
+        if let lidSound {
+            lidSoundItem.state = lidSound.settings.isOn ? .on : .off
+            lidSoundItem.isHidden = !lidSound.hasLid
+        }
         presetMenu.removeAllItems()
         let items = presetMenuProvider?() ?? []
         presetItem.isHidden = items.isEmpty
@@ -281,6 +299,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func toggleLaunchAtLogin() { LaunchAtLogin.toggle() }
     @objc private func openWhatsNew() { showWhatsNew?() }
     @objc private func letItSleep() { stayAwake?.perform(.letItSleep) }
+    @objc private func toggleLidSound() { lidSound?.settings.isOn.toggle() }
     @objc private func toggleStayAwake() {
         guard let stayAwake else { return }
         if stayAwake.needsConsent { showAwakePage?() } else { stayAwake.settings.isOn.toggle() }

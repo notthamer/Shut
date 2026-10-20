@@ -28,7 +28,8 @@ final class AwakeSnapshotTests: XCTestCase {
     }
 
     private func makeModel(on: Bool, reasons: [HoldReason], asking: [AssertionAttribution.Owner]? = nil,
-                           power: PowerConditions = PowerConditions(onCharger: true, batteryPercent: 90)) throws -> (PopoverModel, StayAwakeController) {
+                           power: PowerConditions = PowerConditions(onCharger: true, batteryPercent: 90),
+                           sleepWatch: SleepWatch? = nil) throws -> (PopoverModel, StayAwakeController) {
         let suite = UserDefaults(suiteName: "AwakeSnapshot-\(UUID().uuidString)")!
         let awakeSettings = StayAwakeSettings(defaults: suite)
         awakeSettings.hasConsented = on
@@ -50,7 +51,7 @@ final class AwakeSnapshotTests: XCTestCase {
         let preview = try PreviewModel(registry: registry, settings: settings, sensor: sensor)
         preview.capturePlaceholder()
         let model = PopoverModel(settings: settings, registry: registry, preview: preview, sensor: sensor,
-                                 thumbnails: try TransitionThumbnailRenderer(), stayAwake: awake)
+                                 thumbnails: try TransitionThumbnailRenderer(), stayAwake: awake, sleep: sleepWatch)
         return (model, awake)
     }
 
@@ -178,6 +179,10 @@ final class AwakeSnapshotTests: XCTestCase {
         XCTAssertEqual(slides.map(\.stage), [.eyesWake, .lidAnswer, .twoWays, .batteryAndReceipt])
         XCTAssertNil(WhatsNewTour.slides(for: "0.2.1"), "the changelog's words, as before")
         XCTAssertNotNil(WhatsNewTour.slides(for: "0.3.1"), "a fix of 0.3 still shows what 0.3 brought")
+        XCTAssertEqual(WhatsNewTour.slides(for: "0.4.0")?.map(\.stage), [.soundPlays], "0.4 brings Lid sound")
+        let soundSlide = NSHostingView(rootView: WhatsNewTourView(slides: WhatsNewTour.slides(for: "0.4.0")!, version: "0.4.0"))
+        soundSlide.appearance = TunerTheme.appearance
+        XCTAssertEqual(soundSlide.fittingSize.width, WhatsNewTourView.width)
         var heights: Set<CGFloat> = []
         for index in slides.indices {
             let hosting = NSHostingView(rootView: WhatsNewTourView(slides: slides, version: "0.3.0", index: index))
@@ -288,11 +293,38 @@ final class AwakeSnapshotTests: XCTestCase {
         XCTAssertNil(try XCTUnwrap(awake.manualHold).until, "until stopped, started afresh with the lid shut")
         awake.lidEdge(isOpen: true)
         XCTAssertNil(awake.manualHold, "opening the lid ends the time")
-        XCTAssertEqual(awake.armed, .untilStopped, "and the next close starts it again")
-        awake.setManualHold(stop: 0)
-        XCTAssertNil(awake.armed)
-        XCTAssertEqual(awake.arbiter.state, .ready)
+        XCTAssertFalse(awake.settings.isOn, "and switches Stay awake off: one arming is one close")
+        XCTAssertTrue(awake.settings.timedMode, "the way chosen is remembered for the next arming")
         awake.shutDown()
+    }
+
+    /// A sleep still going from the last close is the answer, on the page and the tab; after
+    /// a slow one, the card names who held it up, on both pages.
+    func testASleepStillGoing() throws {
+        let (model, awake) = try makeModel(on: true, reasons: [], asking: [])
+        model.page = .awake
+        model.sleep.sleepBegan(now: Date().addingTimeInterval(-12))
+        let line = AwakeText.tabLine(state: awake.arbiter.state, reasons: [], conditions: awake.arbiter.conditions, limits: awake.arbiter.limits,
+                                     sleepPendingSeconds: model.sleepPendingSeconds(), now: Date())
+        XCTAssertEqual(line, "Still going to sleep")
+        try render(model, name: "page-sleep-pending")
+        model.sleep.woke(now: Date())
+        awake.shutDown()
+
+        let suite = UserDefaults(suiteName: "SleepCard-\(UUID().uuidString)")!
+        let watch = SleepWatch(defaults: suite, powerLog: { SleepWatchTests.powerLog })
+        let t0 = Date(timeIntervalSince1970: 1_760_990_040)
+        watch.sleepBegan(now: t0); watch.woke(now: t0.addingTimeInterval(31))
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertEqual(watch.slow?.names, ["Logitech Options+", "Logitech G Hub"])
+        let (carded, cardedAwake) = try makeModel(on: true, reasons: [], asking: [], sleepWatch: watch)
+        carded.page = .awake
+        try render(carded, name: "page-slow-sleep")
+        carded.page = .sound
+        try render(carded, name: "sound-slow-sleep")
+        watch.dismissSlow()
+        XCTAssertNil(carded.sleep.slow)
+        cardedAwake.shutDown()
     }
 
     // MARK: The first run

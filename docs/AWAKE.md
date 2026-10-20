@@ -11,11 +11,22 @@ Shut never asks "for how long?". It keeps the Mac awake with the lid shut while 
 | Something is working | an app you allowed is asking macOS to stay awake: a coding agent in a terminal, a render, an export, a download |
 | A display is connected | an external display is plugged in (macOS only allows this on a charger with a keyboard and mouse; Shut lifts both conditions) |
 | These apps are open | an app you picked is running |
-| I say so | an hour, four hours, or until you stop it |
+| I say so | a time on the dial, from five minutes to twelve hours, or until the lid opens |
 | A command says so | `shut hold` on the command line |
 
 It is off until you turn it on, and the first time it says what it does on one
 screen.
+
+## One arming is one close
+
+The switch is armed for the next close of the lid and nothing more. When the lid
+opens again it goes back to Off by itself, the eyes go to sleep, and a launch never
+finds it on: the switch is the one setting that is not saved. (It used to be saved
+like the rest, and a switch forgotten on kept a Mac awake through every close for
+days, until the battery gave out. A switch that has to be set each time cannot be
+forgotten.) The way chosen, Automatically or for a set time, and the time on the
+dial are remembered, so arming again is one flick. "Until I stop" on the dial
+therefore means until the lid opens.
 
 ## What you see
 
@@ -48,7 +59,7 @@ screen.
   top; "Turn on" opens them, and the sheet leaves a moment later.
 - **Two sections, as two tabs in the header that each carry their own state.** "Lid
   effects" with a lid icon and, under it, the style and whether it is running ("Fold ·
-  On", "Fold · Paused", "Fold · plain fade for now"); "Stay awake" with the eyes and, under
+  On", "Fold · Off", "Fold · plain fade for now"); "Stay awake" with the eyes and, under
   it, what it is doing ("Claude Code · 47 min", "Sleeping in 4 min", "Battery 24 % ·
   sleeps at 20 %", "Zoom is asking", "Lid will sleep your Mac", "Off"). The chosen tab has
   a Linen ground and the 2-pt spectrum line beneath it. A name alone had read as a
@@ -251,6 +262,36 @@ fifteen seconds later.) Two things stand against that, neither needing root:
 Pulling the charger out with the lid shut is the harder direction: on battery powerd does
 not honour that assertion, so only the second defence applies. It needs testing on a real
 lid before it is promised.
+
+## When the Mac takes 30 s to sleep
+
+A lid close starts a sleep transaction: macOS tells every registered app and driver it is
+going to sleep and waits for each to answer, up to 30 seconds. An app that never answers
+holds every sleep open for the full 30 s. Inside that window the screen can be back on and
+the Mac unlocked, but a lid closed again does nothing, and when the laggard times out the
+Mac sleeps on its own, lid open or not, then dark-wakes. Seen on the author's Mac with
+Logitech Options+ (`logioptionsplus_agent`) and Logitech G Hub (`lghub_agent`):
+
+```
+pmset -g log | grep "Delays to Sleep"
+… Kernel Client Acks  Delays to Sleep notifications: [logioptionsplus_ timed out(30000 ms)] [lghub_agent timed out(30000 ms)]
+```
+
+A clamshell sleep cannot be cancelled once started, and the kernel does not publish who is
+holding it; only `pmset -g log` has the line. So Shut does two things (`SleepWatch`):
+
+- Between `willSleep` and `didWake` the lid does nothing, and every surface says so: the
+  tabs read "Still going to sleep", both pages answer "Your Mac is still going to sleep
+  from the last close. Closing the lid again does nothing until that finishes: 12 s so
+  far.", the closing caption says it in Saffron, and the mark carries the warning dot.
+- After a wake that came more than 10 s after the sleep began, Shut runs `pmset -g log`
+  once, off the main thread (an event, never a poll), reads the last "Delays to Sleep
+  notifications" line, and shows a Saffron card under the answer on both pages: "Your Mac
+  takes 30 s to sleep. Logitech Options+ and Logitech G Hub did not answer the sleep. Until
+  they do, closing the lid again inside those 30 s does nothing, and the Mac sleeps on its
+  own when they time out. Quit or update them." Known process names are spelled out; others
+  are shown as printed. The note is kept across launches, has an ×, and takes itself down
+  the next time a sleep goes through in under 10 s.
 
 ## If Shut dies while holding
 

@@ -1,0 +1,90 @@
+import XCTest
+@testable import ShutApp
+
+/// The words of Lid sound, read as copy.
+final class LidSoundTextTests: XCTestCase {
+    private func situation(on: Bool = true, shown: Int = 3, candidates: [String] = ["Rain", "Breath", "Hum"],
+                           mode: LidSoundSettings.Mode = .random, whenMuted: LidSoundSettings.WhenMuted = .stayQuiet,
+                           muted: Bool = false) -> LidSoundText.Situation {
+        LidSoundText.Situation(isOn: on, shownCount: shown, candidates: candidates, mode: mode, whenMuted: whenMuted, muted: muted)
+    }
+
+    func testTheTabSaysWhatLidSoundIsDoing() {
+        XCTAssertEqual(LidSoundText.tabLine(situation(on: false)), "Off")
+        XCTAssertEqual(LidSoundText.tabLine(situation(candidates: ["Rain"])), "Rain · On")
+        XCTAssertEqual(LidSoundText.tabLine(situation()), "3 sounds · random")
+        XCTAssertEqual(LidSoundText.tabLine(situation(mode: .inOrder)), "3 sounds · in order")
+        XCTAssertEqual(LidSoundText.tabLine(situation(muted: true)), "Muted")
+        XCTAssertEqual(LidSoundText.tabLine(situation(whenMuted: .unmute, muted: true)), "3 sounds · random", "it will unmute for it")
+        var playing = situation(); playing.playing = "Rain"
+        XCTAssertEqual(LidSoundText.tabLine(playing), "Playing Rain…")
+        XCTAssertEqual(LidSoundText.tabLine(situation(shown: 3, candidates: [])), "No sound chosen")
+        XCTAssertEqual(LidSoundText.tabLine(situation(shown: 0, candidates: [])), "No sounds yet")
+        var scoped = situation(); scoped.scopeName = "Adhkar"
+        XCTAssertEqual(LidSoundText.tabLine(scoped), "Adhkar · random")
+        XCTAssertEqual(LidSoundText.copy(scoped).headline, "Closing the lid plays one of 3 Adhkar sounds.")
+        var empty = situation(candidates: []); empty.scopeName = "Voices"
+        XCTAssertEqual(LidSoundText.tabLine(empty), "Nothing to play in Voices")
+        XCTAssertEqual(LidSoundText.copy(empty).detail, "Nothing to play in Voices: switch a sound on, or choose All.")
+        XCTAssertEqual(LidSoundText.libraryLine(0), "Nothing kept for later.")
+        XCTAssertEqual(LidSoundText.libraryLine(2), "2 sounds kept for later, out of the list.")
+        XCTAssertEqual(LidSoundText.offersLine([(name: "Adhkar", count: 5)]), "Adhkar · 5 sounds")
+        XCTAssertEqual(LidSoundText.offersLine([(name: "Adhkar", count: 5), (name: "Bells", count: 1)]), "Adhkar · 5 sounds, Bells · 1 sound")
+        var edges = situation(candidates: ["Rain"]); edges.capability = .lidStateOnly
+        XCTAssertEqual(LidSoundText.tabLine(edges), "Rain · after the lid shuts")
+    }
+
+    func testTheHeadlineAlwaysAnswersWhatTheLidWillDo() {
+        XCTAssertEqual(LidSoundText.copy(situation(on: false)).headline, "Closing the lid is silent.")
+        XCTAssertEqual(LidSoundText.copy(situation(candidates: ["Rain"])).headline, "Closing the lid plays Rain.")
+        XCTAssertEqual(LidSoundText.copy(situation(candidates: ["Rain"])).detail, "It starts as the lid comes down and ends as it lands.")
+        var angled = situation(candidates: ["Rain"]); angled.startDegrees = 45
+        XCTAssertEqual(LidSoundText.copy(angled).detail, "It starts as the lid passes 45° and ends as it lands.")
+        angled.playsToEnd = true
+        XCTAssertEqual(LidSoundText.copy(angled).detail, "It starts as the lid passes 45° and plays to the end; your Mac sleeps right after.")
+        XCTAssertEqual(LidSoundText.partsFound(3), "3 parts, by the silence between them. Name them, then add.")
+        var pending = situation(); pending.sleepPendingSeconds = 7
+        XCTAssertEqual(LidSoundText.tabLine(pending), "Still going to sleep")
+        XCTAssertEqual(LidSoundText.copy(pending).headline, "Your Mac is still going to sleep from the last close.")
+        XCTAssertEqual(LidSoundText.copy(pending).detail, "Closing the lid again does nothing until that finishes: 7 s so far. The sound still plays.")
+        var slow = situation(candidates: ["Rain"]); slow.slowSleepers = ["Logitech G Hub"]
+        XCTAssertEqual(LidSoundText.copy(slow).detail, "It starts as the lid comes down and ends as it lands.", "the card under the answer says it")
+        XCTAssertTrue(LidSoundText.partsFound(1).hasPrefix("No silence to split at"))
+        XCTAssertEqual(LidSoundText.copy(situation()).headline, "Closing the lid plays one of 3 sounds.")
+        XCTAssertTrue(LidSoundText.copy(situation()).detail.hasSuffix("A different one each time."))
+        var order = situation(mode: .inOrder); order.next = "Breath"
+        XCTAssertEqual(LidSoundText.copy(order).headline, "Closing the lid plays 3 sounds in turn.")
+        XCTAssertTrue(LidSoundText.copy(order).detail.hasSuffix("Next: Breath."))
+        XCTAssertEqual(LidSoundText.copy(situation(muted: true)).headline, "Your Mac is muted, so closing is silent.")
+        XCTAssertTrue(LidSoundText.copy(situation(whenMuted: .unmute, muted: true)).detail.contains("unmutes for the sound"))
+        var noSwitch = situation(whenMuted: .unmute, muted: true); noSwitch.canUnmute = false
+        XCTAssertTrue(LidSoundText.copy(noSwitch).detail.contains("no mute switch"))
+        XCTAssertEqual(LidSoundText.copy(situation(shown: 3, candidates: [])).detail, "No sound is switched on. Switch one on below.")
+        XCTAssertEqual(LidSoundText.copy(situation(shown: 0, candidates: [])).detail, "No sounds yet. Add one below.")
+        var output = situation(candidates: ["Rain"]); output.outputName = "AirPods Pro"; output.onOpen = true
+        XCTAssertEqual(LidSoundText.copy(output).detail,
+                       "It starts as the lid comes down and ends as it lands. Through AirPods Pro.", "on open is said in Settings, not twice")
+    }
+
+    func testSmallWords() {
+        XCTAssertEqual(LidSoundText.durationText(2.44), "2.4 s")
+        XCTAssertEqual(LidSoundText.durationText(0.06), "0.1 s")
+        XCTAssertEqual(LidSoundText.durationText(12.3), "12 s")
+        XCTAssertEqual(LidSoundText.settingsSummary(onOpen: false, whenMuted: .stayQuiet), "Silent on open · stays quiet when muted")
+        XCTAssertEqual(LidSoundText.settingsSummary(onOpen: true, whenMuted: .unmute), "A sound on open too · unmutes for it")
+        XCTAssertEqual(LidSoundText.settingsSummary(onOpen: false, whenMuted: .stayQuiet, volumeMode: .shareOfMac),
+                       "Silent on open · stays quiet when muted · follows the Mac's volume")
+        XCTAssertEqual(LidSoundText.settingsSummary(onOpen: false, whenMuted: .stayQuiet, volumeMode: .ownLevel),
+                       "Silent on open · stays quiet when muted", "the default needs no mention")
+        XCTAssertEqual(LidSoundText.volumeAbout(.shareOfMac, macVolume: 0.06), "Of your Mac's volume (6 % now).")
+        XCTAssertEqual(LidSoundText.volumeAbout(.ownLevel, macVolume: 0.06), "Your Mac is set to this for it, then put back.")
+        XCTAssertEqual(LidSoundText.refusal(.tooLong(900), name: "Album.m4a"), "Album.m4a is 15 min long. Sounds are 10 minutes at most.")
+        XCTAssertEqual(LidSoundText.durationText(200), "3 min 20 s")
+        XCTAssertEqual(LidSoundText.clockText(72), "1:12")
+        XCTAssertEqual(LidSoundText.cutName(of: "Song", from: 3, to: 7.4), "Song · 0:03–0:07")
+        XCTAssertEqual(LidSoundText.cutRefusal(.tooShort), "A part is half a second at least.")
+        XCTAssertEqual(LidSoundText.longNote(name: "Song", seconds: 200), "Song is 3 min 20 s long: the lid plays up to 30 s of it, from where you choose (Clip, in its row).")
+        XCTAssertEqual(LidSoundText.refusal(.unreadable, name: "Notes.txt"), "Shut could not read Notes.txt.")
+        XCTAssertEqual(LidSoundText.refusal(.duplicate(of: UUID()), name: "Rain.wav", duplicateOf: "Rain"), "Rain is already in the list.")
+    }
+}
