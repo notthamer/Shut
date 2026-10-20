@@ -41,6 +41,11 @@ lid opens. Off until you turn it on.
   at work is in ink with a Lime dot. A file that went missing says "Missing", with the
   switch off and disabled; one Core Audio cannot open says "Can't be played". Under the
   list, "Add a sound…" (a file panel; the popover stays open around it) and the rule: mp3,
+  m4a, wav or aiff, or drop files on the list. Rows reorder by hold and drag: a grip shows
+  when the pointer is near; hold the name a moment and the row lifts onto Linen and follows
+  the pointer, the others step aside a row at a time (they jump, as the eyes jump between
+  frames; nothing eases into place), and letting go keeps the order, which is what "In
+  order" plays down. VoiceOver gets Move up and Move down on each row. The old rule line:
   m4a, wav or aiff, 30 s at most, or drop files on the list. A refused import says why in
   one Saffron line: too long, unreadable, already in the list, could not be copied.
 - **02 Settings**, folded, with a summary ("Silent on open · stays quiet when muted").

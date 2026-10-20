@@ -133,6 +133,16 @@ final class PopoverModel: ObservableObject {
         }
     }
 
+    /// A row carried to a new place, by its position among the rows shown. Hidden starters
+    /// keep out of the way at the end.
+    func moveSound(from: Int, to: Int) {
+        var shown = lidSound.settings.shown
+        guard shown.indices.contains(from), shown.indices.contains(to), from != to else { return }
+        let item = shown.remove(at: from)
+        shown.insert(item, at: to)
+        lidSound.settings.items = shown + lidSound.settings.items.filter(\.hidden)
+    }
+
     func restoreStarterSounds() {
         for var item in lidSound.settings.items where item.isStarter && item.hidden {
             item.hidden = false; item.enabled = true

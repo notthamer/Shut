@@ -250,10 +250,43 @@ private struct LidSoundList: View {
     @State private var dropTargeted = false
     /// The long file whose clip is being chosen, if one is.
     @State private var clipping: UUID?
+    /// A row being carried to a new place: hold it a moment, then drag; the others step
+    /// aside; let go and the order is kept. "In order" plays down this list.
+    @State private var carry: Carry?
     @Environment(\.tunerTheme) private var theme
+
+    struct Carry: Equatable {
+        let id: UUID
+        let from: Int
+        var offset: CGFloat = 0
+    }
 
     static let rowHeight: CGFloat = 34
     static let visibleRows: CGFloat = 4.5
+
+    /// Where the carried row would land, from how far it has been dragged.
+    private func target(_ carry: Carry, count: Int) -> Int {
+        max(0, min(count - 1, carry.from + Int((carry.offset / Self.rowHeight).rounded())))
+    }
+
+    /// How far each row steps aside for the one being carried. The carried row follows the
+    /// pointer; the others jump a row at a time, as the eyes jump between frames.
+    private func shift(of index: Int, count: Int) -> CGFloat {
+        guard let carry else { return 0 }
+        if index == carry.from { return carry.offset }
+        let target = target(carry, count: count)
+        if carry.from < target, index > carry.from, index <= target { return -Self.rowHeight }
+        if carry.from > target, index < carry.from, index >= target { return Self.rowHeight }
+        return 0
+    }
+
+    private func drop(count: Int) {
+        guard let carry else { return }
+        let to = target(carry, count: count)
+        self.carry = nil
+        guard to != carry.from else { return }
+        model.moveSound(from: carry.from, to: to)
+    }
 
     var body: some View {
         let sound = model.lidSound
@@ -267,7 +300,14 @@ private struct LidSoundList: View {
             let rows = VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
-                    LidSoundRow(model: model, item: item, clipping: Binding(get: { clipping == item.id }, set: { clipping = $0 ? item.id : nil }))
+                    LidSoundRow(model: model, item: item, clipping: Binding(get: { clipping == item.id }, set: { clipping = $0 ? item.id : nil }),
+                                carried: carry?.id == item.id, canMove: items.count > 1 && clipping == nil,
+                                hold: { carry = Carry(id: item.id, from: index) },
+                                drag: { offset in if carry?.id == item.id { carry?.offset = offset } },
+                                release: { drop(count: items.count) },
+                                move: { up in model.moveSound(from: index, to: max(0, min(items.count - 1, index + (up ? -1 : 1)))) })
+                        .offset(y: shift(of: index, count: items.count))
+                        .zIndex(carry?.id == item.id ? 1 : 0)
                     if clipping == item.id, item.isLong { LidSoundClip(model: model, item: item).transition(.blurFade) }
                 }
             }
@@ -305,7 +345,30 @@ private struct LidSoundRow: View {
     @ObservedObject var model: PopoverModel
     let item: LidSoundItem
     @Binding var clipping: Bool
+    /// Being carried to a new place: lifted on Linen, the pointer's to move.
+    var carried = false
+    var canMove = true
+    var hold: () -> Void = {}
+    var drag: (CGFloat) -> Void = { _ in }
+    var release: () -> Void = {}
+    /// Move up (true) or down, one row: the keyboard and VoiceOver way to reorder.
+    var move: (Bool) -> Void = { _ in }
+    @State private var hover = false
     @Environment(\.tunerTheme) private var theme
+
+    /// Hold a moment, then drag: the name and the grip are the handle; the buttons stay buttons.
+    private var carrying: some Gesture {
+        LongPressGesture(minimumDuration: 0.15)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
+            .onChanged { value in
+                switch value {
+                case .first(true): hold()
+                case .second(true, let dragging?): drag(dragging.translation.height)
+                default: break
+                }
+            }
+            .onEnded { _ in release() }
+    }
 
     var body: some View {
         let sound = model.lidSound
@@ -315,16 +378,27 @@ private struct LidSoundRow: View {
             IconButton("play.fill", help: "Hear \(item.displayName).") { sound.preview(item) }
                 .disabled(state != .ok)
                 .accessibilityLabel("Play \(item.displayName)")
-            Text(item.displayName).font(live ? TunerTheme.bodyMedium : TunerTheme.body)
-                .foregroundStyle(state == .ok ? theme.ink : theme.inkLabel).lineLimit(1).truncationMode(.middle)
-            if state != .ok {
-                Text(state == .missing ? "Missing" : "Can't be played")
-                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineLimit(1)
-                    .help(state == .missing ? "The file was moved or deleted. Remove it, or add it again." : "Shut could not open this file.")
-            } else if live {
-                Circle().fill(TunerTheme.limeWash).overlay(Circle().strokeBorder(theme.ink, lineWidth: 1)).frame(width: 7, height: 7)
+            HStack(spacing: 8) {
+                Text(item.displayName).font(live ? TunerTheme.bodyMedium : TunerTheme.body)
+                    .foregroundStyle(state == .ok ? theme.ink : theme.inkLabel).lineLimit(1).truncationMode(.middle)
+                if state != .ok {
+                    Text(state == .missing ? "Missing" : "Can't be played")
+                        .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineLimit(1)
+                        .help(state == .missing ? "The file was moved or deleted. Remove it, or add it again." : "Shut could not open this file.")
+                } else if live {
+                    Circle().fill(TunerTheme.limeWash).overlay(Circle().strokeBorder(theme.ink, lineWidth: 1)).frame(width: 7, height: 7)
+                }
+                Spacer(minLength: 6)
+                // The grip shows itself when the pointer is near, so the row says it can be moved.
+                if canMove {
+                    Image(systemName: "line.3.horizontal").font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(theme.inkTertiary).opacity(hover || carried ? 1 : 0)
+                        .padding(.trailing, 2)
+                }
             }
-            Spacer(minLength: 6)
+            .contentShape(Rectangle())
+            .gesture(canMove ? carrying : nil)
+            .help(canMove ? "Hold a moment, then drag up or down to reorder. In order plays down this list." : "")
             if item.isLong, state == .ok {
                 // Longer than the lid will play: where it starts from is the user's to choose.
                 QuietButton(clipping ? "Done" : "Clip", disclosure: !clipping) { clipping.toggle() }
@@ -345,7 +419,14 @@ private struct LidSoundRow: View {
             .accessibilityLabel("Remove \(item.displayName)")
         }
         .padding(.leading, 6).padding(.trailing, 8).frame(height: LidSoundList.rowHeight - 1)
+        .background(carried ? theme.linen : .clear)
+        .overlay(Rectangle().strokeBorder(theme.border, lineWidth: 1).opacity(carried ? 1 : 0))
+        .onHover { hover = $0 }
+        .tunerAnimation(TunerTheme.ease, value: carried)
+        .tunerAnimation(TunerTheme.ease, value: hover)
         .accessibilityElement(children: .contain)
+        .accessibilityAction(named: "Move up") { move(true) }
+        .accessibilityAction(named: "Move down") { move(false) }
     }
 }
 

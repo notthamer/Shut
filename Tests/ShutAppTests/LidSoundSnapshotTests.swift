@@ -174,3 +174,27 @@ final class LidSoundSnapshotTests: XCTestCase {
         XCTAssertLessThan(justStarted[2] - before[2], leaning[2] - before[2], "eased in over a moment, not a jump")
     }
 }
+
+extension LidSoundSnapshotTests {
+    /// A row carried to a new place changes the order, which is the order "In order" plays.
+    func testMovingARow() throws {
+        let (model, sound) = try makeModel(on: true)
+        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Click", "Breath", "Hum"])
+        model.moveSound(from: 2, to: 0)
+        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Hum", "Click", "Breath"])
+        model.moveSound(from: 0, to: 2)
+        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Click", "Breath", "Hum"])
+        model.moveSound(from: 1, to: 1)
+        model.moveSound(from: 5, to: 0)
+        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Click", "Breath", "Hum"], "nothing to do, nothing done")
+        // A hidden starter stays hidden and out of the way.
+        model.removeSound(sound.settings.shown[1])
+        model.moveSound(from: 1, to: 0)
+        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Hum", "Click"])
+        XCTAssertEqual(sound.settings.items.count, 3)
+        sound.settings.mode = .inOrder
+        sound.settings.nextIndex = 0
+        XCTAssertEqual(LidSoundText.copy(sound.situation()).detail.contains("Next: Hum."), true, "the order is what In order plays")
+        sound.shutDown()
+    }
+}
