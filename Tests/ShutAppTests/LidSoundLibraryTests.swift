@@ -208,7 +208,7 @@ final class LidSoundLibraryTests: XCTestCase {
                 LidSoundLibrary.Starter(name: "توكل على الله", file: "Adhkar.mp3", from: 11.2, to: 13.1)])]
         again.adoptNewPacks(release)
         XCTAssertEqual(again.items.map(\.displayName), ["Click", "Breath", "Hum", "اذكر الله", "توكل على الله"])
-        XCTAssertEqual(again.packs.map(\.id), ["generated", "adhkar", LidSoundPack.mineID], "bundled packs first, then Mine")
+        XCTAssertEqual(again.packs.map(\.id), [LidSoundPack.mineID, "generated", "adhkar"], "Mine first, then the bundled packs")
         XCTAssertEqual(again.items.last?.packID, "adhkar")
         XCTAssertTrue(again.items[2].hidden, "a hidden starter stays hidden")
         again.adoptNewPacks(release)
@@ -231,14 +231,14 @@ final class LidSoundLibraryTests: XCTestCase {
         XCTAssertEqual(reloaded.nextIndex(for: .pack("adhkar")), 2)
         XCTAssertEqual(reloaded.kept.map(\.displayName), ["Click"])
 
-        // A pack that is not on by default waits under "Add a pack" for a new user, in the list
+        // A pack that is not on by default waits under "More from Shut" for a new user, in the list
         // for whoever already has its sounds, and what either decides is kept.
         let fresh = UserDefaults(suiteName: "LidSound-\(UUID().uuidString)")!
         let offer = [LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", onByDefault: false, sounds: release[1].sounds)] + LidSoundLibrary.fallbackPacks
         let newUser = LidSoundSettings(defaults: fresh, manifest: offer)
         XCTAssertEqual(newUser.packs.filter(\.hidden).map(\.id), ["adhkar"], "offered, not imposed")
         XCTAssertEqual(newUser.shown.map(\.packID), ["generated", "generated", "generated"])
-        XCTAssertEqual(newUser.visiblePacks.map(\.id), ["generated", LidSoundPack.mineID])
+        XCTAssertEqual(newUser.visiblePacks.map(\.id), [LidSoundPack.mineID, "generated"])
         if let index = newUser.packs.firstIndex(where: { $0.id == "adhkar" }) { newUser.packs[index].hidden = false }
         XCTAssertEqual(LidSoundSettings(defaults: fresh, manifest: offer).packs.filter(\.hidden).count, 0, "added: kept across launches")
         XCTAssertEqual(again.packs.first { $0.id == "adhkar" }?.hidden, false, "already in this list: stays in it")

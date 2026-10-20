@@ -18,9 +18,10 @@ final class LidSoundSnapshotTests: XCTestCase {
     private var players: [LidSoundControllerTests.FakePlayer] = []
     private var output = LidSoundControllerTests.FakeOutput()
 
-    private func makeModel(on: Bool, items: [LidSoundItem]? = nil, capability: HingeCapability = .continuousAngle) throws -> (PopoverModel, LidSoundController) {
+    private func makeModel(on: Bool, items: [LidSoundItem]? = nil, capability: HingeCapability = .continuousAngle,
+                           manifest: [LidSoundLibrary.ManifestPack] = LidSoundLibrary.fallbackPacks) throws -> (PopoverModel, LidSoundController) {
         let suite = UserDefaults(suiteName: "LidSoundSnapshot-\(UUID().uuidString)")!
-        let soundSettings = LidSoundSettings(defaults: suite, manifest: LidSoundLibrary.fallbackPacks)
+        let soundSettings = LidSoundSettings(defaults: suite, manifest: manifest)
         soundSettings.isOn = on
         if let items { soundSettings.items = items }
         let settings = AppSettings(defaults: suite)
@@ -30,7 +31,7 @@ final class LidSoundSnapshotTests: XCTestCase {
         preview.capturePlaceholder()
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("LidSoundSnapshot-\(UUID().uuidString)")
         let sound = LidSoundController(settings: soundSettings, appSettings: settings, sensor: sensor, hasLid: true,
-                                       library: LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), packs: LidSoundLibrary.fallbackPacks), output: output,
+                                       library: LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), packs: manifest), output: output,
                                        makePlayer: { [unowned self] _ in let p = LidSoundControllerTests.FakePlayer(); self.players.append(p); return p },
                                        capability: { capability })
         sound.start()
@@ -187,8 +188,8 @@ final class LidSoundSnapshotTests: XCTestCase {
         let (packed, packedSound) = try makeModel(on: true)
         let voices = try XCTUnwrap(packed.newPack(named: "Voices"))
         packed.moveSound(packedSound.settings.items[1], to: voices.id)
-        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Click", "Hum", "Breath"], "pack order: bundled, then the user's")
-        XCTAssertEqual(packedSound.settings.packs.map(\.name), ["Starters", "Mine", "Voices"])
+        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Breath", "Click", "Hum"], "pack order: the user's, then the bundled")
+        XCTAssertEqual(packedSound.settings.packs.map(\.name), ["Mine", "Voices", "Starters"])
         try render(packed, name: "packs-all")
         packedSound.settings.playsFrom = .pack(voices.id)
         XCTAssertEqual(packed.lidSoundTabLine, "Breath · On")
@@ -206,16 +207,34 @@ final class LidSoundSnapshotTests: XCTestCase {
         XCTAssertEqual(packedSound.settings.items[1].packID, LidSoundPack.mineID, "a removed pack's sounds go to Mine")
         // Reorder across a heading moves the sound into that pack.
         packed.moveSound(packedSound.settings.items[1], to: LidSoundPack.mineID)
+        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Breath", "Click", "Hum"], "Mine leads")
+        packed.moveSound(from: 0, to: 2)
         XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Click", "Hum", "Breath"])
-        packed.moveSound(from: 2, to: 0)
-        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Breath", "Click", "Hum"])
         XCTAssertEqual(packedSound.settings.items.first { $0.displayName == "Breath" }?.packID, "generated", "dropped among the bundled pack's rows: it is theirs now")
-        packed.removePack(packedSound.settings.packs[0])
+        let starters = try XCTUnwrap(packedSound.settings.packs.first { $0.id == "generated" })
+        packed.removePack(starters)
         XCTAssertTrue(packed.displayedSounds.isEmpty, "the bundled pack taken out of the list: nothing shown")
-        XCTAssertEqual(packedSound.settings.packs[0].hidden, true, "and offered under Add a pack, never gone from the app")
-        packed.setPack(packedSound.settings.packs[0], hidden: false)
+        XCTAssertEqual(packed.offeredPacks.map(\.id), ["generated"], "and offered under More from Shut, never gone from the app")
+        packed.setPack(starters, hidden: false)
         XCTAssertEqual(packed.displayedSounds.count, 3)
+        XCTAssertTrue(packed.offeredPacks.isEmpty)
         packedSound.shutDown()
+
+        // A new user with a pack that is an offer: it waits folded under the list, Mine and
+        // the starters above it; opened, one click puts it in.
+        let offer = [LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", credit: "Recorded by the author.", onByDefault: false, sounds: [
+            LidSoundLibrary.Starter(name: "اذكر الله", file: "Adhkar.mp3", from: 2.7, to: 4.7),
+            LidSoundLibrary.Starter(name: "توكل على الله", file: "Adhkar.mp3", from: 11.2, to: 13.1)])] + LidSoundLibrary.fallbackPacks
+        let (offered, offeredSound) = try makeModel(on: true, manifest: offer)
+        XCTAssertEqual(offered.offeredPacks.map(\.name), ["Adhkar"])
+        XCTAssertEqual(offered.displayedSounds.map(\.displayName), ["Click", "Breath", "Hum"], "not in the list until asked for")
+        XCTAssertEqual(offeredSound.settings.visiblePacks.map(\.name), ["Mine", "Starters"])
+        offered.showingOffers = true
+        try render(offered, name: "offers")
+        offered.setPack(offered.offeredPacks[0], hidden: false)
+        XCTAssertEqual(offered.displayedSounds.count, 5)
+        XCTAssertEqual(offered.lidSoundTabLine, "5 sounds · random")
+        offeredSound.shutDown()
 
         let (edges, _) = try makeModel(on: true, capability: .lidStateOnly)
         XCTAssertTrue(LidSoundText.copy(edges.lidSound.situation()).detail.contains("only reports the lid shut"))

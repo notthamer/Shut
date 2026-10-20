@@ -248,6 +248,17 @@ private struct LidSoundControls: View {
                     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(theme.washSaffron))
                     .transition(.blurFade)
             }
+            // What came with the app and is not in the list, folded under it, the way a phone
+            // folds its older ringtones: there for whoever wants it, in nobody's way.
+            let offered = model.offeredPacks
+            if !offered.isEmpty {
+                FoldedSection("More from Shut",
+                              summary: LidSoundText.offersLine(offered.map { pack in (pack.name, settings.items.filter { $0.packID == pack.id && !$0.hidden }.count) }),
+                              isOpen: Binding(get: { model.showingOffers }, set: { model.showingOffers = $0 }),
+                              help: LidSoundText.offersAbout)
+                    .padding(.top, 10)
+                if model.showingOffers { LidSoundOfferRows(model: model, offered: offered).transition(.blurFade) }
+            }
             // The library: sounds kept for later, out of the list and out of every pick.
             FoldedSection("Library", summary: LidSoundText.libraryLine(settings.kept.count),
                           isOpen: Binding(get: { model.showingLibrary }, set: { model.showingLibrary = $0 }),
@@ -256,6 +267,7 @@ private struct LidSoundControls: View {
             if model.showingLibrary { LidSoundLibraryRows(model: model).transition(.blurFade) }
         }
         .tunerAnimation(TunerTheme.ease, value: model.showingLibrary)
+        .tunerAnimation(TunerTheme.ease, value: model.showingOffers)
     }
 
     private var options: some View {
@@ -888,22 +900,54 @@ private struct LidSoundLibraryRows: View {
     }
 }
 
+/// "More from Shut", opened: each bundled pack not in the list, with where its audio came
+/// from and one button that puts it in, its sounds switched on.
+private struct LidSoundOfferRows: View {
+    @ObservedObject var model: PopoverModel
+    let offered: [LidSoundPack]
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        let settings = model.lidSound.settings
+        VStack(spacing: 0) {
+            ForEach(Array(offered.enumerated()), id: \.element.id) { index, pack in
+                if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
+                let count = settings.items.filter { $0.packID == pack.id && !$0.hidden }.count
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(pack.name).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
+                        if let credit = pack.credit {
+                            Text(credit).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1).truncationMode(.tail).help(credit)
+                        }
+                    }
+                    Spacer(minLength: 6)
+                    Text(count == 1 ? "1 sound" : "\(count) sounds").font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
+                    QuietButton("Add") { model.setPack(pack, hidden: false) }
+                        .help("Into the list, its sounds switched on.")
+                        .accessibilityLabel("Add the pack \(pack.name)")
+                }
+                .padding(.horizontal, 10).frame(minHeight: 36)
+            }
+        }
+        .surface(.well, radius: TunerTheme.wellRadius)
+        .clipShape(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous))
+    }
+}
+
 /// The packs, under Settings: the ones in the list, each removable with one click (a bundled
-/// pack then waits under "Add a pack", with where its audio came from, for whoever wants it;
-/// a user pack's sounds go to Mine); the user's own can be renamed (double-click). A pack is
-/// an offer, not a fixture: nobody has to keep what they did not choose.
+/// pack then waits under "More from Shut", below the list, for whoever wants it; a user
+/// pack's sounds go to Mine); the user's own can be renamed (double-click). A pack is an
+/// offer, not a fixture: nobody has to keep what they did not choose.
 private struct LidSoundPackRows: View {
     @ObservedObject var model: PopoverModel
     @State private var draft: (id: String, name: String)?
     @State private var newName: String?
-    @State private var offering = false
     @FocusState private var naming: Bool
     @Environment(\.tunerTheme) private var theme
 
     var body: some View {
         let settings = model.lidSound.settings
         let inUse = settings.packs.filter { !$0.hidden }
-        let offered = settings.packs.filter { $0.bundled && $0.hidden }
         VStack(alignment: .leading, spacing: 10) {
             VStack(spacing: 0) {
                 ForEach(Array(inUse.enumerated()), id: \.element.id) { index, pack in
@@ -930,7 +974,7 @@ private struct LidSoundPackRows: View {
                         Spacer(minLength: 6)
                         Text(count == 1 ? "1 sound" : "\(count) sounds").font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
                         if pack.id != LidSoundPack.mineID {
-                            IconButton("xmark", help: pack.bundled ? "Take the pack out of the list. It stays in the app; Add a pack brings it back."
+                            IconButton("xmark", help: pack.bundled ? "Take the pack out of the list. It stays in the app, under More from Shut below the list."
                                                                      : "Remove the pack. Its sounds go to Mine.") { model.removePack(pack) }
                                 .accessibilityLabel("Remove the pack \(pack.name)")
                         }
@@ -957,40 +1001,8 @@ private struct LidSoundPackRows: View {
             }
             .surface(.well, radius: TunerTheme.wellRadius)
             .clipShape(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous))
-
-            // The packs that come with the app but are not in the list: an offer.
-            if !offered.isEmpty {
-                QuietButton(offering ? "Done" : (offered.count == 1 ? "Add a pack" : "Add a pack (\(offered.count))"), disclosure: !offering) { offering.toggle() }
-                    .help("Packs that come with the app and are not in your list. Add one and its sounds join the list, switched on.")
-                    .padding(.leading, -6)
-                if offering {
-                    VStack(spacing: 0) {
-                        ForEach(Array(offered.enumerated()), id: \.element.id) { index, pack in
-                            if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
-                            let count = settings.items.filter { $0.packID == pack.id && !$0.hidden }.count
-                            HStack(spacing: 8) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(pack.name).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
-                                    if let credit = pack.credit {
-                                        Text(credit).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1).truncationMode(.tail).help(credit)
-                                    }
-                                }
-                                Spacer(minLength: 6)
-                                Text(count == 1 ? "1 sound" : "\(count) sounds").font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
-                                QuietButton("Add") { model.setPack(pack, hidden: false) }
-                                    .help("Into the list, its sounds switched on.")
-                            }
-                            .padding(.horizontal, 10).frame(minHeight: 36)
-                        }
-                    }
-                    .surface(.well, radius: TunerTheme.wellRadius)
-                    .clipShape(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous))
-                    .transition(.blurFade)
-                }
-            }
         }
         .tunerAnimation(TunerTheme.ease, value: newName == nil)
-        .tunerAnimation(TunerTheme.ease, value: offering)
     }
 }
 

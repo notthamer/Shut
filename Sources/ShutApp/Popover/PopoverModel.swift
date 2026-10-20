@@ -112,11 +112,13 @@ final class PopoverModel: ObservableObject {
     @Published var cuttingSoundForTest: UUID?
     /// The library, folded under the list.
     @Published var showingLibrary = false
+    /// "More from Shut" is open: the bundled packs not in the list, each one click from it.
+    @Published var showingOffers = false
     /// "New pack…" was chosen for this sound: a name is being typed for the pack.
     @Published var newPackFor: UUID?
 
-    /// The rows, in pack order (bundled packs as the manifest lists them, then Mine, then
-    /// the user's), each pack keeping its own order; with a pack chosen, that pack only.
+    /// The rows, in pack order (Mine, then the user's packs, then the bundled ones as the
+    /// manifest lists them), each pack keeping its own order; with a pack chosen, that pack only.
     var displayedSounds: [LidSoundItem] {
         let settings = lidSound.settings
         let order = Dictionary(uniqueKeysWithValues: settings.packs.enumerated().map { ($1.id, $0) })
@@ -127,6 +129,10 @@ final class PopoverModel: ObservableObject {
             return pa != pb ? pa < pb : a.offset < b.offset
         }.map(\.element)
     }
+
+    /// The packs that came with the app and are not in the list: offered under the list,
+    /// never pressed on anyone.
+    var offeredPacks: [LidSoundPack] { lidSound.settings.packs.filter { $0.bundled && $0.hidden } }
 
     /// Keep for later: out of the list and out of every pick, file and all kept.
     func keep(_ item: LidSoundItem) {
@@ -154,7 +160,9 @@ final class PopoverModel: ObservableObject {
         guard !trimmed.isEmpty else { return nil }
         let unique = LidSoundLibrary.uniqueName(trimmed, among: lidSound.settings.packs.map(\.name))
         let pack = LidSoundPack(id: "user-" + UUID().uuidString, name: unique, bundled: false)
-        lidSound.settings.packs.append(pack)
+        // After the user's other packs, before the bundled ones: the user's lead the list.
+        let packs = lidSound.settings.packs
+        lidSound.settings.packs.insert(pack, at: packs.firstIndex(where: \.bundled) ?? packs.endIndex)
         return pack
     }
 

@@ -189,6 +189,11 @@ enum LidSoundText {
         default: return "\(count) sounds kept for later, out of the list."
         }
     }
+    /// The folded "More from Shut" row: what waits there.
+    static func offersLine(_ packs: [(name: String, count: Int)]) -> String {
+        packs.map { "\($0.name) · \($0.count == 1 ? "1 sound" : "\($0.count) sounds")" }.joined(separator: ", ")
+    }
+    static let offersAbout = "Packs that come with Shut and are not in your list. Add one and its sounds join the list, switched on; the × beside a pack under Settings puts it back here."
     static let keepAbout = "Out of the list and out of every pick, file and all kept; one click from coming back."
     static let addHint = "Choose audio files: mp3, m4a, wav or aiff. Each is copied into Shut, so the original can move or go. A long one plays from where you choose. Files can also be dropped on the list."
     static let endsWithTheLid = "The sound ends with the lid: a short fade as it lands, whatever its length. Starts at, above, sets how early it begins."

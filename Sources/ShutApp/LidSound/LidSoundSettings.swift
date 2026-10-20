@@ -46,8 +46,10 @@ final class LidSoundSettings: ObservableObject {
     /// The sound plays to its end: the Mac waits for it, then sleeps at once. Off: a short
     /// fade as the lid lands, whatever the length.
     @Published var playsToEnd: Bool { didSet { defaults.set(playsToEnd, forKey: "lidSound.playsToEnd") } }
-    /// The packs: the bundled ones as the manifest lists them (hidden or not), then the
-    /// user's own, Mine first. Only the user's packs and the hidden flags are saved.
+    /// The packs: the user's own first, Mine leading, then the bundled ones as the manifest
+    /// lists them (hidden or not). The user's sounds lead the list; what came with the app
+    /// follows, as a phone lists your ringtones over its own. Only the user's packs and the
+    /// hidden flags are saved.
     @Published var packs: [LidSoundPack] { didSet { savePacks() } }
     @Published var playsFrom: PlaysFrom { didSet { defaults.set(playsFrom.stored, forKey: "lidSound.playsFrom") } }
     /// In order carries on per scope, so switching packs and back does not lose the place.
@@ -81,17 +83,17 @@ final class LidSoundSettings: ObservableObject {
         items = loaded
         // The packs: bundled from the manifest, with what the user decided about each saved
         // (in the list or out of it); a pack never seen before starts as the manifest says,
-        // unless its sounds are already in this list. The user's own packs after.
+        // unless its sounds are already in this list. The user's own packs first.
         let hiddenBundled = Set(defaults.stringArray(forKey: "lidSound.hiddenPacks") ?? [])
         let shownBundled = Set(defaults.stringArray(forKey: "lidSound.shownPacks") ?? [])
         let userPacks = (defaults.data(forKey: "lidSound.packs")).flatMap { try? JSONDecoder().decode([LidSoundPack].self, from: $0) } ?? [LidSoundPack.mine]
         let listed = firstLaunch ? [] : Set(loaded.map(\.packID))
-        packs = manifest.map { entry in
+        packs = (userPacks.contains { $0.id == LidSoundPack.mineID } ? userPacks : [LidSoundPack.mine] + userPacks) + manifest.map { entry in
             var pack = entry.pack
             if hiddenBundled.contains(pack.id) { pack.hidden = true }
             else if shownBundled.contains(pack.id) || listed.contains(pack.id) { pack.hidden = false }
             return pack
-        } + (userPacks.contains { $0.id == LidSoundPack.mineID } ? userPacks : [LidSoundPack.mine] + userPacks)
+        }
         playsFrom = PlaysFrom(stored: defaults.string(forKey: "lidSound.playsFrom"))
         nextIndexByScope = (defaults.data(forKey: "lidSound.nextIndexByScope")).flatMap { try? JSONDecoder().decode([String: Int].self, from: $0) } ?? [:]
         mode = defaults.string(forKey: "lidSound.mode").flatMap(Mode.init(rawValue:)) ?? .random
@@ -157,12 +159,12 @@ final class LidSoundSettings: ObservableObject {
         let known = Dictionary(uniqueKeysWithValues: packs.filter(\.bundled).map { ($0.id, $0.hidden) })
         let listed = Set(items.map(\.packID))
         let userPacks = packs.filter { !$0.bundled }
-        packs = manifest.map { entry in
+        packs = userPacks + manifest.map { entry in
             var pack = entry.pack
             if let decided = known[entry.id] { pack.hidden = decided }
             else if listed.contains(entry.id) { pack.hidden = false }
             return pack
-        } + userPacks
+        }
         var added: [LidSoundItem] = []
         for starter in manifest.flatMap(\.starters) {
             let from = starter.from ?? 0, to = starter.to

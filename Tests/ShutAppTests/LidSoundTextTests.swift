@@ -28,6 +28,8 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertEqual(LidSoundText.copy(empty).detail, "Nothing to play in Voices: switch a sound on, or choose All.")
         XCTAssertEqual(LidSoundText.libraryLine(0), "Nothing kept for later.")
         XCTAssertEqual(LidSoundText.libraryLine(2), "2 sounds kept for later, out of the list.")
+        XCTAssertEqual(LidSoundText.offersLine([(name: "Adhkar", count: 5)]), "Adhkar · 5 sounds")
+        XCTAssertEqual(LidSoundText.offersLine([(name: "Adhkar", count: 5), (name: "Bells", count: 1)]), "Adhkar · 5 sounds, Bells · 1 sound")
         var edges = situation(candidates: ["Rain"]); edges.capability = .lidStateOnly
         XCTAssertEqual(LidSoundText.tabLine(edges), "Rain · after the lid shuts")
     }
