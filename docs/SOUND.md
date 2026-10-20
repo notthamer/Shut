@@ -22,7 +22,8 @@ lid opens. Off until you turn it on.
   sound goes ("Through AirPods Pro."). One action: Turn on; Try it (the sound the next
   close would play, while the preview window plays the close); or, muted, Change, which
   opens Settings.
-- **Pick, Volume and Starts at**, on the right of the band. Random never plays the same
+- **Pick and Volume**, on the right of the band, and nothing else, so the band is short
+  (248 pt, under Stay awake's 320) and nothing in it scrolls. Random never plays the same
   sound twice running; In order goes down the list. Volume is Lid sound's own, as a share of
   the Mac's, which Shut never changes; letting go of the slider plays the sound at that
   level. What the dial means is a choice under Settings: **Of the Mac's** (a
@@ -31,17 +32,21 @@ lid opens. Off until you turn it on.
   dial for the sound, with the player at full, and puts it back when the sound ends; the
   old value is written to defaults first, so a sleep in between still gets it put back at
   the next launch, on the same output only). Outputs with no volume Shut can set keep the
-  dial a share. Starts at is the angle above shut where the sound begins, always shown as a number:
+  dial a share.
+- **02 Timing**, the lower right, always in view over the folded Settings: Starts at is
+  the angle above shut where the sound begins, always shown as a number:
   with "Same as the screen effect" on (the default) it is Speed's angle from Lid effects, so
   the sound and the screen begin together; off, the dial sets the sound's own angle, 20° to
   130°, and the hinge, not the overlay, says when. The answer at the top says it too: "It
   starts as the lid passes 60°".
-- **01 Sounds**: the list, a well that shows four and a half rows and scrolls inside itself
-  beyond that. Each row has a ▶ to hear it, its name, its length, a switch, and an ×. A row
-  at work is in ink with a Lime dot. A file that went missing says "Missing", with the
-  switch off and disabled; one Core Audio cannot open says "Can't be played". Under the
-  list, "Add a sound…" (a file panel; the popover stays open around it) and the rule: mp3,
-  m4a, wav or aiff, or drop files on the list. Rows reorder by hold and drag: a grip shows
+- **01 Sounds**: the list, a well as long as the list is. The column scrolls, once; the
+  well never scrolls inside it (it did, at four and a half rows, and six sounds made a
+  scroll inside a scroll). Each row has a ▶ to hear it, its name, its length, a switch, and
+  a … menu. A row at work is in ink with a Lime dot. A file that went missing says
+  "Missing", with the switch off and disabled; one Core Audio cannot open says "Can't be
+  played". "Add a sound…" sits in the section's heading, so it is there before the list is
+  scrolled (a file panel; the popover stays open around it); its tooltip carries the rule:
+  mp3, m4a, wav or aiff, or drop files on the list. Rows reorder by hold and drag: a grip shows
   when the pointer is near; hold the name a moment and the row lifts onto Linen and follows
   the pointer, the others step aside a row at a time (they jump, as the eyes jump between
   frames; nothing eases into place), and letting go keeps the order, which is what "In
@@ -168,7 +173,7 @@ stops at its end with the landing fade, however the lid is held. Double-click a 
 rename it: Return keeps it, Escape leaves it; two rows never share a name.
 
 **Packs.** Every sound belongs to one pack. Bundled packs come from `starters.json` (the
-adhkar, and Click, Breath, Hum), each with a `credit` line saying where its audio came
+adhkar, and Starters, the generated Click, Breath and Hum), each with a `credit` line saying where its audio came
 from, written beside it (rule 6), and an `onByDefault` flag: a pack is an offer, not a
 fixture. Click, Breath and Hum start in the list; the adhkar do not, and wait under "Add a
 pack" (Settings → Packs) with their credit, for whoever wants them. Any pack in the list

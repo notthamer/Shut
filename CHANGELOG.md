@@ -12,7 +12,7 @@
 - Its own volume: Shut sets your Mac's volume to the dial for the sound and puts it back when it ends, so the dial is the level you hear whatever the Mac is set to. Or, under Settings, a share of the Mac's volume as it is. Let go of the slider to hear it.
 - Muted Mac: your call. Stay quiet (the page and the tab say "Muted"), or Unmute for it, and mute comes back when the sound ends.
 - Also on open: a sound as the desktop pours back in after you unlock. The close's pick again, or one in particular.
-- A third tab, Lid sound, beside Lid effects and Stay awake, with the three bars that move while a sound plays, and "Play a Sound on Close" in the menu.
+- A third tab, Lid sound, beside Lid effects and Stay awake, with the three bars that move while a sound plays, and "Play a Sound on Close" in the menu. The page scrolls once per column: the list is as long as it is, with Add a sound… in its heading, and Starts at has its own place on the right over Settings.
 
 **Also**
 

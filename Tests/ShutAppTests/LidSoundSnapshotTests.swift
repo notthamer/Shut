@@ -110,6 +110,13 @@ final class LidSoundSnapshotTests: XCTestCase {
         XCTAssertEqual(on.importNote, "A part is half a second at least.")
         on.importNote = nil
         try render(on, name: "parts")
+        // Seven sounds: the well is as long as the list and the column scrolls once; no
+        // scroll inside a scroll, however many there are.
+        for i in 1...3 { on.cutSound(sound.settings.shown[0], from: Double(i), to: Double(i) + 1, name: "Part \(i)") }
+        XCTAssertEqual(sound.settings.shown.count, 7)
+        try render(on, name: "many")
+        for part in sound.settings.shown where part.displayName.hasPrefix("Part ") { on.removeSound(part) }
+        XCTAssertEqual(sound.settings.shown.count, 4)
         // The editor open on a row: the shape of the sound, with the part on it.
         sound.readWaveformNow(for: sound.settings.shown[2])
         XCTAssertEqual(sound.waveforms["Breath.wav"]?.count, LidSoundController.waveformBuckets)
@@ -181,7 +188,7 @@ final class LidSoundSnapshotTests: XCTestCase {
         let voices = try XCTUnwrap(packed.newPack(named: "Voices"))
         packed.moveSound(packedSound.settings.items[1], to: voices.id)
         XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Click", "Hum", "Breath"], "pack order: bundled, then the user's")
-        XCTAssertEqual(packedSound.settings.packs.map(\.name), ["Click, Breath, Hum", "Mine", "Voices"])
+        XCTAssertEqual(packedSound.settings.packs.map(\.name), ["Starters", "Mine", "Voices"])
         try render(packed, name: "packs-all")
         packedSound.settings.playsFrom = .pack(voices.id)
         XCTAssertEqual(packed.lidSoundTabLine, "Breath · On")

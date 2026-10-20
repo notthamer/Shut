@@ -83,7 +83,7 @@ final class LidSoundLibrary {
     }
 
     /// The three generated ones, when the manifest is missing: the feature still works.
-    static let fallbackPacks = [ManifestPack(id: "generated", name: "Click, Breath, Hum", credit: nil,
+    static let fallbackPacks = [ManifestPack(id: "generated", name: "Starters", credit: nil,
                                              sounds: [Starter(name: "Click", file: "Click.wav"), Starter(name: "Breath", file: "Breath.wav"), Starter(name: "Hum", file: "Hum.wav")])]
     static var fallbackStarters: [Starter] { fallbackPacks.flatMap(\.starters) }
 

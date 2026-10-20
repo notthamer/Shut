@@ -9,13 +9,17 @@ import UniformTypeIdentifiers
 ///          It starts as the lid comes down …       VOLUME ●━━━━━━━━━━━━━━━  70 %
 ///          [ ▶ Try it ]
 ///     ─────────────────────────────────────────────────────────────────────────
-///     01 SOUNDS                                  02 SETTINGS ›
-///     ▶ Rain      2.4 s          ◉   ×           Silent on open · stays quiet when muted
-///     Add a sound…
+///     01 SOUNDS                                  02 TIMING
+///     ▶ Rain      2.4 s          ◉   …           STARTS AT ━━━━●━━━━━━━━━━  60°
+///     ▶ Click     0.1 s          ◉   …           Same as the screen effect      ◉
+///     Add a sound…                               03 SETTINGS ›
+///     Library · 2 ›                              Silent on open · stays quiet when muted
 ///
 /// The answer spans the band: what closing will do, and the sound it names. The one choice
-/// (which way) and the volume are on its right. Under the hairline, the list with its
-/// switches on the left and the folded settings on the right, each scrolling by itself.
+/// (which way) and the volume are on its right, and that is all the band holds, so it is
+/// short and nothing in it scrolls. Under the hairline, two columns that each scroll once:
+/// the list on the left, as long as it is (a well never scrolls inside a column that
+/// scrolls), and on the right the timing, always in view, over the folded settings.
 struct LidSoundPage: View {
     @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
@@ -36,6 +40,10 @@ private struct LidSoundBand: View {
     @ObservedObject var model: PopoverModel
     @ObservedObject var sound: LidSoundController
     @Environment(\.tunerTheme) private var theme
+
+    /// Shorter than the Stay awake band: the answer on the left and two controls on the
+    /// right fit in it, and what is saved goes to the list, which needs the room more.
+    static let height: CGFloat = 248
 
     init(model: PopoverModel) {
         self.model = model
@@ -75,9 +83,8 @@ private struct LidSoundBand: View {
 
             Rectangle().fill(theme.hairline).frame(width: 1)
 
-            // The right cell scrolls by itself, like the left: with the start dial and the
-            // off-state line it can outgrow the band's one height.
-            ScrollView(.vertical, showsIndicators: false) {
+            // The right cell holds the two things to set first, and only them, so it fits
+            // the band's height with nothing to scroll.
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Pick").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
@@ -87,7 +94,6 @@ private struct LidSoundBand: View {
                     .help("Random never plays the same sound twice running. In order goes down the list.")
                 }
                 LidSoundVolume(sound: sound)
-                LidSoundStart(sound: sound)
                 if !isOn {
                     // Off: the controls are readable (they are the explanation) and the line
                     // says what comes first, so a dim pair of buttons is not a dead end.
@@ -100,11 +106,9 @@ private struct LidSoundBand: View {
             .opacity(isOn ? 1 : 0.5)
             .padding(.horizontal, 20).padding(.vertical, 22)
             .frame(width: PopoverView.width - AwakePage.statusWidth - 1, alignment: .topLeading)
-            }
-            .frame(width: PopoverView.width - AwakePage.statusWidth - 1)
             .frame(maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(height: AwakePage.bandHeight)
+        .frame(height: Self.height)
         .clipped()
         .tunerAnimation(TunerTheme.ease, value: isOn)
     }
@@ -224,20 +228,26 @@ private struct LidSoundControls: View {
     private var sounds: some View {
         let settings = sound.settings
         return VStack(alignment: .leading, spacing: 10) {
-            Eyebrow("Sounds", number: "01").padding(.bottom, 2)
+            // The section's one action sits in its heading, so it is there before the list
+            // is scrolled, however long the list grows.
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Eyebrow("Sounds", number: "01")
+                Spacer(minLength: 8)
+                QuietButton("Add a sound…", disclosure: true, action: model.addSounds)
+                    .help(LidSoundText.addHint)
+                    .padding(.trailing, -6)
+            }
+            .padding(.bottom, 2)
             LidSoundPlaysFrom(model: model)
             LidSoundList(model: model)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                QuietButton("Add a sound…", disclosure: true, action: model.addSounds)
-                    .help("Choose audio files. Each is copied into Shut, so the original can move or go.")
-                    .padding(.leading, -6)
+            if let note = model.importNote {
+                Text(note)
+                    .font(TunerTheme.bodySmall).foregroundStyle(theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(theme.washSaffron))
+                    .transition(.blurFade)
             }
-            Text(model.importNote ?? LidSoundText.addHint)
-                .font(TunerTheme.bodySmall).foregroundStyle(model.importNote == nil ? theme.inkLabel : theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, model.importNote == nil ? 0 : 10).padding(.vertical, model.importNote == nil ? 0 : 6)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(model.importNote == nil ? .clear : theme.washSaffron))
-                .accessibilityLabel(model.importNote ?? LidSoundText.addHint)
             // The library: sounds kept for later, out of the list and out of every pick.
             FoldedSection("Library", summary: LidSoundText.libraryLine(settings.kept.count),
                           isOpen: Binding(get: { model.showingLibrary }, set: { model.showingLibrary = $0 }),
@@ -250,8 +260,18 @@ private struct LidSoundControls: View {
 
     private var options: some View {
         let settings = sound.settings
+        let isOn = settings.isOn
         return VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
-            FoldedSection("Settings", number: "02",
+            // When the sound begins, always in view: it was asked for by eye ("how early?"),
+            // and the column has the room the band does not.
+            VStack(alignment: .leading, spacing: 12) {
+                Eyebrow("Timing", number: "02")
+                LidSoundStart(sound: sound)
+            }
+            .disabled(!isOn)
+            .opacity(isOn ? 1 : 0.5)
+            .tunerAnimation(TunerTheme.ease, value: isOn)
+            FoldedSection("Settings", number: "03",
                           summary: LidSoundText.settingsSummary(onOpen: settings.onOpen, whenMuted: settings.whenMuted, volumeMode: settings.volumeMode),
                           isOpen: Binding(get: { model.showingSoundSettings }, set: { model.showingSoundSettings = $0 }),
                           help: "A sound on open, what to do when the Mac is muted, and the starter sounds.")
@@ -260,9 +280,9 @@ private struct LidSoundControls: View {
     }
 }
 
-/// The sounds, each with a switch, in a well that never outgrows the page: four and a half
-/// rows (the half says "there is more"), scrolling inside itself beyond that. A row at work
-/// says so in ink; a file that went missing says so and cannot be switched on.
+/// The sounds, each with a switch, in a well as long as the list: the column it sits in is
+/// what scrolls, so there is never a scroll inside a scroll. A row at work says so in ink;
+/// a file that went missing says so and cannot be switched on.
 private struct LidSoundList: View {
     @ObservedObject var model: PopoverModel
     @State private var dropTargeted = false
@@ -280,7 +300,6 @@ private struct LidSoundList: View {
     }
 
     static let rowHeight: CGFloat = 34
-    static let visibleRows: CGFloat = 4.5
 
     /// Where the carried row would land, from how far it has been dragged.
     private func target(_ carry: Carry, count: Int) -> Int {
@@ -319,12 +338,12 @@ private struct LidSoundList: View {
         let headed = sound.settings.playsFrom == .all && Set(items.map(\.packID)).count > 1
         VStack(spacing: 0) {
             if items.isEmpty {
-                Text(sound.settings.playsFrom == .all ? "No sounds yet. Add one, or restore the starters under Settings."
+                Text(sound.settings.playsFrom == .all ? "No sounds yet. Add one above, or drop audio files here."
                                                       : "Nothing in this pack yet. Move a sound here, or add one.")
                     .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            let rows = VStack(spacing: 0) {
+            VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
                     if headed, index == 0 || items[index - 1].packID != item.packID {
@@ -344,11 +363,6 @@ private struct LidSoundList: View {
                         .zIndex(carry?.id == item.id ? 1 : 0)
                     if clipping == item.id { LidSoundCut(model: model, item: item, done: { self.clipping = nil; model.cuttingSoundForTest = nil }).transition(.blurFade) }
                 }
-            }
-            if CGFloat(items.count) > Self.visibleRows || clipping != nil || headed {
-                ScrollView(showsIndicators: true) { rows }.frame(height: clipping == nil ? Self.rowHeight * Self.visibleRows : 236)
-            } else {
-                rows
             }
             if let pending = model.newPackFor, let item = items.first(where: { $0.id == pending }) {
                 LidSoundNewPack(model: model, item: item)

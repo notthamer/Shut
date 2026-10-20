@@ -190,7 +190,7 @@ enum LidSoundText {
         }
     }
     static let keepAbout = "Out of the list and out of every pick, file and all kept; one click from coming back."
-    static let addHint = "mp3, m4a, wav or aiff. Or drop files here. A long one plays from where you choose."
+    static let addHint = "Choose audio files: mp3, m4a, wav or aiff. Each is copied into Shut, so the original can move or go. A long one plays from where you choose. Files can also be dropped on the list."
     static let endsWithTheLid = "The sound ends with the lid: a short fade as it lands, whatever its length. Starts at, above, sets how early it begins."
     static func startsWithEffectAbout(_ degrees: Int) -> String { "Where the screen effect starts: \(degrees)°, from Speed on Lid effects." }
     static let ownStartAbout = "Its own angle, whatever the screen effect does."
