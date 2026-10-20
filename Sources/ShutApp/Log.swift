@@ -8,4 +8,5 @@ enum Log {
     static let capture = Logger(subsystem: "app.shut", category: "capture")
     static let unlock = Logger(subsystem: "app.shut", category: "unlock")
     static let awake = Logger(subsystem: "app.shut", category: "awake")
+    static let sound = Logger(subsystem: "app.shut", category: "sound")
 }

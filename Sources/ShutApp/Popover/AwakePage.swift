@@ -331,23 +331,9 @@ private struct AwakeControls: View {
     /// stay out of the way; the summary says the two worth knowing without opening it.
     private var options: some View {
         VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
-            Button { model.showingAwakeSettings.toggle() } label: {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Eyebrow("Settings", number: "02")
-                        Image(systemName: model.showingAwakeSettings ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.inkTertiary)
-                        Spacer()
-                    }
-                    if !model.showingAwakeSettings {
-                        Text(optionsSummary).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(PressStyle())
-            .help("Battery, power and lock limits, and a few extras.")
+            FoldedSection("Settings", number: "02", summary: optionsSummary,
+                          isOpen: Binding(get: { model.showingAwakeSettings }, set: { model.showingAwakeSettings = $0 }),
+                          help: "Battery, power and lock limits, and a few extras.")
 
             if model.showingAwakeSettings { AwakeLimits(model: model).transition(.blurFade) }
         }
@@ -550,7 +536,7 @@ struct ModeSwitch: View {
 
 /// One trigger: its name, one line about it (or, when it is the one at work, who and
 /// "now"), an optional "3 apps ›" disclosure, and its switch.
-private struct TriggerRow: View {
+struct TriggerRow: View {
     let label: String
     let about: String
     let live: String?
@@ -711,7 +697,7 @@ struct BatteryMeter: View {
 /// and a half rows (the half says "there is more") and scrolls inside itself beyond that;
 /// past eight apps it grows a filter. Unbounded, seven apps already pushed the rows below
 /// it off the page, and a list of thirty would have been the page.
-private struct AppList: View {
+struct AppList: View {
     struct Item: Identifiable { let id: String; let name: String; let isOn: Bool; var note: String? = nil }
 
     let intro: String
@@ -887,7 +873,7 @@ struct AwakeLimits: View {
 }
 
 /// A slider or a segmented row with its one line of explanation underneath.
-private struct Explained<Row: View>: View {
+struct Explained<Row: View>: View {
     let caption: String
     /// One quiet thing to do about the caption, at its end ("Use 60 %").
     let link: (title: String, action: () -> Void)?
