@@ -56,6 +56,7 @@ public enum ShutApp {
             ("fonts, system font stands in for a missing face", TunerFonts.systemFallbackWorks),
             ("shaders (Shut_TransitionKit.bundle)", TransitionRenderer.shaderSourcesArePresent),
             ("images (Shut_ShutApp.bundle)", AppAssets.logo != nil && AppAssets.mark != nil && AppAssets.eyes.count == 6),
+            ("starter sounds (Shut_ShutApp.bundle/Resources/Sounds)", LidSoundLibrary().starterURLs().count == LidSoundSettings.starters.count),
         ]
         for (name, passed) in checks { print("\(passed ? "ok  " : "FAIL") \(name)") }
         return checks.allSatisfy(\.1) ? 0 : 1
