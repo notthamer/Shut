@@ -75,6 +75,9 @@ private struct LidSoundBand: View {
 
             Rectangle().fill(theme.hairline).frame(width: 1)
 
+            // The right cell scrolls by itself, like the left: with the start dial and the
+            // off-state line it can outgrow the band's one height.
+            ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Pick").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
@@ -97,6 +100,8 @@ private struct LidSoundBand: View {
             .opacity(isOn ? 1 : 0.5)
             .padding(.horizontal, 20).padding(.vertical, 22)
             .frame(width: PopoverView.width - AwakePage.statusWidth - 1, alignment: .topLeading)
+            }
+            .frame(width: PopoverView.width - AwakePage.statusWidth - 1)
             .frame(maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(height: AwakePage.bandHeight)

@@ -298,6 +298,35 @@ final class AwakeSnapshotTests: XCTestCase {
         awake.shutDown()
     }
 
+    /// A sleep still going from the last close is the answer, on the page and the tab; after
+    /// a slow one, the card names who held it up, on both pages.
+    func testASleepStillGoing() throws {
+        let (model, awake) = try makeModel(on: true, reasons: [], asking: [])
+        model.page = .awake
+        model.sleep.sleepBegan(now: Date().addingTimeInterval(-12))
+        let line = AwakeText.tabLine(state: awake.arbiter.state, reasons: [], conditions: awake.arbiter.conditions, limits: awake.arbiter.limits,
+                                     sleepPendingSeconds: model.sleepPendingSeconds(), now: Date())
+        XCTAssertEqual(line, "Still going to sleep")
+        try render(model, name: "page-sleep-pending")
+        model.sleep.woke(now: Date())
+        awake.shutDown()
+
+        let suite = UserDefaults(suiteName: "SleepCard-\(UUID().uuidString)")!
+        let watch = SleepWatch(defaults: suite, powerLog: { SleepWatchTests.powerLog })
+        let t0 = Date(timeIntervalSince1970: 1_760_990_040)
+        watch.sleepBegan(now: t0); watch.woke(now: t0.addingTimeInterval(31))
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertEqual(watch.slow?.names, ["Logitech Options+", "Logitech G Hub"])
+        let (carded, cardedAwake) = try makeModel(on: true, reasons: [], asking: [], sleepWatch: watch)
+        carded.page = .awake
+        try render(carded, name: "page-slow-sleep")
+        carded.page = .sound
+        try render(carded, name: "sound-slow-sleep")
+        watch.dismissSlow()
+        XCTAssertNil(carded.sleep.slow)
+        cardedAwake.shutDown()
+    }
+
     // MARK: The first run
 
     /// The welcome, on the canvas. Each step is rasterised, and the two that are
