@@ -113,6 +113,7 @@ final class LidSoundLibraryTests: XCTestCase {
         XCTAssertFalse(settings.isOn, "off until turned on")
         XCTAssertEqual(settings.volume, 0.7)
         XCTAssertEqual(settings.whenMuted, .stayQuiet)
+        XCTAssertEqual(settings.volumeMode, .ownLevel)
         var hum = settings.items[2]; hum.hidden = true
         settings.update(hum)
         settings.onOpenPick = .item(settings.items[0].id)

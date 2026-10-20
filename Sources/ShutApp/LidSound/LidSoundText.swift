@@ -88,9 +88,9 @@ enum LidSoundText {
     }
 
     /// The folded Settings row: the two things worth knowing without opening it.
-    static func settingsSummary(onOpen: Bool, whenMuted: LidSoundSettings.WhenMuted, volumeMode: LidSoundSettings.VolumeMode = .shareOfMac) -> String {
+    static func settingsSummary(onOpen: Bool, whenMuted: LidSoundSettings.WhenMuted, volumeMode: LidSoundSettings.VolumeMode = .ownLevel) -> String {
         var parts = [onOpen ? "A sound on open too" : "Silent on open", whenMuted == .unmute ? "unmutes for it" : "stays quiet when muted"]
-        if volumeMode == .ownLevel { parts.append("sets the Mac's volume for it") }
+        if volumeMode == .shareOfMac { parts.append("follows the Mac's volume") }
         return parts.joined(separator: " · ")
     }
 
@@ -104,7 +104,7 @@ enum LidSoundText {
             return "Your Mac is set to this for the sound, then put back. Let go to hear it."
         }
     }
-    static let shareOfMacAbout = "Of the Mac's: a share of your Mac's volume as it is, so a quiet Mac means a quiet lid. Its own level: Shut sets your Mac's volume to the dial for the sound and puts it back when it ends."
+    static let shareOfMacAbout = "Its own level: Shut sets your Mac's volume to the dial for the sound and puts it back when it ends. Of the Mac's: a share of your Mac's volume as it is, so the lid follows the Mac, and a quiet Mac means a quiet lid."
     static let noVolumeControl = "This output has no volume Shut can set, so the dial is a share of it either way."
 
     /// "0.8 s", "2.4 s", "12 s", "3 min 20 s": one decimal under ten seconds, none above.

@@ -414,8 +414,8 @@ private struct LidSoundSettingsRows: View {
 
             Eyebrow("Volume").padding(.top, 28).padding(.bottom, 12)
             Explained(sound.canSetVolume ? LidSoundText.shareOfMacAbout : LidSoundText.noVolumeControl) {
-                SegmentedRow("The dial is", options: ["Of the Mac's", "Its own level"],
-                             selection: Binding(get: { settings.volumeMode == .ownLevel ? 1 : 0 }, set: { settings.volumeMode = $0 == 1 ? .ownLevel : .shareOfMac }),
+                SegmentedRow("The dial is", options: ["Its own level", "Of the Mac's"],
+                             selection: Binding(get: { settings.volumeMode == .ownLevel ? 0 : 1 }, set: { settings.volumeMode = $0 == 0 ? .ownLevel : .shareOfMac }),
                              help: "What the Volume dial means.")
                     .disabled(!sound.canSetVolume)
             }

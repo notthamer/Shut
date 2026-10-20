@@ -64,7 +64,8 @@ final class LidSoundSettings: ObservableObject {
         onOpen = bool("lidSound.onOpen", false)
         onOpenPick = OnOpenPick(stored: defaults.string(forKey: "lidSound.onOpenPick"))
         whenMuted = defaults.string(forKey: "lidSound.whenMuted").flatMap(WhenMuted.init(rawValue:)) ?? .stayQuiet
-        volumeMode = defaults.string(forKey: "lidSound.volumeMode").flatMap(VolumeMode.init(rawValue:)) ?? .shareOfMac
+        // Its own level by default: the dial is the level heard, whatever the Mac is set to.
+        volumeMode = defaults.string(forKey: "lidSound.volumeMode").flatMap(VolumeMode.init(rawValue:)) ?? .ownLevel
         startsWithEffect = bool("lidSound.startsWithEffect", true)
         startDegrees = defaults.object(forKey: "lidSound.startDegrees") as? Double ?? 60
         lastPickID = defaults.string(forKey: "lidSound.lastPickID").flatMap(UUID.init(uuidString:))

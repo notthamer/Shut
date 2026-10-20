@@ -25,9 +25,9 @@ lid opens. Off until you turn it on.
 - **Pick, Volume and Starts at**, on the right of the band. Random never plays the same
   sound twice running; In order goes down the list. Volume is Lid sound's own, as a share of
   the Mac's, which Shut never changes; letting go of the slider plays the sound at that
-  level. What the dial means is a choice under Settings: **Of the Mac's** (the default: a
+  level. What the dial means is a choice under Settings: **Of the Mac's** (a
   share of the Mac's volume as it is, so a quiet Mac means a quiet lid; the line under the
-  dial says the Mac's level now) or **Its own level** (Shut sets the Mac's volume to the
+  dial says the Mac's level now) or **Its own level** (the default: Shut sets the Mac's volume to the
   dial for the sound, with the player at full, and puts it back when the sound ends; the
   old value is written to defaults first, so a sleep in between still gets it put back at
   the next launch, on the same output only). Outputs with no volume Shut can set keep the

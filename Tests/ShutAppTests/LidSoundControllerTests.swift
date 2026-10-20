@@ -242,7 +242,7 @@ extension LidSoundControllerTests {
     func testItsOwnLevelSetsTheMacAndPutsItBack() throws {
         output.level = 0.06   // one bar
         let (controller, settings) = make()
-        settings.volumeMode = .ownLevel
+        XCTAssertEqual(settings.volumeMode, .ownLevel, "the default: the dial is the level heard")
         settings.volume = 0.7
         hinge(controller, 0.005, .closing)
         controller.closeBeginning()
