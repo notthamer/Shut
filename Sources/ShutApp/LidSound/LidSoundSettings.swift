@@ -13,6 +13,14 @@ final class LidSoundSettings: ObservableObject {
     /// What the Volume dial means: a share of the Mac's volume as it is, or a level of its
     /// own that Shut sets the Mac to for the sound and puts back after.
     enum VolumeMode: String, Codable { case shareOfMac, ownLevel }
+    /// What a close picks from: every pack, or one.
+    enum PlaysFrom: Equatable {
+        case all
+        case pack(String)
+        var stored: String { if case .pack(let id) = self { return id } else { return "all" } }
+        var key: String { stored }
+        init(stored: String?) { self = (stored == nil || stored == "all") ? .all : .pack(stored!) }
+    }
     /// What "Also on open" plays: the close's pick again, or one sound in particular.
     enum OnOpenPick: Equatable {
         case samePick
@@ -38,6 +46,12 @@ final class LidSoundSettings: ObservableObject {
     /// The sound plays to its end: the Mac waits for it, then sleeps at once. Off: a short
     /// fade as the lid lands, whatever the length.
     @Published var playsToEnd: Bool { didSet { defaults.set(playsToEnd, forKey: "lidSound.playsToEnd") } }
+    /// The packs: the bundled ones as the manifest lists them (hidden or not), then the
+    /// user's own, Mine first. Only the user's packs and the hidden flags are saved.
+    @Published var packs: [LidSoundPack] { didSet { savePacks() } }
+    @Published var playsFrom: PlaysFrom { didSet { defaults.set(playsFrom.stored, forKey: "lidSound.playsFrom") } }
+    /// In order carries on per scope, so switching packs and back does not lose the place.
+    var nextIndexByScope: [String: Int] { didSet { defaults.set(try? JSONEncoder().encode(nextIndexByScope), forKey: "lidSound.nextIndexByScope") } }
 
     /// Random never plays the same sound twice running; in order carries on from here.
     var lastPickID: UUID? { didSet { defaults.set(lastPickID?.uuidString, forKey: "lidSound.lastPickID") } }
@@ -49,16 +63,27 @@ final class LidSoundSettings: ObservableObject {
     /// "Its own level" set the Mac's volume and has not put it back yet; the value owed.
     var volumeToRestore: Double? { didSet { defaults.set(volumeToRestore, forKey: "lidSound.volumeToRestore") } }
 
-    init(defaults: UserDefaults = .standard, starters: [LidSoundLibrary.Starter]? = nil) {
+    init(defaults: UserDefaults = .standard, manifest: [LidSoundLibrary.ManifestPack]? = nil) {
         self.defaults = defaults
         func bool(_ key: String, _ fallback: Bool) -> Bool { defaults.object(forKey: key) as? Bool ?? fallback }
+        let manifest = manifest ?? LidSoundLibrary().packs()
         isOn = bool("lidSound.isOn", false)
+        let firstLaunch: Bool
         if let data = defaults.data(forKey: "lidSound.items"), let saved = try? JSONDecoder().decode([LidSoundItem].self, from: data) {
             items = saved
+            firstLaunch = false
         } else {
             // First launch: the starters, switched on, so the first close has something to play.
-            items = (starters ?? LidSoundLibrary().starters()).map { $0.item() }
+            items = manifest.flatMap(\.starters).map { $0.item() }
+            firstLaunch = true
         }
+        // The packs: bundled from the manifest, with the hidden flags saved; the user's own after.
+        let hiddenBundled = Set(defaults.stringArray(forKey: "lidSound.hiddenPacks") ?? [])
+        let userPacks = (defaults.data(forKey: "lidSound.packs")).flatMap { try? JSONDecoder().decode([LidSoundPack].self, from: $0) } ?? [LidSoundPack.mine]
+        packs = manifest.map { var pack = $0.pack; pack.hidden = hiddenBundled.contains(pack.id); return pack }
+            + (userPacks.contains { $0.id == LidSoundPack.mineID } ? userPacks : [LidSoundPack.mine] + userPacks)
+        playsFrom = PlaysFrom(stored: defaults.string(forKey: "lidSound.playsFrom"))
+        nextIndexByScope = (defaults.data(forKey: "lidSound.nextIndexByScope")).flatMap { try? JSONDecoder().decode([String: Int].self, from: $0) } ?? [:]
         mode = defaults.string(forKey: "lidSound.mode").flatMap(Mode.init(rawValue:)) ?? .random
         volume = defaults.object(forKey: "lidSound.volume") as? Double ?? 0.7
         onOpen = bool("lidSound.onOpen", false)
@@ -74,25 +99,64 @@ final class LidSoundSettings: ObservableObject {
         muteToRestore = defaults.bool(forKey: "lidSound.muteToRestore")
         muteToRestoreDeviceUID = defaults.string(forKey: "lidSound.muteToRestoreDeviceUID")
         volumeToRestore = defaults.object(forKey: "lidSound.volumeToRestore") as? Double
+        if !firstLaunch { settlePacks(against: manifest) }
     }
 
-    /// The rows on the page: everything that is not a hidden starter.
-    var shown: [LidSoundItem] { items.filter { !$0.hidden } }
+    private func savePacks() {
+        defaults.set(try? JSONEncoder().encode(packs.filter { !$0.bundled }), forKey: "lidSound.packs")
+        defaults.set(packs.filter { $0.bundled && $0.hidden }.map(\.id), forKey: "lidSound.hiddenPacks")
+    }
 
-    /// A release can bring new starters. Any in the manifest that the list does not have yet
-    /// (the same file and part as a starter, or the same name and part as a sound of the
-    /// user's own) is added, switched on, at the end. Hidden ones stay hidden.
-    func adoptNewStarters(_ starters: [LidSoundLibrary.Starter]) {
+    /// An older list's manifest sounds carry no pack: give each the manifest pack that lists
+    /// its file and part; the rest stay where they are. Also runs after `adoptNewPacks`.
+    func settlePacks(against manifest: [LidSoundLibrary.ManifestPack]) {
+        var changed = false
+        var settled = items
+        for (index, item) in settled.enumerated() where item.fromManifest && item.packID == LidSoundPack.startersID {
+            if let pack = manifest.first(where: { pack in pack.starters.contains { item.samePart(file: $0.file, from: $0.from ?? 0, to: $0.to) } }) {
+                settled[index].packID = pack.id; changed = true
+            } else if let first = manifest.first {
+                settled[index].packID = first.id; changed = true
+            }
+        }
+        if changed { items = settled }
+    }
+
+    /// The rows on the page: listed sounds, in packs that are not hidden, not kept for later.
+    var shown: [LidSoundItem] {
+        let hiddenPacks = hiddenPackIDs
+        return items.filter { !$0.hidden && !$0.kept && !hiddenPacks.contains($0.packID) }
+    }
+    /// The library: saved for later, out of the list.
+    var kept: [LidSoundItem] { items.filter { $0.kept && !$0.hidden } }
+    var hiddenPackIDs: Set<String> { Set(packs.filter(\.hidden).map(\.id)) }
+    /// The packs a sound can be moved to or played from: not hidden.
+    var visiblePacks: [LidSoundPack] { packs.filter { !$0.hidden } }
+    func pack(_ id: String) -> LidSoundPack? { packs.first { $0.id == id } }
+
+    /// In order's place within a scope.
+    func nextIndex(for scope: PlaysFrom) -> Int { nextIndexByScope[scope.key] ?? 0 }
+    func setNextIndex(_ index: Int, for scope: PlaysFrom) { nextIndexByScope[scope.key] = index }
+
+    /// A release can bring new packs and new sounds. Any pack the list does not have is added;
+    /// any sound in the manifest the list does not have yet (the same file and part as a
+    /// manifest sound, or the same name and part as a sound of the user's own) is added,
+    /// switched on, at the end of its pack. Hidden ones stay hidden.
+    func adoptNewPacks(_ manifest: [LidSoundLibrary.ManifestPack]) {
+        let hiddenBundled = hiddenPackIDs
+        let userPacks = packs.filter { !$0.bundled }
+        packs = manifest.map { var pack = $0.pack; pack.hidden = hiddenBundled.contains(pack.id); return pack } + userPacks
         var added: [LidSoundItem] = []
-        for starter in starters {
+        for starter in manifest.flatMap(\.starters) {
             let from = starter.from ?? 0, to = starter.to
             let known = items.contains { item in
-                let samePart = abs(item.clipStart - from) < 0.01 && ((item.clipEnd == nil && to == nil) || abs((item.clipEnd ?? -1) - (to ?? -1)) < 0.01)
-                return samePart && ((item.fromManifest && item.fileName == starter.file) || item.displayName == starter.name)
+                (item.fromManifest && item.samePart(file: starter.file, from: from, to: to))
+                    || (item.displayName == starter.name && abs(item.clipStart - from) < 0.01 && ((item.clipEnd == nil && to == nil) || abs((item.clipEnd ?? -1) - (to ?? -1)) < 0.01))
             }
             if !known { added.append(starter.item()) }
         }
         if !added.isEmpty { items += added }
+        settlePacks(against: manifest)
     }
 
     func update(_ item: LidSoundItem) {

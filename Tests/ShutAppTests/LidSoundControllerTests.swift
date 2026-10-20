@@ -53,7 +53,7 @@ final class LidSoundControllerTests: XCTestCase {
     private func make(lidEffects: Bool = true, items: [LidSoundItem]? = nil,
                       capability: HingeCapability = .continuousAngle) -> (LidSoundController, LidSoundSettings) {
         suite = UserDefaults(suiteName: "LidSoundController-\(UUID().uuidString)")!
-        let settings = LidSoundSettings(defaults: suite, starters: LidSoundLibrary.fallbackStarters)
+        let settings = LidSoundSettings(defaults: suite, manifest: LidSoundLibrary.fallbackPacks)
         settings.isOn = true
         if let items { settings.items = items }
         let app = AppSettings(defaults: suite)
@@ -61,7 +61,7 @@ final class LidSoundControllerTests: XCTestCase {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("LidSoundController-\(UUID().uuidString)")
         marker = ArmedMarker(directory: folder)
         let controller = LidSoundController(settings: settings, appSettings: app, sensor: LidSensorMonitor(defaults: nil), hasLid: true,
-                                            library: LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), starters: LidSoundLibrary.fallbackStarters), output: output,
+                                            library: LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), packs: LidSoundLibrary.fallbackPacks), output: output,
                                             makePlayer: { [unowned self] _ in let p = FakePlayer(); self.players.append(p); return p },
                                             after: { [unowned self] seconds, work in
                                                 self.pending.append((seconds, work)); return DispatchWorkItem(block: work) },

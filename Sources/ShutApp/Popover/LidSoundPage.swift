@@ -222,8 +222,10 @@ private struct LidSoundControls: View {
     }
 
     private var sounds: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let settings = sound.settings
+        return VStack(alignment: .leading, spacing: 10) {
             Eyebrow("Sounds", number: "01").padding(.bottom, 2)
+            LidSoundPlaysFrom(model: model)
             LidSoundList(model: model)
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 QuietButton("Add a sound…", disclosure: true, action: model.addSounds)
@@ -236,7 +238,14 @@ private struct LidSoundControls: View {
                 .padding(.horizontal, model.importNote == nil ? 0 : 10).padding(.vertical, model.importNote == nil ? 0 : 6)
                 .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(model.importNote == nil ? .clear : theme.washSaffron))
                 .accessibilityLabel(model.importNote ?? LidSoundText.addHint)
+            // The library: sounds kept for later, out of the list and out of every pick.
+            FoldedSection("Library", summary: LidSoundText.libraryLine(settings.kept.count),
+                          isOpen: Binding(get: { model.showingLibrary }, set: { model.showingLibrary = $0 }),
+                          help: LidSoundText.keepAbout)
+                .padding(.top, 10)
+            if model.showingLibrary { LidSoundLibraryRows(model: model).transition(.blurFade) }
         }
+        .tunerAnimation(TunerTheme.ease, value: model.showingLibrary)
     }
 
     private var options: some View {
@@ -304,17 +313,27 @@ private struct LidSoundList: View {
 
     var body: some View {
         let sound = model.lidSound
-        let items = sound.settings.shown
+        let items = model.displayedSounds
         let clipping = self.clipping ?? model.cuttingSoundForTest
+        // Under All, a small heading says which pack each run of rows is from.
+        let headed = sound.settings.playsFrom == .all && Set(items.map(\.packID)).count > 1
         VStack(spacing: 0) {
             if items.isEmpty {
-                Text("No sounds yet. Add one, or restore the starters under Settings.")
+                Text(sound.settings.playsFrom == .all ? "No sounds yet. Add one, or restore the starters under Settings."
+                                                      : "Nothing in this pack yet. Move a sound here, or add one.")
                     .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             let rows = VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
+                    if headed, index == 0 || items[index - 1].packID != item.packID {
+                        Text((sound.settings.pack(item.packID)?.name ?? item.packID).uppercased())
+                            .font(TunerTheme.mono(9)).tracking(1.5).foregroundStyle(theme.inkTertiary)
+                            .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityAddTraits(.isHeader)
+                    }
                     LidSoundRow(model: model, item: item, clipping: Binding(get: { clipping == item.id }, set: { self.clipping = $0 ? item.id : nil }),
                                 carried: carry?.id == item.id, canMove: items.count > 1 && clipping == nil,
                                 hold: { carry = Carry(id: item.id, from: index) },
@@ -326,10 +345,13 @@ private struct LidSoundList: View {
                     if clipping == item.id { LidSoundCut(model: model, item: item, done: { self.clipping = nil; model.cuttingSoundForTest = nil }).transition(.blurFade) }
                 }
             }
-            if CGFloat(items.count) > Self.visibleRows || clipping != nil {
+            if CGFloat(items.count) > Self.visibleRows || clipping != nil || headed {
                 ScrollView(showsIndicators: true) { rows }.frame(height: clipping == nil ? Self.rowHeight * Self.visibleRows : 236)
             } else {
                 rows
+            }
+            if let pending = model.newPackFor, let item = items.first(where: { $0.id == pending }) {
+                LidSoundNewPack(model: model, item: item)
             }
         }
         // A carried row whose list changed under it (removed, re-sorted) is let go of, so
@@ -454,11 +476,28 @@ private struct LidSoundRow: View {
             }
             .disabled(state != .ok)
             .accessibilityLabel("\(item.displayName) may play")
-            IconButton("xmark", help: item.isStarter ? "Remove \(item.displayName). The starter sounds can be restored under Settings."
-                                                      : "Remove \(item.displayName) and delete its copy from Shut.") {
-                model.removeSound(item)
+            // Everything else about a row, behind one mark: the row stays a name and a switch.
+            Menu {
+                Button("Hear") { sound.preview(item) }.disabled(state != .ok)
+                Button("Rename") { draft = item.displayName }
+                if item.canCut, state == .ok { Button(clipping ? "Done cutting" : "Cut a part…") { clipping.toggle() } }
+                Menu("Move to") {
+                    ForEach(sound.settings.visiblePacks.filter { $0.id != item.packID }) { pack in
+                        Button(pack.name) { model.moveSound(item, to: pack.id) }
+                    }
+                    Divider()
+                    Button("New pack…") { model.newPackFor = item.id }
+                }
+                Button("Keep for later") { model.keep(item) }
+                Divider()
+                Button(item.fromManifest ? "Hide" : "Remove", role: .destructive) { model.removeSound(item) }
+            } label: {
+                Image(systemName: "ellipsis").font(.system(size: 12, weight: .medium)).foregroundStyle(theme.inkLabel)
+                    .frame(width: 28, height: 28).contentShape(Circle())
             }
-            .accessibilityLabel("Remove \(item.displayName)")
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .help("Hear, rename, cut, move to a pack, keep for later, or remove.")
+            .accessibilityLabel("More for \(item.displayName)")
         }
         .padding(.leading, 6).padding(.trailing, 8).frame(height: LidSoundList.rowHeight - 1)
         .background(carried ? theme.linen : .clear)
@@ -734,6 +773,177 @@ private extension Array {
     subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }
 
+/// What a close picks from: every pack, or one. Up to three packs sit in the pill beside
+/// All; more go in a menu, so the row never outgrows its column.
+private struct LidSoundPlaysFrom: View {
+    @ObservedObject var model: PopoverModel
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        let settings = model.lidSound.settings
+        let packs = settings.visiblePacks
+        let chosen: Int = { if case .pack(let id) = settings.playsFrom { return (packs.firstIndex { $0.id == id } ?? -1) + 1 }; return 0 }()
+        HStack(spacing: 10) {
+            Text("Plays from").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).fixedSize()
+            if packs.count <= 3 {
+                ModeSwitch(options: ["All"] + packs.map(\.name), selection: max(chosen, 0)) { index in
+                    settings.playsFrom = index == 0 ? .all : .pack(packs[index - 1].id)
+                }
+            } else {
+                Menu {
+                    Button("All") { settings.playsFrom = .all }
+                    Divider()
+                    ForEach(packs) { pack in Button(pack.name) { settings.playsFrom = .pack(pack.id) } }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(chosen == 0 ? "All" : packs[chosen - 1].name).font(TunerTheme.body).foregroundStyle(theme.ink)
+                        Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.inkLabel)
+                    }
+                    .padding(.horizontal, 12).frame(height: 30).surface(.pill)
+                }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            }
+        }
+        .help("Every pack, or one. Random and In order work inside what is chosen here.")
+    }
+}
+
+/// Under the list while a pack is being named for a sound: Return makes it and moves the
+/// sound there; Escape leaves it.
+private struct LidSoundNewPack: View {
+    @ObservedObject var model: PopoverModel
+    let item: LidSoundItem
+    @State private var name = ""
+    @FocusState private var naming: Bool
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("New pack").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
+            TextField("Name", text: $name).textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
+                .focused($naming)
+                .onSubmit {
+                    if let pack = model.newPack(named: name) { model.moveSound(item, to: pack.id) }
+                    model.newPackFor = nil
+                }
+                .onExitCommand { model.newPackFor = nil }
+                .onAppear { naming = true }
+                .help("The pack's name. Return makes it and moves \(item.displayName) there.")
+        }
+        .padding(.horizontal, 12).frame(height: 34)
+        .background(theme.linen.opacity(0.5))
+    }
+}
+
+/// The library, opened: each sound kept for later, with the way back.
+private struct LidSoundLibraryRows: View {
+    @ObservedObject var model: PopoverModel
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        let sound = model.lidSound
+        let kept = sound.settings.kept
+        VStack(spacing: 0) {
+            if kept.isEmpty {
+                Text("Nothing here. \"Keep for later\", in a row's menu, puts a sound here without losing it.")
+                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            ForEach(Array(kept.enumerated()), id: \.element.id) { index, item in
+                if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
+                HStack(spacing: 8) {
+                    IconButton("play.fill", help: "Hear \(item.displayName).") { sound.preview(item) }
+                        .accessibilityLabel("Play \(item.displayName)")
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(item.displayName).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1).truncationMode(.tail)
+                        Text(sound.settings.pack(item.packID)?.name ?? "Mine").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+                    }
+                    Spacer(minLength: 6)
+                    QuietButton("Use again") { model.useAgain(item) }
+                        .help("Back into its pack, switched on.")
+                    IconButton("xmark", help: item.fromManifest ? "Hide \(item.displayName)." : "Remove \(item.displayName) and delete its copy from Shut.") {
+                        model.removeSound(item)
+                    }
+                    .accessibilityLabel("Remove \(item.displayName)")
+                }
+                .padding(.leading, 6).padding(.trailing, 8).frame(height: 40)
+            }
+        }
+        .surface(.well, radius: TunerTheme.wellRadius)
+        .clipShape(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous))
+    }
+}
+
+/// The packs, under Settings: a bundled one can be put away whole and brought back, with
+/// where its audio came from under its name; the user's own can be renamed (double-click)
+/// and removed (its sounds go to Mine). A new one is made here too.
+private struct LidSoundPackRows: View {
+    @ObservedObject var model: PopoverModel
+    @State private var draft: (id: String, name: String)?
+    @State private var newName: String?
+    @FocusState private var naming: Bool
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        let settings = model.lidSound.settings
+        VStack(spacing: 0) {
+            ForEach(Array(settings.packs.enumerated()), id: \.element.id) { index, pack in
+                if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
+                let count = settings.items.filter { $0.packID == pack.id && !$0.hidden && !$0.kept }.count
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        if let draft, draft.id == pack.id {
+                            TextField("Name", text: Binding(get: { draft.name }, set: { self.draft = (pack.id, $0) }))
+                                .textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
+                                .focused($naming)
+                                .onSubmit { model.renamePack(pack, to: draft.name); self.draft = nil }
+                                .onExitCommand { self.draft = nil }
+                                .onAppear { naming = true }
+                        } else {
+                            Text(pack.name).font(TunerTheme.body).foregroundStyle(pack.hidden ? theme.inkLabel : theme.ink).lineLimit(1)
+                                .onTapGesture(count: 2) { if !pack.bundled { draft = (pack.id, pack.name) } }
+                                .help(pack.bundled ? "Comes with the app." : "Double-click to rename.")
+                        }
+                        if let credit = pack.credit {
+                            Text(credit).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1).truncationMode(.tail).help(credit)
+                        }
+                    }
+                    Spacer(minLength: 6)
+                    Text(count == 1 ? "1 sound" : "\(count) sounds").font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
+                    if pack.bundled {
+                        QuietButton(pack.hidden ? "Show" : "Hide") { model.setPack(pack, hidden: !pack.hidden) }
+                            .help(pack.hidden ? "Put the pack back in the list." : "Put the whole pack away. Its sounds stay in the app; Show brings them back.")
+                    } else if pack.id != LidSoundPack.mineID {
+                        IconButton("xmark", help: "Remove the pack. Its sounds go to Mine.") { model.removePack(pack) }
+                            .accessibilityLabel("Remove the pack \(pack.name)")
+                    }
+                }
+                .padding(.horizontal, 10).frame(minHeight: 36)
+            }
+            Rectangle().fill(theme.hairline).frame(height: 1)
+            if let name = newName {
+                HStack(spacing: 8) {
+                    Text("New pack").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
+                    TextField("Name", text: Binding(get: { name }, set: { newName = $0 }))
+                        .textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
+                        .focused($naming)
+                        .onSubmit { model.newPack(named: name); newName = nil }
+                        .onExitCommand { newName = nil }
+                        .onAppear { naming = true }
+                }
+                .padding(.horizontal, 10).frame(height: 36)
+            } else {
+                QuietButton("New pack…") { newName = "" }
+                    .help("A pack of your own. Move sounds into it from a row's menu.")
+                    .padding(.horizontal, 4).frame(height: 36).frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .surface(.well, radius: TunerTheme.wellRadius)
+        .clipShape(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous))
+        .tunerAnimation(TunerTheme.ease, value: newName == nil)
+    }
+}
+
 /// The folded part of the page, in plain words, every row with a line under its name.
 private struct LidSoundSettingsRows: View {
     @ObservedObject var model: PopoverModel
@@ -781,7 +991,10 @@ private struct LidSoundSettingsRows: View {
                              help: "What to do when your Mac is muted as the lid closes.")
             }
 
-            Eyebrow("Extras").padding(.top, 8).padding(.bottom, 12)
+            Eyebrow("Packs").padding(.top, 8).padding(.bottom, 12)
+            LidSoundPackRows(model: model)
+
+            Eyebrow("Extras").padding(.top, 28).padding(.bottom, 12)
             TriggerRow("Play to the end", about: settings.playsToEnd ? LidSoundText.playsToEndAbout : LidSoundText.endsWithTheLid,
                        live: nil, detail: nil,
                        isOn: Binding(get: { settings.playsToEnd }, set: { settings.playsToEnd = $0 }), expanded: nil,

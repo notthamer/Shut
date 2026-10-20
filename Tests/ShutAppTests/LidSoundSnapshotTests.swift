@@ -20,7 +20,7 @@ final class LidSoundSnapshotTests: XCTestCase {
 
     private func makeModel(on: Bool, items: [LidSoundItem]? = nil, capability: HingeCapability = .continuousAngle) throws -> (PopoverModel, LidSoundController) {
         let suite = UserDefaults(suiteName: "LidSoundSnapshot-\(UUID().uuidString)")!
-        let soundSettings = LidSoundSettings(defaults: suite, starters: LidSoundLibrary.fallbackStarters)
+        let soundSettings = LidSoundSettings(defaults: suite, manifest: LidSoundLibrary.fallbackPacks)
         soundSettings.isOn = on
         if let items { soundSettings.items = items }
         let settings = AppSettings(defaults: suite)
@@ -30,7 +30,7 @@ final class LidSoundSnapshotTests: XCTestCase {
         preview.capturePlaceholder()
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("LidSoundSnapshot-\(UUID().uuidString)")
         let sound = LidSoundController(settings: soundSettings, appSettings: settings, sensor: sensor, hasLid: true,
-                                       library: LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), starters: LidSoundLibrary.fallbackStarters), output: output,
+                                       library: LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), packs: LidSoundLibrary.fallbackPacks), output: output,
                                        makePlayer: { [unowned self] _ in let p = LidSoundControllerTests.FakePlayer(); self.players.append(p); return p },
                                        capability: { capability })
         sound.start()
@@ -174,6 +174,40 @@ final class LidSoundSnapshotTests: XCTestCase {
         on.sleep.woke(now: Date())
         RunLoop.main.run(until: Date().addingTimeInterval(0.3))
         XCTAssertNil(on.sleep.slow, "with no power log to read, nothing is pinned on anyone")
+
+        // Packs: a sound moved to a new pack shows under its own heading; a pack chosen filters
+        // the list and the pick; kept for later takes a sound out of both; use again brings it back.
+        let (packed, packedSound) = try makeModel(on: true)
+        let voices = try XCTUnwrap(packed.newPack(named: "Voices"))
+        packed.moveSound(packedSound.settings.items[1], to: voices.id)
+        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Click", "Hum", "Breath"], "pack order: bundled, then the user's")
+        XCTAssertEqual(packedSound.settings.packs.map(\.name), ["Click, Breath, Hum", "Mine", "Voices"])
+        try render(packed, name: "packs-all")
+        packedSound.settings.playsFrom = .pack(voices.id)
+        XCTAssertEqual(packed.lidSoundTabLine, "Breath · On")
+        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Breath"])
+        try render(packed, name: "packs-one")
+        packed.keep(packedSound.settings.items[1])
+        XCTAssertEqual(packed.lidSoundTabLine, "Nothing to play in Voices")
+        XCTAssertEqual(packedSound.settings.kept.map(\.displayName), ["Breath"])
+        packed.showingLibrary = true
+        try render(packed, name: "library")
+        packed.useAgain(packedSound.settings.kept[0])
+        XCTAssertEqual(packed.lidSoundTabLine, "Breath · On")
+        packed.removePack(voices)
+        XCTAssertEqual(packedSound.settings.playsFrom, .all)
+        XCTAssertEqual(packedSound.settings.items[1].packID, LidSoundPack.mineID, "a removed pack's sounds go to Mine")
+        // Reorder across a heading moves the sound into that pack.
+        packed.moveSound(packedSound.settings.items[1], to: LidSoundPack.mineID)
+        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Click", "Hum", "Breath"])
+        packed.moveSound(from: 2, to: 0)
+        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Breath", "Click", "Hum"])
+        XCTAssertEqual(packedSound.settings.items.first { $0.displayName == "Breath" }?.packID, "generated", "dropped among the bundled pack's rows: it is theirs now")
+        packed.setPack(packedSound.settings.packs[0], hidden: true)
+        XCTAssertTrue(packed.displayedSounds.isEmpty, "the bundled pack put away: nothing shown")
+        packed.restoreStarterSounds()
+        XCTAssertEqual(packed.displayedSounds.count, 3)
+        packedSound.shutDown()
 
         let (edges, _) = try makeModel(on: true, capability: .lidStateOnly)
         XCTAssertTrue(LidSoundText.copy(edges.lidSound.situation()).detail.contains("only reports the lid shut"))

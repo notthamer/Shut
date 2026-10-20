@@ -20,6 +20,14 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertEqual(LidSoundText.tabLine(playing), "Playing Rain…")
         XCTAssertEqual(LidSoundText.tabLine(situation(shown: 3, candidates: [])), "No sound chosen")
         XCTAssertEqual(LidSoundText.tabLine(situation(shown: 0, candidates: [])), "No sounds yet")
+        var scoped = situation(); scoped.scopeName = "Adhkar"
+        XCTAssertEqual(LidSoundText.tabLine(scoped), "Adhkar · random")
+        XCTAssertEqual(LidSoundText.copy(scoped).headline, "Closing the lid plays one of 3 sounds from Adhkar.")
+        var empty = situation(candidates: []); empty.scopeName = "Voices"
+        XCTAssertEqual(LidSoundText.tabLine(empty), "Nothing to play in Voices")
+        XCTAssertEqual(LidSoundText.copy(empty).detail, "Nothing to play in Voices: switch a sound on, or choose All.")
+        XCTAssertEqual(LidSoundText.libraryLine(0), "Nothing kept for later.")
+        XCTAssertEqual(LidSoundText.libraryLine(2), "2 sounds kept for later, out of the list.")
         var edges = situation(candidates: ["Rain"]); edges.capability = .lidStateOnly
         XCTAssertEqual(LidSoundText.tabLine(edges), "Rain · after the lid shuts")
     }

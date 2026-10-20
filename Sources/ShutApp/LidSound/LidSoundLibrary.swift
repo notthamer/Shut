@@ -17,8 +17,8 @@ final class LidSoundLibrary {
 
     let directory: URL
     private let bundle: Bundle?
-    /// The starters to use instead of the manifest's: a test's own short list.
-    private let fixedStarters: [Starter]?
+    /// The packs to use instead of the manifest's: a test's own short list.
+    private let fixedPacks: [ManifestPack]?
     /// Files that failed to open since launch, so the page can say so without retrying.
     private(set) var unreadable: Set<UUID> = []
 
@@ -31,42 +31,70 @@ final class LidSoundLibrary {
         case copyFailed
     }
 
-    init(directory: URL? = nil, bundle: Bundle? = AppAssets.resourceBundle(), starters: [Starter]? = nil) {
+    init(directory: URL? = nil, bundle: Bundle? = AppAssets.resourceBundle(), packs: [ManifestPack]? = nil) {
         self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Shut", isDirectory: true).appendingPathComponent("Sounds", isDirectory: true)
         self.bundle = bundle
-        fixedStarters = starters
+        fixedPacks = packs
     }
 
     // MARK: The starters
 
-    /// One sound that ships with the app: a file in `Resources/Sounds`, whole or a part of it.
-    /// `starters.json` beside the files lists them, so adding one is a file and a line.
+    /// One sound that ships with the app: a file in `Resources/Sounds`, whole or a part of it,
+    /// in a pack. `starters.json` beside the files lists the packs, so adding one is a block
+    /// in that file and its audio beside it.
     struct Starter: Codable, Equatable {
         var name: String
         var file: String
         var from: TimeInterval?
         var to: TimeInterval?
+        var packID: String = LidSoundPack.startersID
+
+        private enum CodingKeys: String, CodingKey { case name, file, from, to }
+
+        init(name: String, file: String, from: TimeInterval? = nil, to: TimeInterval? = nil, packID: String = LidSoundPack.startersID) {
+            self.name = name; self.file = file; self.from = from; self.to = to; self.packID = packID
+        }
 
         func item() -> LidSoundItem {
             LidSoundItem(id: UUID(), fileName: file, displayName: name, enabled: true, isStarter: true,
-                         clipStart: from ?? 0, clipEnd: to, isCut: to != nil, fromManifest: true)
+                         clipStart: from ?? 0, clipEnd: to, isCut: to != nil, fromManifest: true, packID: packID)
         }
     }
 
-    /// The three generated ones, when the manifest is missing: the feature still works.
-    static let fallbackStarters = [Starter(name: "Click", file: "Click.wav"), Starter(name: "Breath", file: "Breath.wav"), Starter(name: "Hum", file: "Hum.wav")]
+    /// A pack as the manifest lists it: its sounds, and where the audio came from.
+    struct ManifestPack: Codable, Equatable {
+        var id: String
+        var name: String
+        var credit: String?
+        var sounds: [Starter]
 
-    func starters() -> [Starter] {
-        if let fixedStarters { return fixedStarters }
-        struct Manifest: Codable { var starters: [Starter] }
+        var pack: LidSoundPack { LidSoundPack(id: id, name: name, bundled: true, credit: credit) }
+        /// The sounds, each knowing its pack.
+        var starters: [Starter] { sounds.map { var s = $0; s.packID = id; return s } }
+    }
+
+    /// The three generated ones, when the manifest is missing: the feature still works.
+    static let fallbackPacks = [ManifestPack(id: "generated", name: "Click, Breath, Hum", credit: nil,
+                                             sounds: [Starter(name: "Click", file: "Click.wav"), Starter(name: "Breath", file: "Breath.wav"), Starter(name: "Hum", file: "Hum.wav")])]
+    static var fallbackStarters: [Starter] { fallbackPacks.flatMap(\.starters) }
+
+    /// The packs the manifest lists. The older flat form (`"starters": […]`) is one pack,
+    /// "Starters", so a manifest in either form works.
+    func packs() -> [ManifestPack] {
+        if let fixedPacks { return fixedPacks }
+        struct Manifest: Codable { var packs: [ManifestPack]?; var starters: [Starter]? }
         guard let url = bundle?.url(forResource: "Resources/Sounds/starters", withExtension: "json")
                 ?? bundle?.url(forResource: "Sounds/starters", withExtension: "json")
                 ?? bundle?.url(forResource: "starters", withExtension: "json"),
-              let data = try? Data(contentsOf: url), let manifest = try? JSONDecoder().decode(Manifest.self, from: data),
-              !manifest.starters.isEmpty else { return Self.fallbackStarters }
-        return manifest.starters
+              let data = try? Data(contentsOf: url), let manifest = try? JSONDecoder().decode(Manifest.self, from: data) else { return Self.fallbackPacks }
+        if let packs = manifest.packs, !packs.isEmpty { return packs }
+        if let flat = manifest.starters, !flat.isEmpty { return [ManifestPack(id: LidSoundPack.startersID, name: "Starters", credit: nil, sounds: flat)] }
+        return Self.fallbackPacks
     }
+
+    /// Every bundled sound, each knowing its pack.
+    func starters() -> [Starter] { packs().flatMap(\.starters) }
 
     /// The starters' files the bundle really has, one per file: `--self-check` counts them.
     func starterURLs() -> [URL] {
@@ -74,7 +102,7 @@ final class LidSoundLibrary {
         return starters().filter { seen.insert($0.file).inserted }.compactMap { starterURL($0.file) }
     }
 
-    /// Every starter's file is in the bundle.
+    /// Every pack's file is in the bundle.
     var startersAreComplete: Bool {
         let files = Set(starters().map(\.file))
         return !files.isEmpty && starterURLs().count == files.count
@@ -99,9 +127,14 @@ final class LidSoundLibrary {
 
     func markUnreadable(_ item: LidSoundItem) { unreadable.insert(item.id) }
 
-    /// The sounds a close may pick from: switched on, not hidden, and on disk.
-    func candidates(_ items: [LidSoundItem]) -> [LidSoundItem] {
-        items.filter { $0.enabled && !$0.hidden && state(of: $0) == .ok }
+    /// The sounds a close may pick from: switched on, listed (not hidden, not kept), on disk,
+    /// and, with a pack chosen, in that pack. `hiddenPacks` are bundled packs put away whole.
+    func candidates(_ items: [LidSoundItem], scope: LidSoundSettings.PlaysFrom = .all, hiddenPacks: Set<String> = []) -> [LidSoundItem] {
+        items.filter { item in
+            guard item.enabled, !item.hidden, !item.kept, !hiddenPacks.contains(item.packID), state(of: item) == .ok else { return false }
+            if case .pack(let id) = scope { return item.packID == id }
+            return true
+        }
     }
 
     // MARK: Import and remove

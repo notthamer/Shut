@@ -12,6 +12,10 @@ enum LidSoundText {
         var shownCount: Int
         /// The sounds a close may pick from, in order; names only.
         var candidates: [String]
+        /// The pack chosen under "Plays from", by name; nil for all packs.
+        var scopeName: String? = nil
+        /// Sounds kept for later, in the library.
+        var keptCount = 0
         var mode: LidSoundSettings.Mode
         var whenMuted: LidSoundSettings.WhenMuted
         var muted: Bool
@@ -44,8 +48,9 @@ enum LidSoundText {
         if s.sleepPendingSeconds != nil { return "Still going to sleep" }
         if silencedByMute(s) { return "Muted" }
         if s.shownCount == 0 { return "No sounds yet" }
-        guard let first = s.candidates.first else { return "No sound chosen" }
+        guard let first = s.candidates.first else { return s.scopeName.map { "Nothing to play in \($0)" } ?? "No sound chosen" }
         if s.candidates.count == 1 { return s.capability == .lidStateOnly ? "\(first) · after the lid shuts" : "\(first) · On" }
+        if let scope = s.scopeName { return "\(scope) · \(s.mode == .random ? "random" : "in order")" }
         return "\(s.candidates.count) sounds · \(s.mode == .random ? "random" : "in order")"
     }
 
@@ -72,14 +77,18 @@ enum LidSoundText {
                                             : "This output has no mute switch Shut can lift, so unmute it yourself.")
         }
         if s.shownCount == 0 { return Copy(headline: silent, detail: "No sounds yet. Add one below.") }
-        guard let first = s.candidates.first else { return Copy(headline: silent, detail: "No sound is switched on. Switch one on below.") }
+        guard let first = s.candidates.first else {
+            return Copy(headline: silent, detail: s.scopeName.map { "Nothing to play in \($0): switch a sound on, or choose All." }
+                                                  ?? "No sound is switched on. Switch one on below.")
+        }
+        let from = s.scopeName.map { " from \($0)" } ?? ""
         let headline: String
         if s.candidates.count == 1 {
             headline = "Closing the lid plays \(first)."
         } else if s.mode == .random {
-            headline = "Closing the lid plays one of \(s.candidates.count) sounds."
+            headline = "Closing the lid plays one of \(s.candidates.count) sounds\(from)."
         } else {
-            headline = "Closing the lid plays \(s.candidates.count) sounds in turn."
+            headline = "Closing the lid plays \(s.candidates.count) sounds\(from) in turn."
         }
         var parts: [String] = []
         if s.capability == .lidStateOnly {
@@ -172,6 +181,15 @@ enum LidSoundText {
         }
     }
 
+    /// The folded library row.
+    static func libraryLine(_ count: Int) -> String {
+        switch count {
+        case 0: return "Nothing kept for later."
+        case 1: return "1 sound kept for later, out of the list."
+        default: return "\(count) sounds kept for later, out of the list."
+        }
+    }
+    static let keepAbout = "Out of the list and out of every pick, file and all kept; one click from coming back."
     static let addHint = "mp3, m4a, wav or aiff. Or drop files here. A long one plays from where you choose."
     static let endsWithTheLid = "The sound ends with the lid: a short fade as it lands, whatever its length. Starts at, above, sets how early it begins."
     static func startsWithEffectAbout(_ degrees: Int) -> String { "Where the screen effect starts: \(degrees)°, from Speed on Lid effects." }

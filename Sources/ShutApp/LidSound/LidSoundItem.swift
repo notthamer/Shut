@@ -22,8 +22,15 @@ struct LidSoundItem: Codable, Identifiable, Equatable {
     /// Listed in the app's own starters.json: removed, it is hidden and can be restored. A
     /// part the user cut from a starter is theirs, and goes when removed.
     var fromManifest = false
+    /// The pack this sound belongs to (`LidSoundPack.id`).
+    var packID: String = LidSoundPack.mineID
+    /// Saved for later: out of the list and out of every pick, file and all kept, one click
+    /// from coming back. The library.
+    var kept = false
 
-    /// Older lists have no `fromManifest`: a whole starter was from the manifest, a cut was not.
+    /// Older lists have no `fromManifest`, `packID` or `kept`: a whole starter was from the
+    /// manifest, a cut was not; a manifest sound's pack is settled against the manifest at
+    /// launch (`LidSoundSettings.settlePacks`), everything else is Mine.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
@@ -38,14 +45,16 @@ struct LidSoundItem: Codable, Identifiable, Equatable {
         clipEnd = try c.decodeIfPresent(TimeInterval.self, forKey: .clipEnd)
         isCut = try c.decodeIfPresent(Bool.self, forKey: .isCut) ?? false
         fromManifest = try c.decodeIfPresent(Bool.self, forKey: .fromManifest) ?? (isStarter && !isCut)
+        packID = try c.decodeIfPresent(String.self, forKey: .packID) ?? (fromManifest ? LidSoundPack.startersID : LidSoundPack.mineID)
+        kept = try c.decodeIfPresent(Bool.self, forKey: .kept) ?? false
     }
 
     init(id: UUID, fileName: String, displayName: String, enabled: Bool, isStarter: Bool, hidden: Bool = false,
          duration: TimeInterval? = nil, contentHash: String? = nil, clipStart: TimeInterval = 0, clipEnd: TimeInterval? = nil,
-         isCut: Bool = false, fromManifest: Bool = false) {
+         isCut: Bool = false, fromManifest: Bool = false, packID: String = LidSoundPack.mineID, kept: Bool = false) {
         self.id = id; self.fileName = fileName; self.displayName = displayName; self.enabled = enabled; self.isStarter = isStarter
         self.hidden = hidden; self.duration = duration; self.contentHash = contentHash; self.clipStart = clipStart; self.clipEnd = clipEnd
-        self.isCut = isCut; self.fromManifest = fromManifest
+        self.isCut = isCut; self.fromManifest = fromManifest; self.packID = packID; self.kept = kept
     }
 
     /// What is heard, in seconds: the part, or the whole file.
@@ -59,4 +68,11 @@ struct LidSoundItem: Codable, Identifiable, Equatable {
     var isLong: Bool { (heardLength ?? 0) > LidSoundLibrary.clipLength }
     /// Long enough to cut a part from.
     var canCut: Bool { (duration ?? 0) >= LidSoundLibrary.shortestCut * 2 }
+
+    /// The same file and the same part.
+    func samePart(file: String, from: TimeInterval, to: TimeInterval?) -> Bool {
+        guard fileName == file, abs(clipStart - from) < 0.01 else { return false }
+        if clipEnd == nil && to == nil { return true }
+        return abs((clipEnd ?? -1) - (to ?? -1)) < 0.01
+    }
 }

@@ -167,6 +167,28 @@ is half a second at least, and never outside the file. A part plays from its sta
 stops at its end with the landing fade, however the lid is held. Double-click a name to
 rename it: Return keeps it, Escape leaves it; two rows never share a name.
 
+**Packs.** Every sound belongs to one pack. Bundled packs come from `starters.json` (the
+adhkar, and Click, Breath, Hum), each with a `credit` line saying where its audio came
+from, written beside it (rule 6); the user's own sounds live in "Mine", and "New pack…"
+(under Settings, or from a row's "Move to") makes more. "Plays from", above the list, is
+All or one pack: Random and In order work inside what is chosen, and In order keeps its
+place per pack. Under All the list shows a small heading per pack; a sound carried across a
+heading moves into that pack. A row's "…" menu has Hear, Rename, Cut, Move to, Keep for
+later and Remove. A bundled pack can be put away whole (Hide, under Settings) and brought
+back; a user pack can be renamed and removed, its sounds going to Mine, never deleted.
+
+**The library.** "Keep for later" takes a sound out of the list and out of every pick,
+file, cuts, name and clip all kept, and the folded "Library" row under the list counts it;
+opened, each kept sound has Hear, "Use again" (back into its pack, switched on) and Remove.
+The library is local to this Mac: no sync, no export.
+
+**What ships, and what cannot.** Only audio that is free to publish can be bundled: the
+app is open source under MIT and every file goes to every user. The adhkar are the
+author's own recording; Click, Breath and Hum are generated. Clips of actors or famous
+people are copyrighted performances (and a recognisable voice carries personality rights),
+so they are never bundled; a user is free to add such a clip to their own list, which stays
+on their Mac. Every bundled pack is in every download, so the Sounds folder is kept small.
+
 **Find the parts.** In the cut editor, "Find the parts" looks for the silences and marks a
 part between each on the shape, numbered, with a list under it: a name to type for each
 (Tab moves on), its times, a ▶ to hear it, and a click to put the edges on it. "Add N

@@ -6,13 +6,13 @@ import Tuner
 /// Settings are the same shape, so the shape lives once.
 struct FoldedSection: View {
     let title: String
-    let number: String
+    let number: String?
     let summary: String
     @Binding var isOpen: Bool
     let help: String
     @Environment(\.tunerTheme) private var theme
 
-    init(_ title: String, number: String, summary: String, isOpen: Binding<Bool>, help: String) {
+    init(_ title: String, number: String? = nil, summary: String, isOpen: Binding<Bool>, help: String) {
         self.title = title; self.number = number; self.summary = summary; _isOpen = isOpen; self.help = help
     }
 

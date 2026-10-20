@@ -110,6 +110,74 @@ final class PopoverModel: ObservableObject {
     @Published var importNote: String?
     /// A row whose cut editor is open, for a test that draws the page.
     @Published var cuttingSoundForTest: UUID?
+    /// The library, folded under the list.
+    @Published var showingLibrary = false
+    /// "New pack…" was chosen for this sound: a name is being typed for the pack.
+    @Published var newPackFor: UUID?
+
+    /// The rows, in pack order (bundled packs as the manifest lists them, then Mine, then
+    /// the user's), each pack keeping its own order; with a pack chosen, that pack only.
+    var displayedSounds: [LidSoundItem] {
+        let settings = lidSound.settings
+        let order = Dictionary(uniqueKeysWithValues: settings.packs.enumerated().map { ($1.id, $0) })
+        var rows = settings.shown
+        if case .pack(let id) = settings.playsFrom { rows = rows.filter { $0.packID == id } }
+        return rows.enumerated().sorted { a, b in
+            let pa = order[a.element.packID] ?? Int.max, pb = order[b.element.packID] ?? Int.max
+            return pa != pb ? pa < pb : a.offset < b.offset
+        }.map(\.element)
+    }
+
+    /// Keep for later: out of the list and out of every pick, file and all kept.
+    func keep(_ item: LidSoundItem) {
+        var kept = item; kept.kept = true
+        lidSound.settings.update(kept)
+    }
+
+    /// Back from the library, into its pack, switched on.
+    func useAgain(_ item: LidSoundItem) {
+        var back = item; back.kept = false; back.enabled = true
+        if lidSound.settings.pack(back.packID) == nil || lidSound.settings.pack(back.packID)?.hidden == true { back.packID = LidSoundPack.mineID }
+        lidSound.settings.update(back)
+    }
+
+    func moveSound(_ item: LidSoundItem, to packID: String) {
+        guard lidSound.settings.pack(packID) != nil else { return }
+        var moved = item; moved.packID = packID
+        lidSound.settings.update(moved)
+    }
+
+    /// A pack of the user's own. The name is theirs; the id is not shown.
+    @discardableResult
+    func newPack(named name: String) -> LidSoundPack? {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        let unique = LidSoundLibrary.uniqueName(trimmed, among: lidSound.settings.packs.map(\.name))
+        let pack = LidSoundPack(id: "user-" + UUID().uuidString, name: unique, bundled: false)
+        lidSound.settings.packs.append(pack)
+        return pack
+    }
+
+    func renamePack(_ pack: LidSoundPack, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !pack.bundled, !trimmed.isEmpty, let index = lidSound.settings.packs.firstIndex(where: { $0.id == pack.id }) else { return }
+        lidSound.settings.packs[index].name = LidSoundLibrary.uniqueName(trimmed, among: lidSound.settings.packs.filter { $0.id != pack.id }.map(\.name))
+    }
+
+    /// A user pack goes; its sounds go to Mine, never deleted. Mine itself stays.
+    func removePack(_ pack: LidSoundPack) {
+        guard !pack.bundled, pack.id != LidSoundPack.mineID else { return }
+        lidSound.settings.items = lidSound.settings.items.map { var item = $0; if item.packID == pack.id { item.packID = LidSoundPack.mineID }; return item }
+        lidSound.settings.packs.removeAll { $0.id == pack.id }
+        if lidSound.settings.playsFrom == .pack(pack.id) { lidSound.settings.playsFrom = .all }
+    }
+
+    /// A bundled pack put away whole, or brought back.
+    func setPack(_ pack: LidSoundPack, hidden: Bool) {
+        guard pack.bundled, let index = lidSound.settings.packs.firstIndex(where: { $0.id == pack.id }) else { return }
+        lidSound.settings.packs[index].hidden = hidden
+        if hidden, lidSound.settings.playsFrom == .pack(pack.id) { lidSound.settings.playsFrom = .all }
+    }
 
     /// Copies the files in and says, once, why any was refused.
     func importSounds(_ urls: [URL]) {
@@ -181,14 +249,18 @@ final class PopoverModel: ObservableObject {
         lidSound.settings.update(renamed)
     }
 
-    /// A row carried to a new place, by its position among the rows shown. Hidden starters
-    /// keep out of the way at the end.
+    /// A row carried to a new place, by its position among the rows displayed. Landing among
+    /// another pack's rows moves the sound into that pack. Rows not displayed (hidden, kept,
+    /// another pack while one is chosen) keep out of the way at the end.
     func moveSound(from: Int, to: Int) {
-        var shown = lidSound.settings.shown
-        guard shown.indices.contains(from), shown.indices.contains(to), from != to else { return }
-        let item = shown.remove(at: from)
-        shown.insert(item, at: to)
-        lidSound.settings.items = shown + lidSound.settings.items.filter(\.hidden)
+        var rows = displayedSounds
+        guard rows.indices.contains(from), rows.indices.contains(to), from != to else { return }
+        var item = rows.remove(at: from)
+        rows.insert(item, at: to)
+        let neighbour = to > 0 ? rows[to - 1] : (rows.count > 1 ? rows[1] : nil)
+        if let neighbour, neighbour.packID != item.packID { item.packID = neighbour.packID; rows[to] = item }
+        let displayed = Set(rows.map(\.id))
+        lidSound.settings.items = rows + lidSound.settings.items.filter { !displayed.contains($0.id) }
     }
 
     func restoreStarterSounds() {
@@ -196,6 +268,7 @@ final class PopoverModel: ObservableObject {
             item.hidden = false; item.enabled = true
             lidSound.settings.update(item)
         }
+        for pack in lidSound.settings.packs where pack.bundled && pack.hidden { setPack(pack, hidden: false) }
     }
 
     /// "Try it": the sound the next close would play, and the close itself in the preview.

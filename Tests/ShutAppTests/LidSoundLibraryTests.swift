@@ -130,17 +130,25 @@ final class LidSoundLibraryTests: XCTestCase {
 
     func testStartersComeFromTheBundleAndAStarterIsNeverDeleted() throws {
         let bundled = LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle())
+        let packs = bundled.packs()
+        XCTAssertEqual(packs.map(\.id), ["adhkar", "generated"], "the manifest, in packs")
+        XCTAssertEqual(packs.map(\.sounds.count), [5, 3])
+        XCTAssertNotNil(packs[0].credit, "where a bundled pack's audio came from is written beside it")
         let starters = bundled.starters()
         XCTAssertEqual(starters.count, 8, "five parts of the adhkar, and Click, Breath and Hum")
         XCTAssertEqual(Set(starters.map(\.file)), ["Adhkar.mp3", "Click.wav", "Breath.wav", "Hum.wav"])
+        XCTAssertEqual(starters.map(\.packID), ["adhkar", "adhkar", "adhkar", "adhkar", "adhkar", "generated", "generated", "generated"])
         XCTAssertEqual(bundled.starterURLs().count, 4, "one file each, all in the bundle")
         XCTAssertTrue(bundled.startersAreComplete)
         XCTAssertTrue(starters[0].item().isCut && starters[0].item().isStarter && starters[0].item().fromManifest)
-        // An older list, saved before `fromManifest`: whole starters were from the manifest, cuts were not.
+        XCTAssertEqual(starters[0].item().packID, "adhkar")
+        // An older list, saved before `fromManifest` and packs: whole starters were from the manifest, cuts were not.
         let old = Data(#"[{"id":"\#(UUID().uuidString)","fileName":"Click.wav","displayName":"Click","enabled":true,"isStarter":true},{"id":"\#(UUID().uuidString)","fileName":"Click.wav","displayName":"Tick","enabled":true,"isStarter":true,"isCut":true,"clipEnd":0.03}]"#.utf8)
         let decoded = try JSONDecoder().decode([LidSoundItem].self, from: old)
         XCTAssertEqual(decoded.map(\.fromManifest), [true, false])
-        XCTAssertEqual(library.starters(), LidSoundLibrary.fallbackStarters, "no manifest: the generated three")
+        XCTAssertEqual(decoded.map(\.packID), [LidSoundPack.startersID, LidSoundPack.mineID], "settled against the manifest at launch; the user's cut is theirs")
+        XCTAssertEqual(decoded.map(\.kept), [false, false])
+        XCTAssertEqual(library.packs().map(\.id), ["generated"], "no manifest: the generated three, as one pack")
         let click = LidSoundItem(id: UUID(), fileName: "Click.wav", displayName: "Click", enabled: true, isStarter: true)
         XCTAssertEqual(bundled.state(of: click), .ok)
         XCTAssertEqual(try XCTUnwrap(LidSoundLibrary.duration(of: try XCTUnwrap(bundled.url(for: click)))), 0.06, accuracy: 0.01)
@@ -172,7 +180,7 @@ final class LidSoundLibraryTests: XCTestCase {
     @MainActor
     func testSettingsSeedTheStartersOnceAndKeepTheList() {
         let suite = UserDefaults(suiteName: "LidSound-\(UUID().uuidString)")!
-        let settings = LidSoundSettings(defaults: suite, starters: LidSoundLibrary.fallbackStarters)
+        let settings = LidSoundSettings(defaults: suite, manifest: LidSoundLibrary.fallbackPacks)
         XCTAssertEqual(settings.items.map(\.displayName), ["Click", "Breath", "Hum"])
         XCTAssertTrue(settings.items.allSatisfy { $0.isStarter && $0.enabled })
         XCTAssertFalse(settings.isOn, "off until turned on")
@@ -187,18 +195,46 @@ final class LidSoundLibraryTests: XCTestCase {
         XCTAssertEqual(again.onOpenPick, .item(settings.items[0].id))
         XCTAssertEqual(again.items.count, 3, "and is still there to restore")
 
-        // A release with new starters: the ones the list has not got are added at the end;
-        // one the user already cut themselves, by that name and part, is not doubled.
+        // A release with new packs and sounds: what the list has not got is added, each in its
+        // pack; one the user already cut themselves, by that name and part, is not doubled.
         var own = LidSoundItem(id: UUID(), fileName: "Mine.mp3", displayName: "اذكر الله", enabled: true, isStarter: false, duration: 14)
         own.clipStart = 2.7; own.clipEnd = 4.7; own.isCut = true
         again.items.append(own)
-        let release = LidSoundLibrary.fallbackStarters + [
-            LidSoundLibrary.Starter(name: "اذكر الله", file: "Adhkar.mp3", from: 2.7, to: 4.7),
-            LidSoundLibrary.Starter(name: "توكل على الله", file: "Adhkar.mp3", from: 11.2, to: 13.1)]
-        again.adoptNewStarters(release)
+        let release = LidSoundLibrary.fallbackPacks + [
+            LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", credit: "Recorded by the author.", sounds: [
+                LidSoundLibrary.Starter(name: "اذكر الله", file: "Adhkar.mp3", from: 2.7, to: 4.7),
+                LidSoundLibrary.Starter(name: "توكل على الله", file: "Adhkar.mp3", from: 11.2, to: 13.1)])]
+        again.adoptNewPacks(release)
         XCTAssertEqual(again.items.map(\.displayName), ["Click", "Breath", "Hum", "اذكر الله", "توكل على الله"])
+        XCTAssertEqual(again.packs.map(\.id), ["generated", "adhkar", LidSoundPack.mineID], "bundled packs first, then Mine")
+        XCTAssertEqual(again.items.last?.packID, "adhkar")
         XCTAssertTrue(again.items[2].hidden, "a hidden starter stays hidden")
-        again.adoptNewStarters(release)
+        again.adoptNewPacks(release)
         XCTAssertEqual(again.items.count, 5, "adopting twice adds nothing")
+
+        // Keep for later, and back; a pack chosen; in order's place kept per pack.
+        var kept = again.items[0]; kept.kept = true; again.update(kept)
+        XCTAssertEqual(again.kept.map(\.displayName), ["Click"])
+        XCTAssertFalse(again.shown.contains { $0.displayName == "Click" })
+        let library = LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), packs: release)
+        XCTAssertEqual(library.candidates(again.items, scope: .all).map(\.displayName), ["Breath", "توكل على الله"], "not kept, not hidden, on disk")
+        XCTAssertEqual(library.candidates(again.items, scope: .pack("adhkar")).map(\.displayName), ["توكل على الله"])
+        XCTAssertEqual(library.candidates(again.items, scope: .all, hiddenPacks: ["adhkar"]).map(\.displayName), ["Breath"], "a pack put away plays nothing")
+        again.setNextIndex(2, for: .pack("adhkar"))
+        XCTAssertEqual(again.nextIndex(for: .pack("adhkar")), 2)
+        XCTAssertEqual(again.nextIndex(for: .all), 0)
+        again.playsFrom = .pack("adhkar")
+        let reloaded = LidSoundSettings(defaults: suite, manifest: release)
+        XCTAssertEqual(reloaded.playsFrom, .pack("adhkar"))
+        XCTAssertEqual(reloaded.nextIndex(for: .pack("adhkar")), 2)
+        XCTAssertEqual(reloaded.kept.map(\.displayName), ["Click"])
+
+        // An older list's manifest sounds find their pack at launch.
+        let older = UserDefaults(suiteName: "LidSound-\(UUID().uuidString)")!
+        var oldItems = LidSoundLibrary.fallbackPacks.flatMap(\.starters).map { $0.item() }
+        oldItems = oldItems.map { var i = $0; i.packID = LidSoundPack.startersID; return i }
+        older.set(try? JSONEncoder().encode(oldItems), forKey: "lidSound.items")
+        let migrated = LidSoundSettings(defaults: older, manifest: release)
+        XCTAssertEqual(Set(migrated.items.map(\.packID)), ["generated"], "settled against the manifest")
     }
 }
