@@ -23,6 +23,9 @@ struct LidSoundCue: Equatable {
     /// A continuous hinge: the fade can land with the lid. Lid-state-only Macs report 0 or 1,
     /// and fading at "1" would end the sound the moment it started.
     var landFades = true
+    /// The sound's own start, in degrees above shut; nil starts it with the screen effect.
+    /// Needs a real angle: without one (an edge-only Mac) the effect's start stands in.
+    var startAngle: Double?
     private var peak = 0.0
 
     /// The same thresholds the overlay uses (`AppController.armAt`, `showAt`, `hideBelow`).
@@ -36,7 +39,7 @@ struct LidSoundCue: Equatable {
     static let landFade: TimeInterval = 0.3
     static let liftFade: TimeInterval = 0.15
 
-    mutating func hinge(progress p: Double, direction: HingeDirection) -> Command? {
+    mutating func hinge(progress p: Double, direction: HingeDirection, angle: Double? = nil) -> Command? {
         switch phase {
         case .idle:
             guard p > Self.armAt, direction != .opening else { return nil }
@@ -44,7 +47,9 @@ struct LidSoundCue: Equatable {
             peak = p
             return .prepare
         case .prepared:
-            if playsOnHinge, p >= Self.showAt { phase = .playing; peak = p; return .play }
+            if let startAngle, let angle {
+                if angle <= startAngle, direction != .opening { phase = .playing; peak = p; return .play }
+            } else if playsOnHinge, p >= Self.showAt { phase = .playing; peak = p; return .play }
             if p <= Self.topAt / 2, direction != .closing { phase = .idle; return .drop }
             return nil
         case .playing:
@@ -57,10 +62,13 @@ struct LidSoundCue: Equatable {
         }
     }
 
-    /// From the lid controller: the overlay is appearing.
-    mutating func closeBeginning() -> Command? {
+    /// From the lid controller: the overlay is appearing. With an angle of its own the sound
+    /// waits for that instead (`startsAtOwnAngle`: the hinge has a real angle to compare).
+    mutating func closeBeginning(startsAtOwnAngle: Bool = false) -> Command? {
         switch phase {
-        case .idle, .prepared: phase = .playing; return .play
+        case .idle, .prepared:
+            if startsAtOwnAngle { if phase == .idle { phase = .prepared; return .prepare }; return nil }
+            phase = .playing; return .play
         case .playing, .fading: return nil
         }
     }

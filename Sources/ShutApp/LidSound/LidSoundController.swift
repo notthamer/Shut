@@ -34,6 +34,9 @@ final class LidSoundController: ObservableObject {
     private var cue = LidSoundCue()
     private var player: SoundPlaying?
     private var prepared: LidSoundItem?
+    /// The opening's sound, made and prepared at wake so the audio hardware is awake before
+    /// the desktop pours back in, not during it.
+    private var warmOpening: (item: LidSoundItem, player: SoundPlaying)?
     private var fadeEnd: DispatchWorkItem?
     private var liftedMute = false
     private var hingeSink: AnyCancellable?
@@ -77,6 +80,7 @@ final class LidSoundController: ObservableObject {
                 self.cue.finished()
                 self.dropPlayer()
                 self.restoreMuteIfOwed()
+                self.warmTheOpening()
             }
         }
         settings.objectWillChange.receive(on: DispatchQueue.main).sink { [weak self] _ in self?.apply() }.store(in: &cancellables)
@@ -96,6 +100,7 @@ final class LidSoundController: ObservableObject {
     private func apply() {
         cue.playsOnHinge = !appSettings.isEnabled
         cue.landFades = capability() == .continuousAngle
+        cue.startAngle = settings.startsWithEffect ? nil : settings.startDegrees
         let listening = settings.isOn && hasLid
         if listening, hingeSink == nil {
             hingeSink = sensor.$state.compactMap { $0 }.sink { [weak self] state in self?.hinge(state) }
@@ -111,8 +116,20 @@ final class LidSoundController: ObservableObject {
 
     func hinge(_ state: HingeState) {
         guard settings.isOn else { return }
-        perform(cue.hinge(progress: state.progress, direction: state.direction))
+        lastAngle = state.angle
+        perform(cue.hinge(progress: state.progress, direction: state.direction, angle: state.angle))
     }
+    private var lastAngle: Double?
+
+    /// Where the screen effect starts, in degrees above shut: Speed, on Lid effects, after
+    /// the calibration caps it under this lid's rest angle.
+    var effectStartDegrees: Double {
+        let range = sensor.calibration.animationRange(bandDegrees: appSettings.bandDegrees)
+        return range.upperBound - range.lowerBound
+    }
+
+    /// The angle the sound starts at, whichever way it is set.
+    var startDegrees: Double { settings.startsWithEffect ? effectStartDegrees : settings.startDegrees }
 
     /// The lid has started to come down: wake the audio hardware now, not when it matters.
     func lidStartedClosing() {
@@ -123,7 +140,7 @@ final class LidSoundController: ObservableObject {
     /// The overlay is appearing.
     func closeBeginning() {
         guard settings.isOn else { return }
-        perform(cue.closeBeginning())
+        perform(cue.closeBeginning(startsAtOwnAngle: cue.startAngle != nil && lastAngle != nil))
     }
 
     /// The close ended without the lid shutting.
@@ -133,17 +150,34 @@ final class LidSoundController: ObservableObject {
         perform(cue.closeEnded())
     }
 
+    /// What the opening would play right now, if anything.
+    private func openingPick() -> LidSoundItem? {
+        guard settings.isOn, settings.onOpen else { return nil }
+        let candidates = library.candidates(settings.items)
+        switch settings.onOpenPick {
+        case .item(let id): return candidates.first { $0.id == id } ?? LidSoundLibrary.pick(from: candidates, mode: .random, lastPickID: nil, nextIndex: 0)?.item
+        case .samePick: return candidates.first { $0.id == settings.lastPickID } ?? LidSoundLibrary.pick(from: candidates, mode: .random, lastPickID: nil, nextIndex: 0)?.item
+        }
+    }
+
+    /// At wake: make and prepare the opening's sound now, off the main thread, so the
+    /// hardware is ready before the unlock. Nothing is heard here.
+    func warmTheOpening() {
+        warmOpening = nil
+        guard let item = openingPick(), let player = make(item) else { return }
+        player.prepare()
+        warmOpening = (item, player)
+    }
+
     /// The desktop is pouring back in after the unlock (or would be, with Animate opening off).
     func openingBeginning() {
-        guard settings.isOn, settings.onOpen else { return }
-        let candidates = library.candidates(settings.items)
-        let item: LidSoundItem?
-        switch settings.onOpenPick {
-        case .item(let id): item = candidates.first { $0.id == id } ?? LidSoundLibrary.pick(from: candidates, mode: .random, lastPickID: nil, nextIndex: 0)?.item
-        case .samePick: item = candidates.first { $0.id == settings.lastPickID } ?? LidSoundLibrary.pick(from: candidates, mode: .random, lastPickID: nil, nextIndex: 0)?.item
+        guard let item = openingPick() else { return }
+        if let warm = warmOpening, warm.item.id == item.id {
+            warmOpening = nil
+            playNow(item, reason: "opening", ready: warm.player)
+        } else {
+            playNow(item, reason: "opening")
         }
-        guard let item else { return }
-        playNow(item, reason: "opening")
     }
 
     // MARK: From the page
@@ -184,7 +218,7 @@ final class LidSoundController: ObservableObject {
         return LidSoundText.Situation(isOn: settings.isOn, shownCount: settings.shown.count, candidates: candidates.map(\.displayName),
                                       mode: settings.mode, whenMuted: settings.whenMuted, muted: isMuted, canUnmute: canUnmute,
                                       playing: playing, outputName: outputName, onOpen: settings.onOpen,
-                                      capability: capability(), next: next)
+                                      capability: capability(), next: next, startDegrees: Int(startDegrees.rounded()))
     }
 
     // MARK: Doing it
@@ -225,12 +259,12 @@ final class LidSoundController: ObservableObject {
 
     /// A sound outside a close: the page's previews and the opening. One at a time: a
     /// close that begins while a preview plays takes over.
-    private func playNow(_ item: LidSoundItem, reason: String) {
+    private func playNow(_ item: LidSoundItem, reason: String, ready: SoundPlaying? = nil) {
         fadeEnd?.cancel()
         dropPlayer()
         cue.finished()
-        guard let player = make(item), lift(forPlaying: item) else { return }
-        player.prepare()
+        guard let player = ready ?? make(item), lift(forPlaying: item) else { return }
+        if ready == nil { player.prepare() }
         player.play()
         self.player = player
         prepared = item

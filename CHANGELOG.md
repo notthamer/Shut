@@ -7,6 +7,7 @@
 - It ends with the lid. The sound starts the moment the closing effect does and fades out in the last few degrees, so it lands with the lid whatever its length. Speed, on Lid effects, sets how early it starts. Lift the lid back up and it fades out.
 - Your sounds. Add a sound… or drop files on the list: mp3, m4a, wav or aiff, 30 seconds at most, copied into Shut so the original can move. Each has its own switch, a ▶ to hear it, and an × to remove it.
 - Random, or in order. Random never plays the same sound twice running.
+- Starts at: the angle where the sound begins, always shown as a number. The same as the screen effect's Speed, so the two begin together, or an angle of its own.
 - Its own volume, as a share of your Mac's, which Shut never changes. Let go of the slider to hear it.
 - Muted Mac: your call. Stay quiet (the page and the tab say "Muted"), or Unmute for it, and mute comes back when the sound ends.
 - Also on open: a sound as the desktop pours back in after you unlock. The close's pick again, or one in particular.

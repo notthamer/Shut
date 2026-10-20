@@ -22,9 +22,14 @@ lid opens. Off until you turn it on.
   sound goes ("Through AirPods Pro."). One action: Turn on; Try it (the sound the next
   close would play, while the preview window plays the close); or, muted, Change, which
   opens Settings.
-- **Pick and Volume**, on the right of the band. Random never plays the same sound twice
-  running; In order goes down the list. Volume is Lid sound's own, as a share of the Mac's,
-  which Shut never changes; letting go of the slider plays the sound at that level.
+- **Pick, Volume and Starts at**, on the right of the band. Random never plays the same
+  sound twice running; In order goes down the list. Volume is Lid sound's own, as a share of
+  the Mac's, which Shut never changes; letting go of the slider plays the sound at that
+  level. Starts at is the angle above shut where the sound begins, always shown as a number:
+  with "Same as the screen effect" on (the default) it is Speed's angle from Lid effects, so
+  the sound and the screen begin together; off, the dial sets the sound's own angle, 20° to
+  130°, and the hinge, not the overlay, says when. The answer at the top says it too: "It
+  starts as the lid passes 60°".
 - **01 Sounds**: the list, a well that shows four and a half rows and scrolls inside itself
   beyond that. Each row has a ▶ to hear it, its name, its length, a switch, and an ×. A row
   at work is in ink with a Lime dot. A file that went missing says "Missing", with the
@@ -73,6 +78,21 @@ Macs without an angle sensor only report the lid shut, so the close plays on a t
 after the lid is already down: the sound starts then, the landing fade is off (progress
 jumps straight to 1), and sleep may cut it. The page says so on those Macs. Macs without a
 lid get no Lid sound tab.
+
+## If something is already playing
+
+The lid sound plays over it. macOS mixes every app's audio and gives no app a way to turn
+another down, so music or a call keep going and the lid sound is heard on top, at its own
+volume. Nothing is paused, nothing is ducked.
+
+## Audio off the main thread
+
+Every call to `AVAudioPlayer` goes through one serial queue, and the player itself is made
+there on first use. Measured on a MacBook Pro with AirPods as the output: the first `play`
+after a wake blocked for fifteen seconds while Bluetooth came back, and the opening
+animation froze behind it. The opening's sound is now made and prepared at wake
+(`warmTheOpening`), so the unlock only has to play it; if the output is still coming back,
+the queue waits, not the screen.
 
 ## Muted
 

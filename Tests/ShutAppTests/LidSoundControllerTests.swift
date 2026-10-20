@@ -191,3 +191,40 @@ final class LidSoundControllerTests: XCTestCase {
         XCTAssertTrue(players[0].log.contains("stop"))
     }
 }
+
+extension LidSoundControllerTests {
+    /// Starts at: with the screen effect (the overlay says when), or at an angle of its own
+    /// (the hinge says when, and the overlay appearing is not it).
+    func testAnAngleOfItsOwn() {
+        let (controller, settings) = make()
+        settings.startsWithEffect = false
+        settings.startDegrees = 45
+        spin()
+        controller.hinge(HingeState(angle: 95, progress: 0.005, velocity: 0, direction: .closing, isClosed: false, timestamp: 0))
+        XCTAssertEqual(players[0].log, ["prepare"])
+        controller.closeBeginning()
+        XCTAssertEqual(players[0].log, ["prepare"], "the overlay appearing at 60° is not 45°")
+        controller.hinge(HingeState(angle: 50, progress: 0.2, velocity: 0, direction: .closing, isClosed: false, timestamp: 0))
+        XCTAssertEqual(players[0].log, ["prepare"])
+        controller.hinge(HingeState(angle: 44, progress: 0.3, velocity: 0, direction: .closing, isClosed: false, timestamp: 0))
+        XCTAssertEqual(players[0].log, ["prepare", "play"], "45° reached")
+        XCTAssertEqual(Int(controller.startDegrees), 45)
+        settings.startsWithEffect = true
+        spin()
+        XCTAssertEqual(Int(controller.startDegrees), Int(controller.effectStartDegrees), "the dial shows the effect's angle")
+    }
+
+    /// The opening's sound is made and prepared at wake, so the unlock only has to play it.
+    func testTheOpeningIsWarmedAtWake() {
+        let (controller, settings) = make()
+        settings.onOpen = true
+        settings.onOpenPick = .item(settings.items[2].id)
+        controller.warmTheOpening()
+        XCTAssertEqual(players.count, 1)
+        XCTAssertEqual(players[0].log, ["prepare"], "ready, nothing heard")
+        controller.openingBeginning()
+        XCTAssertEqual(players.count, 1, "the warm player is the one that plays")
+        XCTAssertEqual(players[0].log, ["prepare", "play"])
+        XCTAssertEqual(controller.playing, "Hum")
+    }
+}

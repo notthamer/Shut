@@ -72,7 +72,7 @@ private struct LidSoundBand: View {
 
             Rectangle().fill(theme.hairline).frame(width: 1)
 
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Pick").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
                     ModeSwitch(options: ["Random", "In order"], selection: settings.mode == .random ? 0 : 1) { index in
@@ -81,6 +81,7 @@ private struct LidSoundBand: View {
                     .help("Random never plays the same sound twice running. In order goes down the list.")
                 }
                 LidSoundVolume(sound: sound)
+                LidSoundStart(sound: sound)
                 if !isOn {
                     // Off: the controls are readable (they are the explanation) and the line
                     // says what comes first, so a dim pair of buttons is not a dead end.
@@ -133,10 +134,39 @@ private struct LidSoundVolume: View {
                 Text("Quiet"); Spacer(); Text("Loud")
             }
             .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
-            Text("Of your Mac's volume, which Shut never changes. Let go to hear it.")
-                .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
-                .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
         }
+        .help("Of your Mac's volume, which Shut never changes. Let go to hear it.")
+    }
+}
+
+/// Where the sound starts, in degrees above shut: with the screen effect (Speed, on Lid
+/// effects, so the two begin together) or at an angle of its own. The dial always shows the
+/// number, so "how early" is never a guess.
+private struct LidSoundStart: View {
+    @ObservedObject var sound: LidSoundController
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        let settings = sound.settings
+        let synced = settings.startsWithEffect
+        VStack(alignment: .leading, spacing: 2) {
+            StackedSlider("Starts at", valueText: "\(Int(sound.startDegrees.rounded()))°",
+                          value: Binding(get: { sound.startDegrees }, set: { settings.startDegrees = $0 }),
+                          in: AppSettings.bandRange, step: 5)
+                .disabled(synced).opacity(synced ? 0.5 : 1)
+                .help(synced ? "With the screen effect: change Speed on Lid effects to move both." : "How far above shut the sound starts. Higher starts it sooner and plays more of it.")
+            HStack {
+                Text("Late"); Spacer(); Text("Early")
+            }
+            .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+            TriggerRow("Same as the screen effect",
+                       about: synced ? LidSoundText.startsWithEffectAbout(Int(sound.effectStartDegrees.rounded())) : LidSoundText.ownStartAbout,
+                       live: nil, detail: nil,
+                       isOn: Binding(get: { settings.startsWithEffect }, set: { settings.startsWithEffect = $0 }), expanded: nil,
+                       help: "On: the sound starts where Speed, on Lid effects, starts the screen, so the two begin together. Off: the dial above sets its own angle.")
+                .padding(.top, 2)
+        }
+        .tunerAnimation(TunerTheme.ease, value: synced)
     }
 }
 

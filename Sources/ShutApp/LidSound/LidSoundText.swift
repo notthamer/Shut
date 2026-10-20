@@ -24,6 +24,8 @@ enum LidSoundText {
         var capability: HingeCapability = .continuousAngle
         /// In order: the one the next close plays.
         var next: String? = nil
+        /// Where the sound starts, in degrees above shut; nil when the page has no sensor to say.
+        var startDegrees: Int? = nil
     }
 
     /// "Muted" is the fact that matters: with Stay quiet, no sound will come, whatever is set.
@@ -69,9 +71,13 @@ enum LidSoundText {
             headline = "Closing the lid plays \(s.candidates.count) sounds in turn."
         }
         var parts: [String] = []
-        parts.append(s.capability == .lidStateOnly
-                     ? "This Mac only reports the lid shut, so the sound starts then and sleep may cut it short."
-                     : "It starts as the lid comes down and ends as it lands.")
+        if s.capability == .lidStateOnly {
+            parts.append("This Mac only reports the lid shut, so the sound starts then and sleep may cut it short.")
+        } else if let degrees = s.startDegrees {
+            parts.append("It starts as the lid passes \(degrees)° and ends as it lands.")
+        } else {
+            parts.append("It starts as the lid comes down and ends as it lands.")
+        }
         if s.candidates.count > 1 {
             parts.append(s.mode == .random ? "A different one each time." : "Next: \(s.next ?? first).")
         }
@@ -105,7 +111,9 @@ enum LidSoundText {
     }
 
     static let addHint = "mp3, m4a, wav or aiff · \(Int(LidSoundLibrary.longest)) s at most. Or drop files here."
-    static let endsWithTheLid = "The sound ends with the lid: a short fade as it lands, whatever its length. Speed, on Lid effects, sets how early it starts."
+    static let endsWithTheLid = "The sound ends with the lid: a short fade as it lands, whatever its length. Starts at, above, sets how early it begins."
+    static func startsWithEffectAbout(_ degrees: Int) -> String { "Where the screen effect starts: \(degrees)°, from Speed on Lid effects." }
+    static let ownStartAbout = "Its own angle, whatever the screen effect does."
     static let onOpenAbout = "A sound as the desktop pours back in, after you unlock."
     static let unmuteAbout = "Unmute for it: the sound plays, and mute comes back when it ends."
 }

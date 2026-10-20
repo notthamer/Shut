@@ -27,6 +27,10 @@ final class LidSoundSettings: ObservableObject {
     @Published var onOpen: Bool { didSet { defaults.set(onOpen, forKey: "lidSound.onOpen") } }
     @Published var onOpenPick: OnOpenPick { didSet { defaults.set(onOpenPick.stored, forKey: "lidSound.onOpenPick") } }
     @Published var whenMuted: WhenMuted { didSet { defaults.set(whenMuted.rawValue, forKey: "lidSound.whenMuted") } }
+    /// The sound starts where the screen effect does (Speed, on Lid effects), or at its own
+    /// angle, `startDegrees` above shut.
+    @Published var startsWithEffect: Bool { didSet { defaults.set(startsWithEffect, forKey: "lidSound.startsWithEffect") } }
+    @Published var startDegrees: Double { didSet { defaults.set(startDegrees, forKey: "lidSound.startDegrees") } }
 
     /// Random never plays the same sound twice running; in order carries on from here.
     var lastPickID: UUID? { didSet { defaults.set(lastPickID?.uuidString, forKey: "lidSound.lastPickID") } }
@@ -54,6 +58,8 @@ final class LidSoundSettings: ObservableObject {
         onOpen = bool("lidSound.onOpen", false)
         onOpenPick = OnOpenPick(stored: defaults.string(forKey: "lidSound.onOpenPick"))
         whenMuted = defaults.string(forKey: "lidSound.whenMuted").flatMap(WhenMuted.init(rawValue:)) ?? .stayQuiet
+        startsWithEffect = bool("lidSound.startsWithEffect", true)
+        startDegrees = defaults.object(forKey: "lidSound.startDegrees") as? Double ?? 60
         lastPickID = defaults.string(forKey: "lidSound.lastPickID").flatMap(UUID.init(uuidString:))
         nextIndex = defaults.integer(forKey: "lidSound.nextIndex")
         muteToRestore = defaults.bool(forKey: "lidSound.muteToRestore")
