@@ -127,7 +127,7 @@ final class PopoverModel: ObservableObject {
     /// A row's ×: an own file is deleted, a starter is hidden so it can come back.
     func removeSound(_ item: LidSoundItem) {
         lidSound.library.remove(item, keptBy: lidSound.settings.items)
-        if item.isStarter && !item.isCut {
+        if item.fromManifest {
             var hidden = item; hidden.hidden = true
             lidSound.settings.update(hidden)
         } else {
@@ -169,7 +169,7 @@ final class PopoverModel: ObservableObject {
     }
 
     func restoreStarterSounds() {
-        for var item in lidSound.settings.items where item.isStarter && item.hidden {
+        for var item in lidSound.settings.items where item.fromManifest && item.hidden {
             item.hidden = false; item.enabled = true
             lidSound.settings.update(item)
         }

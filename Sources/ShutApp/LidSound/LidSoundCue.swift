@@ -9,7 +9,10 @@ import LidSensor
 /// sound starts when the overlay appears (`closeBeginning`), or, with Lid effects off and
 /// no overlay, when the hinge crosses the same threshold the overlay would have used.
 struct LidSoundCue: Equatable {
-    enum Phase: Equatable { case idle, prepared, playing, fading }
+    /// `spent`: this close's sound has played; nothing more until the lid comes back up.
+    /// (Without it, a Mac awake with the lid down, held by Stay awake or taking a while to
+    /// sleep, replayed the sound every 0.3 s from the hinge: play, land-fade, play again.)
+    enum Phase: Equatable { case idle, prepared, playing, fading, spent }
     enum Command: Equatable {
         case prepare
         case play
@@ -59,6 +62,9 @@ struct LidSoundCue: Equatable {
             return nil
         case .fading:
             return nil   // a second fade never restarts the clock
+        case .spent:
+            if p <= Self.topAt { phase = .idle }
+            return nil
         }
     }
 
@@ -69,7 +75,7 @@ struct LidSoundCue: Equatable {
         case .idle, .prepared:
             if startsAtOwnAngle { if phase == .idle { phase = .prepared; return .prepare }; return nil }
             phase = .playing; return .play
-        case .playing, .fading: return nil
+        case .playing, .fading, .spent: return nil
         }
     }
 
@@ -79,6 +85,7 @@ struct LidSoundCue: Equatable {
         switch phase {
         case .prepared: phase = .idle; return .drop
         case .playing: phase = .fading; return .fade(Self.liftFade)
+        case .spent: phase = .idle; return nil
         case .idle, .fading: return nil
         }
     }
@@ -90,8 +97,15 @@ struct LidSoundCue: Equatable {
         return .fade(Self.landFade)
     }
 
-    /// The player ended by itself, or the fade's clock ran out.
+    /// The player ended by itself, or the fade's clock ran out. A close's sound is then spent
+    /// until the lid comes back up; anything else (a preview, a dropped pick) is simply over.
     mutating func finished() {
+        phase = phase == .playing || phase == .fading ? .spent : .idle
+        peak = 0
+    }
+
+    /// The lid opened for real (a wake, a reopen to the top): whatever was spent is forgotten.
+    mutating func reset() {
         phase = .idle
         peak = 0
     }

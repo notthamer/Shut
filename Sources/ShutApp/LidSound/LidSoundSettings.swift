@@ -46,10 +46,7 @@ final class LidSoundSettings: ObservableObject {
     /// "Its own level" set the Mac's volume and has not put it back yet; the value owed.
     var volumeToRestore: Double? { didSet { defaults.set(volumeToRestore, forKey: "lidSound.volumeToRestore") } }
 
-    /// The sounds that ship with the app, as `(display name, file in Resources/Sounds)`.
-    nonisolated static let starters: [(name: String, file: String)] = [("Click", "Click.wav"), ("Breath", "Breath.wav"), ("Hum", "Hum.wav")]
-
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, starters: [LidSoundLibrary.Starter]? = nil) {
         self.defaults = defaults
         func bool(_ key: String, _ fallback: Bool) -> Bool { defaults.object(forKey: key) as? Bool ?? fallback }
         isOn = bool("lidSound.isOn", false)
@@ -57,7 +54,7 @@ final class LidSoundSettings: ObservableObject {
             items = saved
         } else {
             // First launch: the starters, switched on, so the first close has something to play.
-            items = Self.starters.map { LidSoundItem(id: UUID(), fileName: $0.file, displayName: $0.name, enabled: true, isStarter: true) }
+            items = (starters ?? LidSoundLibrary().starters()).map { $0.item() }
         }
         mode = defaults.string(forKey: "lidSound.mode").flatMap(Mode.init(rawValue:)) ?? .random
         volume = defaults.object(forKey: "lidSound.volume") as? Double ?? 0.7
@@ -77,6 +74,22 @@ final class LidSoundSettings: ObservableObject {
 
     /// The rows on the page: everything that is not a hidden starter.
     var shown: [LidSoundItem] { items.filter { !$0.hidden } }
+
+    /// A release can bring new starters. Any in the manifest that the list does not have yet
+    /// (the same file and part as a starter, or the same name and part as a sound of the
+    /// user's own) is added, switched on, at the end. Hidden ones stay hidden.
+    func adoptNewStarters(_ starters: [LidSoundLibrary.Starter]) {
+        var added: [LidSoundItem] = []
+        for starter in starters {
+            let from = starter.from ?? 0, to = starter.to
+            let known = items.contains { item in
+                let samePart = abs(item.clipStart - from) < 0.01 && ((item.clipEnd == nil && to == nil) || abs((item.clipEnd ?? -1) - (to ?? -1)) < 0.01)
+                return samePart && ((item.fromManifest && item.fileName == starter.file) || item.displayName == starter.name)
+            }
+            if !known { added.append(starter.item()) }
+        }
+        if !added.isEmpty { items += added }
+    }
 
     func update(_ item: LidSoundItem) {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }

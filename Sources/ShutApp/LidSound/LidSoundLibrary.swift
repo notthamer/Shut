@@ -17,6 +17,8 @@ final class LidSoundLibrary {
 
     let directory: URL
     private let bundle: Bundle?
+    /// The starters to use instead of the manifest's: a test's own short list.
+    private let fixedStarters: [Starter]?
     /// Files that failed to open since launch, so the page can say so without retrying.
     private(set) var unreadable: Set<UUID> = []
 
@@ -29,17 +31,53 @@ final class LidSoundLibrary {
         case copyFailed
     }
 
-    init(directory: URL? = nil, bundle: Bundle? = AppAssets.resourceBundle()) {
+    init(directory: URL? = nil, bundle: Bundle? = AppAssets.resourceBundle(), starters: [Starter]? = nil) {
         self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Shut", isDirectory: true).appendingPathComponent("Sounds", isDirectory: true)
         self.bundle = bundle
+        fixedStarters = starters
     }
 
-    // MARK: Where a sound is
+    // MARK: The starters
 
-    /// The starters the bundle really has: `--self-check` counts them.
+    /// One sound that ships with the app: a file in `Resources/Sounds`, whole or a part of it.
+    /// `starters.json` beside the files lists them, so adding one is a file and a line.
+    struct Starter: Codable, Equatable {
+        var name: String
+        var file: String
+        var from: TimeInterval?
+        var to: TimeInterval?
+
+        func item() -> LidSoundItem {
+            LidSoundItem(id: UUID(), fileName: file, displayName: name, enabled: true, isStarter: true,
+                         clipStart: from ?? 0, clipEnd: to, isCut: to != nil, fromManifest: true)
+        }
+    }
+
+    /// The three generated ones, when the manifest is missing: the feature still works.
+    static let fallbackStarters = [Starter(name: "Click", file: "Click.wav"), Starter(name: "Breath", file: "Breath.wav"), Starter(name: "Hum", file: "Hum.wav")]
+
+    func starters() -> [Starter] {
+        if let fixedStarters { return fixedStarters }
+        struct Manifest: Codable { var starters: [Starter] }
+        guard let url = bundle?.url(forResource: "Resources/Sounds/starters", withExtension: "json")
+                ?? bundle?.url(forResource: "Sounds/starters", withExtension: "json")
+                ?? bundle?.url(forResource: "starters", withExtension: "json"),
+              let data = try? Data(contentsOf: url), let manifest = try? JSONDecoder().decode(Manifest.self, from: data),
+              !manifest.starters.isEmpty else { return Self.fallbackStarters }
+        return manifest.starters
+    }
+
+    /// The starters' files the bundle really has, one per file: `--self-check` counts them.
     func starterURLs() -> [URL] {
-        LidSoundSettings.starters.compactMap { starterURL($0.file) }
+        var seen: Set<String> = []
+        return starters().filter { seen.insert($0.file).inserted }.compactMap { starterURL($0.file) }
+    }
+
+    /// Every starter's file is in the bundle.
+    var startersAreComplete: Bool {
+        let files = Set(starters().map(\.file))
+        return !files.isEmpty && starterURLs().count == files.count
     }
 
     private func starterURL(_ file: String) -> URL? {

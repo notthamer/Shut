@@ -20,7 +20,7 @@ final class LidSoundSnapshotTests: XCTestCase {
 
     private func makeModel(on: Bool, items: [LidSoundItem]? = nil, capability: HingeCapability = .continuousAngle) throws -> (PopoverModel, LidSoundController) {
         let suite = UserDefaults(suiteName: "LidSoundSnapshot-\(UUID().uuidString)")!
-        let soundSettings = LidSoundSettings(defaults: suite)
+        let soundSettings = LidSoundSettings(defaults: suite, starters: LidSoundLibrary.fallbackStarters)
         soundSettings.isOn = on
         if let items { soundSettings.items = items }
         let settings = AppSettings(defaults: suite)
@@ -30,7 +30,7 @@ final class LidSoundSnapshotTests: XCTestCase {
         preview.capturePlaceholder()
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("LidSoundSnapshot-\(UUID().uuidString)")
         let sound = LidSoundController(settings: soundSettings, appSettings: settings, sensor: sensor, hasLid: true,
-                                       library: LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle()), output: output,
+                                       library: LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), starters: LidSoundLibrary.fallbackStarters), output: output,
                                        makePlayer: { [unowned self] _ in let p = LidSoundControllerTests.FakePlayer(); self.players.append(p); return p },
                                        capability: { capability })
         sound.start()

@@ -75,6 +75,7 @@ final class LidSoundController: ObservableObject {
 
     func start() {
         restoreMuteIfOwed()
+        settings.adoptNewStarters(library.starters())
         // The starters' lengths, read once: three small files, the first time only.
         for var item in settings.items where item.duration == nil {
             if let url = library.url(for: item), let duration = LidSoundLibrary.duration(of: url) {
@@ -86,8 +87,8 @@ final class LidSoundController: ObservableObject {
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                if self.cue.phase != .idle { Log.sound.notice("the Mac slept mid-sound") }
-                self.cue.finished()
+                if self.cue.phase != .idle, self.cue.phase != .spent { Log.sound.notice("the Mac slept mid-sound") }
+                self.cue.reset()
                 self.dropPlayer()
                 self.restoreMuteIfOwed()
                 self.warmTheOpening()
@@ -116,7 +117,7 @@ final class LidSoundController: ObservableObject {
             hingeSink = sensor.$state.compactMap { $0 }.sink { [weak self] state in self?.hinge(state) }
         } else if !listening, hingeSink != nil {
             hingeSink = nil
-            cue.finished()
+            cue.reset()
             dropPlayer()
         }
         objectWillChange.send()

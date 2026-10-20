@@ -19,6 +19,34 @@ struct LidSoundItem: Codable, Identifiable, Equatable {
     var clipEnd: TimeInterval?
     /// A part cut from another sound: it shares that sound's file and owns no file of its own.
     var isCut = false
+    /// Listed in the app's own starters.json: removed, it is hidden and can be restored. A
+    /// part the user cut from a starter is theirs, and goes when removed.
+    var fromManifest = false
+
+    /// Older lists have no `fromManifest`: a whole starter was from the manifest, a cut was not.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        fileName = try c.decode(String.self, forKey: .fileName)
+        displayName = try c.decode(String.self, forKey: .displayName)
+        enabled = try c.decode(Bool.self, forKey: .enabled)
+        isStarter = try c.decode(Bool.self, forKey: .isStarter)
+        hidden = try c.decodeIfPresent(Bool.self, forKey: .hidden) ?? false
+        duration = try c.decodeIfPresent(TimeInterval.self, forKey: .duration)
+        contentHash = try c.decodeIfPresent(String.self, forKey: .contentHash)
+        clipStart = try c.decodeIfPresent(TimeInterval.self, forKey: .clipStart) ?? 0
+        clipEnd = try c.decodeIfPresent(TimeInterval.self, forKey: .clipEnd)
+        isCut = try c.decodeIfPresent(Bool.self, forKey: .isCut) ?? false
+        fromManifest = try c.decodeIfPresent(Bool.self, forKey: .fromManifest) ?? (isStarter && !isCut)
+    }
+
+    init(id: UUID, fileName: String, displayName: String, enabled: Bool, isStarter: Bool, hidden: Bool = false,
+         duration: TimeInterval? = nil, contentHash: String? = nil, clipStart: TimeInterval = 0, clipEnd: TimeInterval? = nil,
+         isCut: Bool = false, fromManifest: Bool = false) {
+        self.id = id; self.fileName = fileName; self.displayName = displayName; self.enabled = enabled; self.isStarter = isStarter
+        self.hidden = hidden; self.duration = duration; self.contentHash = contentHash; self.clipStart = clipStart; self.clipEnd = clipEnd
+        self.isCut = isCut; self.fromManifest = fromManifest
+    }
 
     /// What is heard, in seconds: the part, or the whole file.
     var heardLength: TimeInterval? {

@@ -43,15 +43,14 @@ final class LidSoundControllerTests: XCTestCase {
     private func make(lidEffects: Bool = true, items: [LidSoundItem]? = nil,
                       capability: HingeCapability = .continuousAngle) -> (LidSoundController, LidSoundSettings) {
         suite = UserDefaults(suiteName: "LidSoundController-\(UUID().uuidString)")!
-        let settings = LidSoundSettings(defaults: suite)
+        let settings = LidSoundSettings(defaults: suite, starters: LidSoundLibrary.fallbackStarters)
         settings.isOn = true
         if let items { settings.items = items }
         let app = AppSettings(defaults: suite)
         app.isEnabled = lidEffects
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("LidSoundController-\(UUID().uuidString)")
-        let library = LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle())
         let controller = LidSoundController(settings: settings, appSettings: app, sensor: LidSensorMonitor(defaults: nil), hasLid: true,
-                                            library: library, output: output,
+                                            library: LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), starters: LidSoundLibrary.fallbackStarters), output: output,
                                             makePlayer: { [unowned self] _ in let p = FakePlayer(); self.players.append(p); return p },
                                             after: { [unowned self] seconds, work in
                                                 self.pending.append((seconds, work)); return DispatchWorkItem(block: work) },
@@ -95,6 +94,27 @@ final class LidSoundControllerTests: XCTestCase {
         hinge(controller, 0.005, .closing)
         hinge(controller, 0.02, .closing)
         XCTAssertEqual(players[0].log, ["prepare", "play"], "no overlay: the hinge says when")
+    }
+
+    /// A Mac awake with the lid down (held, or slow to sleep) played the sound again and
+    /// again from the hinge. Once a close's sound has played, nothing more until the lid
+    /// comes back up.
+    func testOneSoundPerClose() {
+        let (controller, _) = make(lidEffects: false)
+        hinge(controller, 0.005, .closing)
+        hinge(controller, 0.02, .closing)
+        hinge(controller, 0.95, .closing)
+        XCTAssertEqual(players[0].log, ["prepare", "play", "fade 0.3"])
+        pending.removeFirst().1()
+        spin()
+        for _ in 0..<20 { hinge(controller, 1, .still) }
+        XCTAssertEqual(players.count, 1, "the lid is still down: no second sound")
+        hinge(controller, 0.5, .opening)
+        XCTAssertEqual(players.count, 1, "on the way up: still nothing")
+        hinge(controller, 0.001, .still)
+        hinge(controller, 0.005, .closing)
+        hinge(controller, 0.02, .closing)
+        XCTAssertEqual(players.count, 2, "a new close, a new sound")
     }
 
     func testLiftingTheLidFadesItOut() {
@@ -254,9 +274,11 @@ extension LidSoundControllerTests {
         XCTAssertEqual(output.volumes, [0.7, 0.06], "put back when the sound ends")
         XCTAssertNil(LidSoundSettings(defaults: suite).volumeToRestore)
 
-        // Of the Mac's: nothing is touched; the player carries the share.
+        // Of the Mac's: nothing is touched; the player carries the share. (The lid comes back
+        // up first: one sound per close.)
         settings.volumeMode = .shareOfMac
         output.volumes = []
+        hinge(controller, 0.001, .still)
         hinge(controller, 0.005, .closing)
         controller.closeBeginning()
         XCTAssertTrue(output.volumes.isEmpty)

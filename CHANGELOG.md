@@ -2,7 +2,7 @@
 
 ## 0.4.0
 
-**Lid sound.** Close the lid and a sound plays: it starts as the lid comes down and ends as it lands. Three sounds come with the app; add your own, and with several Shut picks one each time. Off until you turn it on.
+**Lid sound.** Close the lid and a sound plays: it starts as the lid comes down and ends as it lands. Eight sounds come with the app, five adhkar among them; add your own, and with several Shut picks one each time. Off until you turn it on.
 
 - It ends with the lid. The sound starts the moment the closing effect does and fades out in the last few degrees, so it lands with the lid whatever its length. Speed, on Lid effects, sets how early it starts. Lift the lid back up and it fades out.
 - Your sounds. Add a sound… or drop files on the list: mp3, m4a, wav or aiff, copied into Shut so the original can move. Each has its own switch, a ▶ to hear it, and an × to remove it. Cut parts out of any sound on its waveform, as many as you like, each with its own name; double-click a name to rename it. A long file plays from where you choose, up to 30 seconds.
