@@ -49,7 +49,7 @@ struct SectionTabs: View {
                     model.page = .sound
                 } icon: {
                     LidSoundGlyph(playing: sound.playing != nil, height: 13,
-                                  tint: sound.settings.isOn ? theme.ink : theme.inkLabel)
+                                  tint: sound.settings.isOn ? theme.ink : theme.inkLabel, breathes: sound.settings.isOn)
                 }
             }
             .tunerAnimation(TunerTheme.ease, value: status)

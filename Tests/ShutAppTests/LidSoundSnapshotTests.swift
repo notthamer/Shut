@@ -142,13 +142,26 @@ final class LidSoundSnapshotTests: XCTestCase {
         sound.shutDown()
     }
 
-    /// The glyph's clock is a pure function of time, and it rests in a shape.
+    /// The glyph's clock is a pure function of time: it rests in a shape, breathes a little
+    /// when on, moves to a sound, and leans toward a pointer.
     func testTheGlyph() {
         XCTAssertEqual(LidSoundGlyph.rest, [0.4, 1, 0.6])
+        XCTAssertEqual(LidSoundGlyph.heights(at: 3, playing: false, breathing: false), LidSoundGlyph.rest, "off: still")
         for t in stride(from: 0.0, to: 6, by: 0.1) {
-            let heights = LidSoundGlyph.heights(at: t)
-            XCTAssertEqual(heights.count, 3)
-            XCTAssertTrue(heights.allSatisfy { $0 >= 0.15 && $0 <= 1 })
+            for playing in [false, true] {
+                let heights = LidSoundGlyph.heights(at: t, playing: playing, breathing: true)
+                XCTAssertEqual(heights.count, 3)
+                XCTAssertTrue(heights.allSatisfy { $0 >= 0.15 && $0 <= 1 })
+            }
+            let breath = LidSoundGlyph.heights(at: t, playing: false, breathing: true)
+            for (b, r) in zip(breath, LidSoundGlyph.rest) { XCTAssertEqual(b, r, accuracy: 0.07, "a breath, not a dance") }
         }
+        // The pointer on the right lifts the right bar and lets the left one dip, eased in.
+        let before = LidSoundGlyph.heights(at: 10, playing: false, breathing: false)
+        let leaning = LidSoundGlyph.heights(at: 10.5, playing: false, breathing: false, hover: .init(x: 1, since: 10))
+        XCTAssertGreaterThan(leaning[2], before[2])
+        XCTAssertLessThan(leaning[0], before[0])
+        let justStarted = LidSoundGlyph.heights(at: 10.01, playing: false, breathing: false, hover: .init(x: 1, since: 10))
+        XCTAssertLessThan(justStarted[2] - before[2], leaning[2] - before[2], "eased in over a moment, not a jump")
     }
 }

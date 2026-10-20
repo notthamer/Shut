@@ -51,7 +51,10 @@ private struct LidSoundBand: View {
         HStack(alignment: .top, spacing: 0) {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
-                    LidSoundGlyph(playing: sound.playing != nil, height: 30, tint: isOn ? theme.ink : theme.inkLabel)
+                    // On: it breathes, leans toward the pointer, and a click plays the sound.
+                    LidSoundGlyph(playing: sound.playing != nil, height: 30, tint: isOn ? theme.ink : theme.inkLabel,
+                                  breathes: isOn, follows: isOn && !situation.candidates.isEmpty,
+                                  onTap: isOn && !situation.candidates.isEmpty ? { model.tryTheSound() } : nil)
                         .padding(.bottom, 2)
                     Text(copy.headline)
                         .font(TunerTheme.display(24)).tracking(-0.6).foregroundStyle(theme.ink).lineSpacing(1)
