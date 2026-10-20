@@ -38,7 +38,7 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertEqual(LidSoundText.copy(pending).headline, "Your Mac is still going to sleep from the last close.")
         XCTAssertEqual(LidSoundText.copy(pending).detail, "Closing the lid again does nothing until that finishes: 7 s so far. The sound still plays.")
         var slow = situation(candidates: ["Rain"]); slow.slowSleepers = ["Logitech G Hub"]
-        XCTAssertTrue(LidSoundText.copy(slow).detail.hasSuffix("Your Mac takes a while to sleep; the note below says why."))
+        XCTAssertEqual(LidSoundText.copy(slow).detail, "It starts as the lid comes down and ends as it lands.", "the card under the answer says it")
         XCTAssertTrue(LidSoundText.partsFound(1).hasPrefix("No silence to split at"))
         XCTAssertEqual(LidSoundText.copy(situation()).headline, "Closing the lid plays one of 3 sounds.")
         XCTAssertTrue(LidSoundText.copy(situation()).detail.hasSuffix("A different one each time."))
@@ -53,7 +53,7 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertEqual(LidSoundText.copy(situation(shown: 0, candidates: [])).detail, "No sounds yet. Add one below.")
         var output = situation(candidates: ["Rain"]); output.outputName = "AirPods Pro"; output.onOpen = true
         XCTAssertEqual(LidSoundText.copy(output).detail,
-                       "It starts as the lid comes down and ends as it lands. Opening plays one too. Through AirPods Pro.")
+                       "It starts as the lid comes down and ends as it lands. Through AirPods Pro.", "on open is said in Settings, not twice")
     }
 
     func testSmallWords() {

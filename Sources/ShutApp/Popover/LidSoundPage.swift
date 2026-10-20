@@ -50,9 +50,9 @@ private struct LidSoundBand: View {
         let copy = LidSoundText.copy(situation)
         HStack(alignment: .top, spacing: 0) {
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 12) {
                     // On: it breathes, leans toward the pointer, and a click plays the sound.
-                    LidSoundGlyph(playing: sound.playing != nil, height: 30, tint: isOn ? theme.ink : theme.inkLabel,
+                    LidSoundGlyph(playing: sound.playing != nil, height: 26, tint: isOn ? theme.ink : theme.inkLabel,
                                   breathes: isOn, follows: isOn && !situation.candidates.isEmpty,
                                   onTap: isOn && !situation.candidates.isEmpty ? { model.tryTheSound() } : nil)
                         .padding(.bottom, 2)
@@ -62,12 +62,12 @@ private struct LidSoundBand: View {
                     Text(copy.detail)
                         .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
-                    action(situation).padding(.top, 6)
+                    action(situation).padding(.top, 4)
                     if let slow = model.sleep.slow {
-                        SlowSleepCard(slow: slow) { model.sleep.dismissSlow() }
+                        SlowSleepCard(slow: slow) { model.sleep.dismissSlow() }.padding(.top, 2)
                     }
                 }
-                .padding(.horizontal, 20).padding(.vertical, 22)
+                .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 16)
                 .frame(width: AwakePage.statusWidth, alignment: .topLeading)
             }
             .frame(width: AwakePage.statusWidth)

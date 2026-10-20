@@ -231,7 +231,8 @@ final class LidSoundController: ObservableObject {
     }
 
     private func readOutput() {
-        outputName = output.deviceName
+        // The built-in speakers go without saying; AirPods or a display's speakers do not.
+        outputName = output.deviceUID == "BuiltInSpeakerDevice" ? nil : output.deviceName
         isMuted = output.isMuted
         canUnmute = output.canSetMute
         canSetVolume = output.canSetVolume

@@ -95,9 +95,9 @@ enum LidSoundText {
             parts.append(s.mode == .random ? "A different one each time." : "Next: \(s.next ?? first).")
         }
         if s.muted, s.whenMuted == .unmute { parts.append("Your Mac is muted; Shut unmutes for the sound and mutes again after.") }
-        if s.onOpen { parts.append("Opening plays one too.") }
+        // Said once: "on open" is in the Settings summary, the slow sleep is the card under
+        // this, and the built-in speakers go without saying (`outputName` is nil for them).
         if let output = s.outputName { parts.append(outputLine(deviceName: output)) }
-        if !s.slowSleepers.isEmpty { parts.append("Your Mac takes a while to sleep; the note below says why.") }
         return Copy(headline: headline, detail: parts.joined(separator: " "))
     }
 

@@ -63,6 +63,7 @@ final class SleepWatchTests: XCTestCase {
         XCTAssertEqual(AwakeText.slowSleepDetail(names: ["Logitech Options+", "Logitech G Hub"], seconds: 30),
                        "Logitech Options+ and Logitech G Hub did not answer the sleep. Until they do, closing the lid again inside those 30 s does nothing, and the Mac sleeps on its own when they time out. Quit or update them.")
         XCTAssertTrue(AwakeText.slowSleepDetail(names: ["X"], seconds: 30).hasSuffix("Quit or update it."))
+        XCTAssertEqual(AwakeText.slowSleepShort(names: ["Logitech Options+", "Logitech G Hub"]), "Logitech Options+ and Logitech G Hub did not answer it. Quit or update them.")
         let plugged = PowerConditions(onCharger: true, batteryPercent: 90)
         XCTAssertEqual(AwakeText.tabLine(state: .ready, reasons: [], conditions: plugged, limits: HoldLimits(isOn: true), sleepPendingSeconds: 5, now: Date()), "Still going to sleep")
         XCTAssertEqual(AwakeText.closingCaption(state: .ready, reasons: [], conditions: plugged, teachOption: false, sleepPending: true)?.text, AwakeText.sleepPendingCaption)

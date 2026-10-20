@@ -11,9 +11,9 @@ struct SlowSleepCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Text("▲").font(.system(size: 11)).foregroundStyle(theme.ink).frame(width: 20).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(AwakeText.slowSleepTitle(seconds: slow.seconds)).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
-                Text(AwakeText.slowSleepDetail(names: slow.names, seconds: slow.seconds))
+                Text(AwakeText.slowSleepShort(names: slow.names))
                     .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -22,8 +22,9 @@ struct SlowSleepCard: View {
                 .accessibilityLabel("Remove the note about the slow sleep")
                 .padding(.top, -4).padding(.trailing, -6)
         }
-        .padding(.horizontal, 14).padding(.vertical, 11)
+        .padding(.horizontal, 12).padding(.vertical, 9)
         .background(theme.washSaffron)
+        .help(AwakeText.slowSleepDetail(names: slow.names, seconds: slow.seconds))
         .surface(.card, radius: TunerTheme.cardRadius)
         .clipShape(RoundedRectangle(cornerRadius: TunerTheme.cardRadius, style: .continuous))
         .accessibilityElement(children: .contain)

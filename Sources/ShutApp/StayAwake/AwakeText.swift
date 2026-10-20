@@ -300,6 +300,15 @@ enum AwakeText {
     static let sleepPendingCaption = "Still going to sleep from the last close"
 
     static func slowSleepTitle(seconds: Int) -> String { "Your Mac takes \(seconds) s to sleep." }
+    /// The card's one line; the whole story is in its tooltip (`slowSleepDetail`).
+    static func slowSleepShort(names: [String]) -> String {
+        switch names.count {
+        case 0: return "Something did not answer the sleep. Closing the lid again meanwhile does nothing."
+        case 1: return "\(names[0]) did not answer it. Quit or update it."
+        case 2: return "\(names[0]) and \(names[1]) did not answer it. Quit or update them."
+        default: return names.dropLast().joined(separator: ", ") + " and " + names[names.count - 1] + " did not answer it. Quit or update them."
+        }
+    }
     static func slowSleepDetail(names: [String], seconds: Int) -> String {
         let who: String
         switch names.count {

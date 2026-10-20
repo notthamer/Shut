@@ -21,8 +21,8 @@ final class LidSoundControllerTests: XCTestCase {
     }
 
     final class FakeOutput: OutputMuting {
-        var deviceName: String? = "Speakers"
-        var deviceUID: String? = "built-in"
+        var deviceName: String? = "MacBook Pro Speakers"
+        var deviceUID: String? = "BuiltInSpeakerDevice"
         var muted = false
         var canSetMute = true
         var sets: [Bool] = []
@@ -193,7 +193,7 @@ final class LidSoundControllerTests: XCTestCase {
         suite = UserDefaults(suiteName: "LidSoundController-\(UUID().uuidString)")!
         let settings = LidSoundSettings(defaults: suite)
         settings.muteToRestore = true
-        settings.muteToRestoreDeviceUID = "built-in"
+        settings.muteToRestoreDeviceUID = "BuiltInSpeakerDevice"
         output.muted = false
         let controller = LidSoundController(settings: settings, appSettings: AppSettings(defaults: suite), sensor: LidSensorMonitor(defaults: nil),
                                             hasLid: true, library: LidSoundLibrary(directory: FileManager.default.temporaryDirectory, bundle: nil),
