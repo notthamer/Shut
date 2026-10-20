@@ -56,8 +56,8 @@ final class LidSoundTextTests: XCTestCase {
                        "Silent on open · stays quiet when muted · follows the Mac's volume")
         XCTAssertEqual(LidSoundText.settingsSummary(onOpen: false, whenMuted: .stayQuiet, volumeMode: .ownLevel),
                        "Silent on open · stays quiet when muted", "the default needs no mention")
-        XCTAssertEqual(LidSoundText.volumeAbout(.shareOfMac, macVolume: 0.06), "Of your Mac's volume (6 % now). Let go to hear it.")
-        XCTAssertEqual(LidSoundText.volumeAbout(.ownLevel, macVolume: 0.06), "Your Mac is set to this for it, then put back. Let go to hear it.")
+        XCTAssertEqual(LidSoundText.volumeAbout(.shareOfMac, macVolume: 0.06), "Of your Mac's volume (6 % now).")
+        XCTAssertEqual(LidSoundText.volumeAbout(.ownLevel, macVolume: 0.06), "Your Mac is set to this for it, then put back.")
         XCTAssertEqual(LidSoundText.refusal(.tooLong(900), name: "Album.m4a"), "Album.m4a is 15 min long. Sounds are 10 minutes at most.")
         XCTAssertEqual(LidSoundText.durationText(200), "3 min 20 s")
         XCTAssertEqual(LidSoundText.clockText(72), "1:12")

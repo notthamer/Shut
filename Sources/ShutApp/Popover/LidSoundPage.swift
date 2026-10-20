@@ -72,7 +72,7 @@ private struct LidSoundBand: View {
 
             Rectangle().fill(theme.hairline).frame(width: 1)
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Pick").font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
                     ModeSwitch(options: ["Random", "In order"], selection: settings.mode == .random ? 0 : 1) { index in
@@ -130,6 +130,7 @@ private struct LidSoundVolume: View {
             StackedSlider("Volume", valueText: "\(Int((settings.volume * 100).rounded())) %",
                           value: Binding(get: { settings.volume * 100 }, set: { settings.volume = ($0 / 100).rounded(toPlaces: 2) }),
                           in: 0...100, step: 5, onEditingEnded: { sound.playClosePreview() })
+                .help("How loud the lid is. Let go to hear it.")
             HStack {
                 Text("Quiet"); Spacer(); Text("Loud")
             }
