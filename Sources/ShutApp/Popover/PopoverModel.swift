@@ -299,7 +299,7 @@ final class PopoverModel: ObservableObject {
     var lidSoundTabLine: String { LidSoundText.tabLine(lidSoundSituation()) }
 
     var statusLine: String {
-        if !settings.isEnabled { return "Paused" }
+        if !settings.isEnabled { return "Off" }
         if registry.isSubstituting { return "\(registry.current.displayName) needs Screen Recording" }
         if BuiltInDisplay.screen == nil, BuiltInDisplay.externalCount > 0 {
             return "Lid shut on an external display: nothing to play"
@@ -324,7 +324,7 @@ final class PopoverModel: ObservableObject {
     /// The "Lid effects" tab's second line: the style and whether it is running, or why not.
     var lidEffectsLine: String {
         let style = registry.current.displayName
-        if !settings.isEnabled { return "\(style) · Paused" }
+        if !settings.isEnabled { return "\(style) · Off" }
         if BuiltInDisplay.screen == nil, BuiltInDisplay.externalCount > 0 { return "Lid shut · nothing to play" }
         if registry.isSubstituting { return "\(style) · plain fade for now" }
         if sensor.capability == .unsupported { return "\(style) · preview only" }

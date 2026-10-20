@@ -59,7 +59,7 @@ therefore means until the lid opens.
   top; "Turn on" opens them, and the sheet leaves a moment later.
 - **Two sections, as two tabs in the header that each carry their own state.** "Lid
   effects" with a lid icon and, under it, the style and whether it is running ("Fold ·
-  On", "Fold · Paused", "Fold · plain fade for now"); "Stay awake" with the eyes and, under
+  On", "Fold · Off", "Fold · plain fade for now"); "Stay awake" with the eyes and, under
   it, what it is doing ("Claude Code · 47 min", "Sleeping in 4 min", "Battery 24 % ·
   sleeps at 20 %", "Zoom is asking", "Lid will sleep your Mac", "Off"). The chosen tab has
   a Linen ground and the 2-pt spectrum line beneath it. A name alone had read as a
