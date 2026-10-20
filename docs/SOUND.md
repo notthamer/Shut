@@ -178,8 +178,10 @@ from, written beside it (rule 6), and an `onByDefault` flag: a pack is an offer,
 fixture. Click, Breath and Hum start in the list; the adhkar do not, and wait folded under
 the list as "More from Shut", with their credit, for whoever wants them, the way a phone
 folds its older ringtones under the ones you chose. Mine leads the list and the bundled packs
-follow it. Any pack in the list comes out with one × (Settings → Packs; a bundled one goes
-back under "More from Shut"; it never leaves the app), and
+follow it. Each pack's heading in the well (under All with more than one pack, or on top
+with one pack chosen) carries its count and, with the pointer near, one × that takes the
+whole pack out (a bundled one goes back under "More from Shut"; it never leaves the app;
+Settings → Packs has the same ×), and
 what the user decided about each bundled pack is kept across launches and releases. A pack
 whose sounds are already in a list stays in it when the flag arrives. The user's own sounds
 live in "Mine", and "New pack…" (under Settings, or from a row's "Move to") makes more. "Plays from", above the list, is

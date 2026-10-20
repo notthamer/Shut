@@ -346,24 +346,24 @@ private struct LidSoundList: View {
         let sound = model.lidSound
         let items = model.displayedSounds
         let clipping = self.clipping ?? model.cuttingSoundForTest
-        // Under All, a small heading says which pack each run of rows is from.
+        // Under All, a small heading says which pack each run of rows is from; with one pack
+        // chosen, its heading tops the well. Either way the heading carries the pack's count
+        // and its way out, so a pack's state and its exit are in one place, not under Settings.
         let headed = sound.settings.playsFrom == .all && Set(items.map(\.packID)).count > 1
+        let chosen: LidSoundPack? = { if case .pack(let id) = sound.settings.playsFrom { return sound.settings.pack(id) }; return nil }()
         VStack(spacing: 0) {
+            if let chosen { LidSoundPackHeading(model: model, pack: chosen) }
             if items.isEmpty {
                 Text(sound.settings.playsFrom == .all ? "No sounds yet. Add one above, or drop audio files here."
-                                                      : "Nothing in this pack yet. Move a sound here, or add one.")
+                                                      : "Nothing in this pack yet. Move a sound here, add one, or × takes the pack out.")
                     .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
-                    if headed, index == 0 || items[index - 1].packID != item.packID {
-                        Text((sound.settings.pack(item.packID)?.name ?? item.packID).uppercased())
-                            .font(TunerTheme.mono(9)).tracking(1.5).foregroundStyle(theme.inkTertiary)
-                            .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 2)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .accessibilityAddTraits(.isHeader)
+                    if headed, index == 0 || items[index - 1].packID != item.packID, let pack = sound.settings.pack(item.packID) {
+                        LidSoundPackHeading(model: model, pack: pack)
                     }
                     LidSoundRow(model: model, item: item, clipping: Binding(get: { clipping == item.id }, set: { self.clipping = $0 ? item.id : nil }),
                                 carried: carry?.id == item.id, canMove: items.count > 1 && clipping == nil,
@@ -405,6 +405,40 @@ private struct LidSoundList: View {
         .tunerAnimation(TunerTheme.ease, value: dropTargeted)
         .tunerAnimation(TunerTheme.ease, value: clipping)
         .help("The sounds the lid may play. Drop audio files here to add them.")
+    }
+}
+
+/// A pack's heading in the well: its name, how many sounds it has here, and, with the
+/// pointer near, one × that takes the whole pack out (a bundled one back under "More from
+/// Shut", a user's own with its sounds to Mine). Mine has no ×: it is where sounds land.
+private struct LidSoundPackHeading: View {
+    @ObservedObject var model: PopoverModel
+    let pack: LidSoundPack
+    @State private var hover = false
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        let count = model.lidSound.settings.shown.filter { $0.packID == pack.id }.count
+        HStack(spacing: 8) {
+            Text(pack.name.uppercased())
+                .font(TunerTheme.mono(9)).tracking(1.5).foregroundStyle(theme.inkTertiary).lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 6)
+            Text(count == 1 ? "1 sound" : "\(count) sounds").font(TunerTheme.mono(9)).foregroundStyle(theme.inkTertiary).fixedSize()
+            if pack.id != LidSoundPack.mineID {
+                IconButton("xmark", help: pack.bundled ? "Take \(pack.name) out of the list, every sound at once. It stays in the app, under More from Shut."
+                                                        : "Remove the pack \(pack.name). Its sounds go to Mine.") { model.removePack(pack) }
+                    // Faint at rest, so the way out is seen before it is looked for; ink when near.
+                    .opacity(hover ? 1 : 0.45)
+                    .accessibilityLabel("Remove the pack \(pack.name)")
+            }
+        }
+        .padding(.leading, 12).padding(.trailing, pack.id == LidSoundPack.mineID ? 12 : 4).padding(.top, 4).padding(.bottom, 0)
+        .frame(minHeight: 26)
+        .contentShape(Rectangle())
+        .onHover { hover = $0 }
+        .tunerAnimation(TunerTheme.ease, value: hover)
+        .help(pack.bundled ? (pack.credit ?? "Comes with the app.") : "Your own pack. Rename it under Settings.")
     }
 }
 
