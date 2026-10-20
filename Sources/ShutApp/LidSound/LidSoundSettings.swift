@@ -35,6 +35,9 @@ final class LidSoundSettings: ObservableObject {
     /// angle, `startDegrees` above shut.
     @Published var startsWithEffect: Bool { didSet { defaults.set(startsWithEffect, forKey: "lidSound.startsWithEffect") } }
     @Published var startDegrees: Double { didSet { defaults.set(startDegrees, forKey: "lidSound.startDegrees") } }
+    /// The sound plays to its end: the Mac waits for it, then sleeps at once. Off: a short
+    /// fade as the lid lands, whatever the length.
+    @Published var playsToEnd: Bool { didSet { defaults.set(playsToEnd, forKey: "lidSound.playsToEnd") } }
 
     /// Random never plays the same sound twice running; in order carries on from here.
     var lastPickID: UUID? { didSet { defaults.set(lastPickID?.uuidString, forKey: "lidSound.lastPickID") } }
@@ -65,6 +68,7 @@ final class LidSoundSettings: ObservableObject {
         volumeMode = defaults.string(forKey: "lidSound.volumeMode").flatMap(VolumeMode.init(rawValue:)) ?? .ownLevel
         startsWithEffect = bool("lidSound.startsWithEffect", true)
         startDegrees = defaults.object(forKey: "lidSound.startDegrees") as? Double ?? 60
+        playsToEnd = bool("lidSound.playsToEnd", false)
         lastPickID = defaults.string(forKey: "lidSound.lastPickID").flatMap(UUID.init(uuidString:))
         nextIndex = defaults.integer(forKey: "lidSound.nextIndex")
         muteToRestore = defaults.bool(forKey: "lidSound.muteToRestore")

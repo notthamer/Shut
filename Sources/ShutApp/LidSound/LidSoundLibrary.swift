@@ -138,6 +138,48 @@ final class LidSoundLibrary {
         return top > 0 ? peaks.map { $0 / top } : peaks
     }
 
+    /// The parts of a sound, by the silence between them: a word, a note, a knock each. A
+    /// bucket quieter than `floor` of the loudest is silence; silences shorter than `minGap`
+    /// do not split a part; parts shorter than `minPart` join their neighbour; each part gets
+    /// a little air either side. At most `most`, the shortest gaps closed first.
+    static func parts(in peaks: [Float], duration: TimeInterval, floor: Float = 0.08, minGap: TimeInterval = 0.12,
+                      minPart: TimeInterval = 0.25, air: TimeInterval = 0.05, most: Int = 12) -> [ClosedRange<TimeInterval>] {
+        guard !peaks.isEmpty, duration > 0 else { return [] }
+        let step = duration / Double(peaks.count)
+        var runs: [(start: Int, end: Int)] = []   // bucket indexes, inclusive
+        var open: Int?
+        for (i, peak) in peaks.enumerated() {
+            if peak >= floor { if open == nil { open = i } }
+            else if let start = open { runs.append((start, i - 1)); open = nil }
+        }
+        if let start = open { runs.append((start, peaks.count - 1)) }
+        guard !runs.isEmpty else { return [] }
+        // Close the gaps too short to be a pause.
+        var merged: [(start: Int, end: Int)] = [runs[0]]
+        for run in runs.dropFirst() {
+            if Double(run.start - merged[merged.count - 1].end - 1) * step < minGap { merged[merged.count - 1].end = run.end }
+            else { merged.append(run) }
+        }
+        // A blip joins whichever neighbour is nearer.
+        var kept: [(start: Int, end: Int)] = []
+        for run in merged {
+            if Double(run.end - run.start + 1) * step >= minPart || kept.isEmpty { kept.append(run) }
+            else { kept[kept.count - 1].end = run.end }
+        }
+        if kept.count > 1, Double(kept[0].end - kept[0].start + 1) * step < minPart { let second = kept[1]; kept[1] = (kept[0].start, second.end); kept.removeFirst() }
+        // Too many: close the shortest gaps until it fits.
+        while kept.count > most {
+            var narrowest = 1, width = Int.max
+            for i in 1..<kept.count where kept[i].start - kept[i - 1].end < width { narrowest = i; width = kept[i].start - kept[i - 1].end }
+            kept[narrowest - 1].end = kept[narrowest].end
+            kept.remove(at: narrowest)
+        }
+        return kept.map { run in
+            let from = max(0, Double(run.start) * step - air), to = min(duration, Double(run.end + 1) * step + air)
+            return from...max(from + shortestCut, to)
+        }
+    }
+
     static func hash(of url: URL) -> String? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()

@@ -2,6 +2,7 @@ import AppKit
 import Combine
 import Foundation
 import LidSensor
+import StayAwake
 
 /// The app's side of Lid sound: joins the settings, the files, the hinge and the lid
 /// controller's two moments to one player, and is what the page, the tab and the menu read.
@@ -39,6 +40,17 @@ final class LidSoundController: ObservableObject {
     /// The hinge's capability, read when it matters; a test says what Mac it is on.
     private let capability: () -> HingeCapability
 
+    /// "Play to the end": the lid's sleep is held off while the sound plays, with the same
+    /// kernel call Stay awake makes, and given back the moment it ends (the Mac then sleeps
+    /// at once). The marker is Stay awake's, so a crash mid-sound is undone at the next
+    /// launch like any other hold.
+    private let hold: LidHolding
+    private let marker: ArmedMarker
+    /// Stay awake is holding the lid itself: the bit is its to give back, not ours.
+    private let lidIsHeldElsewhere: () -> Bool
+    private var holdingForSound = false
+    private var holdEnd: DispatchWorkItem?
+
     private var cue = LidSoundCue()
     private var player: SoundPlaying?
     private var prepared: LidSoundItem?
@@ -57,7 +69,8 @@ final class LidSoundController: ObservableObject {
          library: LidSoundLibrary? = nil, output: OutputMuting? = nil,
          makePlayer: ((URL) throws -> SoundPlaying)? = nil,
          after: ((TimeInterval, @escaping () -> Void) -> DispatchWorkItem)? = nil,
-         capability: (() -> HingeCapability)? = nil) {
+         capability: (() -> HingeCapability)? = nil,
+         hold: LidHolding? = nil, marker: ArmedMarker? = nil, lidIsHeldElsewhere: @escaping () -> Bool = { false }) {
         self.settings = settings
         self.appSettings = appSettings
         self.sensor = sensor
@@ -66,6 +79,9 @@ final class LidSoundController: ObservableObject {
         self.output = output ?? CoreAudioOutput()
         self.makePlayer = makePlayer ?? { try AudioPlayer(url: $0) }
         self.capability = capability ?? { [sensor] in sensor.capability }
+        self.hold = hold ?? LidHold(log: { Log.sound.error("\($0, privacy: .public)") })
+        self.marker = marker ?? ArmedMarker()
+        self.lidIsHeldElsewhere = lidIsHeldElsewhere
         self.after = after ?? { seconds, work in
             let item = DispatchWorkItem(block: work)
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: item)
@@ -103,6 +119,7 @@ final class LidSoundController: ObservableObject {
     func shutDown() {
         fadeEnd?.cancel()
         dropPlayer()
+        releaseTheLid()
         restoreMuteIfOwed()
         listener = nil
         hingeSink = nil
@@ -110,7 +127,7 @@ final class LidSoundController: ObservableObject {
 
     private func apply() {
         cue.playsOnHinge = !appSettings.isEnabled
-        cue.landFades = capability() == .continuousAngle
+        cue.landFades = capability() == .continuousAngle && !settings.playsToEnd
         cue.startAngle = settings.startsWithEffect ? nil : settings.startDegrees
         let listening = settings.isOn && hasLid
         if listening, hingeSink == nil {
@@ -253,7 +270,8 @@ final class LidSoundController: ObservableObject {
         return LidSoundText.Situation(isOn: settings.isOn, shownCount: settings.shown.count, candidates: candidates.map(\.displayName),
                                       mode: settings.mode, whenMuted: settings.whenMuted, muted: isMuted, canUnmute: canUnmute,
                                       playing: playing, outputName: outputName, onOpen: settings.onOpen,
-                                      capability: capability(), next: next, startDegrees: Int(startDegrees.rounded()))
+                                      capability: capability(), next: next, startDegrees: Int(startDegrees.rounded()),
+                                      playsToEnd: settings.playsToEnd)
     }
 
     // MARK: Doing it
@@ -277,6 +295,7 @@ final class LidSoundController: ObservableObject {
             player.play()
             playing = item.displayName
             cap(item)
+            if settings.playsToEnd { holdTheLid() }
             settings.lastPickID = item.id
             if settings.mode == .inOrder {
                 let candidates = library.candidates(settings.items)
@@ -341,6 +360,31 @@ final class LidSoundController: ObservableObject {
         return liftedMute
     }
 
+    /// Play to the end: lid sleep is held off while this close's sound plays. A hard stop a
+    /// second past the longest sound makes sure the Mac is never kept awake by a sound that
+    /// forgot to end.
+    private func holdTheLid() {
+        guard !holdingForSound else { return }
+        marker.write()
+        guard hold.setLidSleepDisabled(true) else { if !lidIsHeldElsewhere() { marker.remove() }; return }
+        holdingForSound = true
+        Log.sound.info("holding the lid for the sound")
+        holdEnd = after(LidSoundLibrary.clipLength + 1) { [weak self] in self?.releaseTheLid() }
+    }
+
+    /// The sound ended, or was cut short: the lid is the Mac's again, and it sleeps at once
+    /// if it is shut. Not while Stay awake holds it: that is its hold to give back.
+    private func releaseTheLid() {
+        holdEnd?.cancel()
+        holdEnd = nil
+        guard holdingForSound else { return }
+        holdingForSound = false
+        guard !lidIsHeldElsewhere() else { return }
+        hold.setLidSleepDisabled(false)
+        marker.remove()
+        Log.sound.info("lid given back")
+    }
+
     /// A part stops at its end, and a long file after its thirty seconds, with the landing
     /// fade, however the lid is held. Whole short files end by themselves.
     private func cap(_ item: LidSoundItem) {
@@ -376,6 +420,7 @@ final class LidSoundController: ObservableObject {
         capEnd = nil
         fadeEnd?.cancel()
         fadeEnd = nil
+        releaseTheLid()
         cue.finished()
         dropPlayer()
         restoreMuteIfOwed()
@@ -384,6 +429,7 @@ final class LidSoundController: ObservableObject {
     private func dropPlayer() {
         capEnd?.cancel()
         capEnd = nil
+        releaseTheLid()
         playing = nil
         prepared = nil
         guard let player else { return }

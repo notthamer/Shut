@@ -30,6 +30,10 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertEqual(LidSoundText.copy(situation(candidates: ["Rain"])).detail, "It starts as the lid comes down and ends as it lands.")
         var angled = situation(candidates: ["Rain"]); angled.startDegrees = 45
         XCTAssertEqual(LidSoundText.copy(angled).detail, "It starts as the lid passes 45° and ends as it lands.")
+        angled.playsToEnd = true
+        XCTAssertEqual(LidSoundText.copy(angled).detail, "It starts as the lid passes 45° and plays to the end; your Mac sleeps right after.")
+        XCTAssertEqual(LidSoundText.partsFound(3), "3 parts, by the silence between them. Name them, then add.")
+        XCTAssertTrue(LidSoundText.partsFound(1).hasPrefix("No silence to split at"))
         XCTAssertEqual(LidSoundText.copy(situation()).headline, "Closing the lid plays one of 3 sounds.")
         XCTAssertTrue(LidSoundText.copy(situation()).detail.hasSuffix("A different one each time."))
         var order = situation(mode: .inOrder); order.next = "Breath"

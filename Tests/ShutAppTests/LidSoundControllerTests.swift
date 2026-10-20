@@ -1,5 +1,6 @@
 import Combine
 import LidSensor
+import StayAwake
 import XCTest
 @testable import ShutApp
 
@@ -35,7 +36,16 @@ final class LidSoundControllerTests: XCTestCase {
         func listen(_ onChange: @escaping () -> Void) -> AnyCancellable { AnyCancellable {} }
     }
 
+    final class FakeHold: LidHolding {
+        var calls: [Bool] = []
+        func setLidSleepDisabled(_ disabled: Bool) -> Bool { calls.append(disabled); return true }
+        func setIdleSleepPrevented(_ prevented: Bool) {}
+    }
+
     private var players: [FakePlayer] = []
+    private var hold = FakeHold()
+    private var marker: ArmedMarker!
+    private var heldElsewhere = false
     private var pending: [(TimeInterval, () -> Void)] = []
     private var output = FakeOutput()
     private var suite: UserDefaults!
@@ -49,12 +59,14 @@ final class LidSoundControllerTests: XCTestCase {
         let app = AppSettings(defaults: suite)
         app.isEnabled = lidEffects
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("LidSoundController-\(UUID().uuidString)")
+        marker = ArmedMarker(directory: folder)
         let controller = LidSoundController(settings: settings, appSettings: app, sensor: LidSensorMonitor(defaults: nil), hasLid: true,
                                             library: LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), starters: LidSoundLibrary.fallbackStarters), output: output,
                                             makePlayer: { [unowned self] _ in let p = FakePlayer(); self.players.append(p); return p },
                                             after: { [unowned self] seconds, work in
                                                 self.pending.append((seconds, work)); return DispatchWorkItem(block: work) },
-                                            capability: { capability })
+                                            capability: { capability },
+                                            hold: hold, marker: marker, lidIsHeldElsewhere: { [unowned self] in self.heldElsewhere })
         controller.start()
         return (controller, settings)
     }
@@ -238,6 +250,44 @@ extension LidSoundControllerTests {
         settings.startsWithEffect = true
         spin()
         XCTAssertEqual(Int(controller.startDegrees), Int(controller.effectStartDegrees), "the dial shows the effect's angle")
+    }
+
+    /// Play to the end: the lid's sleep is held off while the sound plays and given back the
+    /// moment it ends, so the Mac sleeps right after; never while Stay awake holds the lid.
+    func testPlayToTheEndHoldsTheLidForTheSound() {
+        let (controller, settings) = make()
+        settings.playsToEnd = true
+        spin()
+        hinge(controller, 0.005, .closing)
+        controller.closeBeginning()
+        XCTAssertEqual(hold.calls, [true], "held as the sound starts")
+        XCTAssertTrue(marker.exists, "a crash mid-sound is undone at the next launch")
+        hinge(controller, 0.95, .closing)
+        XCTAssertEqual(players[0].log, ["prepare", "play"], "no landing fade: it plays to the end")
+        players[0].onFinish?()
+        spin()
+        XCTAssertEqual(hold.calls, [true, false], "given back the moment it ends")
+        XCTAssertFalse(marker.exists)
+
+        // Stay awake is holding: the sound borrows nothing and gives nothing back.
+        heldElsewhere = true
+        hinge(controller, 0.001, .still)
+        hinge(controller, 0.005, .closing)
+        controller.closeBeginning()
+        players[1].onFinish?()
+        spin()
+        XCTAssertEqual(hold.calls, [true, false, true], "set, but not cleared while Stay awake holds")
+        heldElsewhere = false
+
+        // The hard stop: a sound that never ends still gives the lid back.
+        hinge(controller, 0.001, .still)
+        hinge(controller, 0.005, .closing)
+        controller.closeBeginning()
+        XCTAssertEqual(hold.calls.last, true)
+        let stop = pending.first { $0.0 == LidSoundLibrary.clipLength + 1 }
+        XCTAssertNotNil(stop, "a hard stop a second past the longest sound")
+        stop?.1()
+        XCTAssertEqual(hold.calls.last, false)
     }
 
     /// A long file plays from the clip the user chose, and for thirty seconds at most.

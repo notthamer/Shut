@@ -117,6 +117,14 @@ final class LidSoundSnapshotTests: XCTestCase {
         on.cuttingSoundForTest = sound.settings.shown[2].id
         try render(on, name: "cut")
         on.cuttingSoundForTest = nil
+        // Several parts at once, named; a blank name gets the part's own; a blip is refused, once.
+        let long = sound.settings.shown[0]
+        XCTAssertEqual(long.duration, 14)
+        on.cutSounds(long, parts: [(0...2, "In"), (2...4, "  "), (4...4.1, "Blip"), (5...5.2, "Blip 2")])
+        XCTAssertEqual(Array(sound.settings.shown.map(\.displayName).prefix(3)), ["Chorus 2", "In", "Chorus 2 · 0:02–0:04"])
+        XCTAssertEqual(on.importNote, "A part is half a second at least.", "said once, however many were refused")
+        on.importNote = nil
+        for part in sound.settings.shown where part.isCut && part.displayName != "Chorus" { on.removeSound(part) }
         on.removeSound(sound.settings.shown[0])
         XCTAssertEqual(sound.library.state(of: sound.settings.shown[0]), .ok, "the part outlives its source row")
         on.removeSound(sound.settings.shown[0])

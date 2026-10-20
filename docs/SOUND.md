@@ -161,6 +161,27 @@ is half a second at least, and never outside the file. A part plays from its sta
 stops at its end with the landing fade, however the lid is held. Double-click a name to
 rename it: Return keeps it, Escape leaves it; two rows never share a name.
 
+**Find the parts.** In the cut editor, "Find the parts" looks for the silences and marks a
+part between each on the shape, numbered, with a list under it: a name to type for each
+(Tab moves on), its times, a ▶ to hear it, and a click to put the edges on it. "Add N
+sounds" makes every part a row under the source, in order, with the names given (a blank
+one gets "Song · 0:03–0:07"); a part under half a second is refused, and said once. The
+detection is a pure function of the shape (`LidSoundLibrary.parts`): a slice quieter than
+8 % of the loudest is silence, a silence under 0.12 s does not split, a part under 0.25 s
+joins its neighbour, each part gets 0.05 s of air either side, and there are twelve at
+most, the shortest gaps closed first. A sound with no silence in it is one part, and the
+line says so.
+
+**Play to the end.** Under Extras, off by default. On, the lid's sleep is held off while
+this close's sound plays, with the same kernel call Stay awake makes
+(`kPMSetClamshellSleepState`), and given back the moment the sound ends, so the Mac sleeps
+right after and a two-second sound is heard whole however fast the lid comes down. The
+landing fade is off then. Stay awake's marker is written for the hold, so a crash
+mid-sound is undone at the next launch like any other; a hard stop a second past the
+longest sound (31 s) gives the lid back whatever happened; and while Stay awake is holding
+the lid itself the sound borrows nothing and gives nothing back, since the bit is its to
+give back.
+
 **A long file is clipped, not refused.** Over 30 s, its row grows a "Clip" disclosure: a
 "Starts from" dial ("1:12 of 3:20"), and letting go of it plays from there. The lid plays
 from that point for 30 s at most, then the landing fade, however the lid is held; the ▶ in

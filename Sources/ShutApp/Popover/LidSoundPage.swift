@@ -477,6 +477,9 @@ private struct LidSoundCut: View {
     @State private var to: Double
     @State private var name: String
     @State private var named = false
+    /// Parts found by the silence between them, with the names being typed for them.
+    @State private var found: [ClosedRange<Double>]?
+    @State private var foundNames: [String] = []
     @Environment(\.tunerTheme) private var theme
 
     init(model: PopoverModel, item: LidSoundItem, done: @escaping () -> Void) {
@@ -501,12 +504,25 @@ private struct LidSoundCut: View {
         if !named { name = LidSoundText.cutName(of: item.displayName, from: from, to: to) }
     }
 
+    private func findTheParts() {
+        guard let peaks = sound.waveform(for: item) else { return }
+        let parts = LidSoundLibrary.parts(in: peaks, duration: duration)
+        found = parts
+        foundNames = parts.indices.map { LidSoundText.partName($0) }
+        if let first = parts.first { from = first.lowerBound; to = first.upperBound; moved() }
+    }
+
+    private func hear(_ range: ClosedRange<Double>) {
+        var part = item; part.clipStart = range.lowerBound; part.clipEnd = range.upperBound
+        model.lidSound.preview(part)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             LidSoundWaveform(peaks: sound.waveform(for: item), duration: duration,
                              from: Binding(get: { from }, set: { from = $0; moved() }),
                              to: Binding(get: { to }, set: { to = $0; moved() }),
-                             onEditingEnded: hear)
+                             marks: found ?? [], onEditingEnded: hear)
                 .frame(height: 64)
             HStack {
                 Text("From \(LidSoundText.clockText(from))")
@@ -525,11 +541,49 @@ private struct LidSoundCut: View {
                     .help("What the part is called in the list.")
             }
             .padding(.top, 4)
-            Text(LidSoundText.cutAbout)
+            if let found, found.count > 1 {
+                // The parts, numbered as on the shape, each with its name to type: Tab moves on.
+                VStack(spacing: 0) {
+                    ForEach(found.indices, id: \.self) { i in
+                        if i > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
+                        HStack(spacing: 8) {
+                            Text(String(format: "%02d", i + 1)).font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).frame(width: 18)
+                            TextField(LidSoundText.partName(i), text: Binding(get: { foundNames.indices.contains(i) ? foundNames[i] : "" },
+                                                                           set: { if foundNames.indices.contains(i) { foundNames[i] = $0 } }))
+                                .textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
+                                .help("The part's name in the list.")
+                            Spacer(minLength: 6)
+                            Text("\(LidSoundText.clockText(found[i].lowerBound))–\(LidSoundText.clockText(found[i].upperBound))")
+                                .font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
+                            IconButton("play.fill", help: "Hear this part.") { hear(found[i]) }
+                                .accessibilityLabel("Play part \(i + 1)")
+                        }
+                        .padding(.horizontal, 8).frame(height: 32)
+                        .contentShape(Rectangle())
+                        .onTapGesture { from = found[i].lowerBound; to = found[i].upperBound; moved() }
+                    }
+                }
+                .surface(.well, radius: TunerTheme.wellRadius)
+                .clipShape(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous))
+                .padding(.top, 6)
+            }
+            Text(found.map { LidSoundText.partsFound($0.count) } ?? LidSoundText.cutAbout)
                 .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true).padding(.top, 2)
             HStack(spacing: 10) {
-                SecondaryButton("Add as a sound", prominent: true) {
+                if let found, found.count > 1 {
+                    SecondaryButton("Add \(found.count) sounds", prominent: true) {
+                        model.cutSounds(item, parts: zip(found, foundNames).map { ($0, $1) })
+                        done()
+                    }
+                    .help("Every part as a row of its own, under this one, with the names above.")
+                    QuietButton("Clear") { self.found = nil; foundNames = [] }
+                        .help("Forget the parts found; the edges are yours again.")
+                } else if sound.waveform(for: item) != nil {
+                    QuietButton("Find the parts") { findTheParts() }
+                        .help(LidSoundText.findPartsAbout)
+                }
+                SecondaryButton("Add as a sound", prominent: found == nil || (found?.count ?? 0) <= 1) {
                     model.cutSound(item, from: from, to: to, name: name)
                     done()
                 }
@@ -566,6 +620,8 @@ struct LidSoundWaveform: View {
     let duration: TimeInterval
     @Binding var from: TimeInterval
     @Binding var to: TimeInterval
+    /// Parts found by the silence between them: outlined and numbered on the shape.
+    var marks: [ClosedRange<TimeInterval>] = []
     var onEditingEnded: () -> Void = {}
     @State private var grip: Grip?
     @Environment(\.tunerTheme) private var theme
@@ -589,6 +645,19 @@ struct LidSoundWaveform: View {
                 // The part, as the selection colour, under the bars.
                 Rectangle().fill(theme.washLime).frame(width: max(0, toX - fromX)).offset(x: fromX)
                 bars(width: width, height: height, fromX: fromX, toX: toX)
+                // The parts found, each in its box with its number.
+                ForEach(Array(marks.enumerated()), id: \.offset) { index, mark in
+                    let x0 = CGFloat(mark.lowerBound / max(duration, 0.001)) * width, x1 = CGFloat(mark.upperBound / max(duration, 0.001)) * width
+                    RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(theme.ink.opacity(0.6), lineWidth: 1)
+                        .frame(width: max(2, x1 - x0), height: height - 6).offset(x: x0, y: 0)
+                        .overlay(alignment: .topLeading) {
+                            Text(String(format: "%02d", index + 1)).font(TunerTheme.mono(8)).foregroundStyle(theme.ink)
+                                .padding(.horizontal, 3).padding(.vertical, 1)
+                                .background(RoundedRectangle(cornerRadius: 3, style: .continuous).fill(theme.linen))
+                                .offset(x: x0 + 2, y: 5)
+                        }
+                        .allowsHitTesting(false)
+                }
                 // The edges.
                 Rectangle().fill(theme.ink).frame(width: 1.5).offset(x: fromX - 0.75)
                 Rectangle().fill(theme.ink).frame(width: 1.5).offset(x: toX - 0.75)
@@ -705,9 +774,10 @@ private struct LidSoundSettingsRows: View {
             }
 
             Eyebrow("Extras").padding(.top, 8).padding(.bottom, 12)
-            Text(LidSoundText.endsWithTheLid)
-                .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
+            TriggerRow("Play to the end", about: settings.playsToEnd ? LidSoundText.playsToEndAbout : LidSoundText.endsWithTheLid,
+                       live: nil, detail: nil,
+                       isOn: Binding(get: { settings.playsToEnd }, set: { settings.playsToEnd = $0 }), expanded: nil,
+                       help: "On: the lid's sleep waits for the sound, then the Mac sleeps at once, so a two-second sound is heard whole however fast the lid comes down. Off: the sound fades as the lid lands.")
             if settings.items.contains(where: { $0.isStarter && $0.hidden }) {
                 QuietButton("Restore the starter sounds", action: model.restoreStarterSounds).padding(.leading, -6)
                     .help("Put Click, Breath and Hum back in the list.")

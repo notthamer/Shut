@@ -149,6 +149,25 @@ final class PopoverModel: ObservableObject {
         }
     }
 
+    /// Several parts of one sound at once, each named, in order under the source.
+    func cutSounds(_ source: LidSoundItem, parts: [(range: ClosedRange<TimeInterval>, name: String)]) {
+        var items = lidSound.settings.items
+        var at = (items.firstIndex { $0.id == source.id } ?? items.count - 1) + 1
+        var refusals: [String] = []
+        for part in parts {
+            let name = part.name.trimmingCharacters(in: .whitespaces)
+            switch LidSoundLibrary.cut(source, from: part.range.lowerBound, to: part.range.upperBound,
+                                       name: name.isEmpty ? LidSoundText.cutName(of: source.displayName, from: part.range.lowerBound, to: part.range.upperBound) : name,
+                                       existing: items) {
+            case .success(let item): items.insert(item, at: min(at, items.count)); at += 1
+            case .failure(let error): refusals.append(LidSoundText.cutRefusal(error))
+            }
+        }
+        lidSound.settings.items = items
+        var seen: Set<String> = []
+        importNote = refusals.isEmpty ? nil : refusals.filter { seen.insert($0).inserted }.joined(separator: " ")
+    }
+
     /// The name on the row, the user's; never two the same.
     func renameSound(_ item: LidSoundItem, to name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespaces)

@@ -101,6 +101,26 @@ final class LidSoundLibraryTests: XCTestCase {
         XCTAssertGreaterThan(shape[0], shape[139], "a click is loud at once and gone by the end")
     }
 
+    /// Three words with silence between them are three parts; a blip joins its neighbour;
+    /// a hum with no silence is one part.
+    func testPartsBySilence() {
+        func burst(_ on: [ClosedRange<Int>], count: Int = 140) -> [Float] {
+            (0..<count).map { i in on.contains { $0.contains(i) } ? 0.9 : 0.01 }
+        }
+        let words = LidSoundLibrary.parts(in: burst([0...19, 40...59, 90...119]), duration: 14)
+        XCTAssertEqual(words.count, 3)
+        XCTAssertEqual(words[0].lowerBound, 0, accuracy: 0.01)
+        XCTAssertEqual(words[0].upperBound, 2.05, accuracy: 0.01, "a little air after")
+        XCTAssertEqual(words[1].lowerBound, 3.95, accuracy: 0.01, "and before")
+        XCTAssertEqual(words[2].upperBound, 12.05, accuracy: 0.01)
+        XCTAssertEqual(LidSoundLibrary.parts(in: burst([0...139]), duration: 14).count, 1, "no silence: one part")
+        XCTAssertEqual(LidSoundLibrary.parts(in: burst([0...19, 21...39]), duration: 14).count, 1, "a 0.1 s pause is not a gap")
+        XCTAssertEqual(LidSoundLibrary.parts(in: burst([0...19, 60...61, 100...119]), duration: 14).count, 2, "a blip joins its neighbour")
+        XCTAssertEqual(LidSoundLibrary.parts(in: burst((0..<20).map { ($0 * 7)...($0 * 7 + 3) }), duration: 14).count, 12, "twelve at most")
+        XCTAssertTrue(LidSoundLibrary.parts(in: [], duration: 14).isEmpty)
+        XCTAssertTrue(LidSoundLibrary.parts(in: burst([]), duration: 14).isEmpty, "all silence: nothing to cut")
+    }
+
     func testUniqueNames() {
         XCTAssertEqual(LidSoundLibrary.uniqueName("Rain", among: []), "Rain")
         XCTAssertEqual(LidSoundLibrary.uniqueName("rain", among: ["Rain"]), "rain 2", "case does not make a new name")

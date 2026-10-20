@@ -26,6 +26,8 @@ enum LidSoundText {
         var next: String? = nil
         /// Where the sound starts, in degrees above shut; nil when the page has no sensor to say.
         var startDegrees: Int? = nil
+        /// The Mac waits for the sound before it sleeps.
+        var playsToEnd = false
     }
 
     /// "Muted" is the fact that matters: with Stay quiet, no sound will come, whatever is set.
@@ -74,9 +76,11 @@ enum LidSoundText {
         if s.capability == .lidStateOnly {
             parts.append("This Mac only reports the lid shut, so the sound starts then and sleep may cut it short.")
         } else if let degrees = s.startDegrees {
-            parts.append("It starts as the lid passes \(degrees)° and ends as it lands.")
+            parts.append(s.playsToEnd ? "It starts as the lid passes \(degrees)° and plays to the end; your Mac sleeps right after."
+                                      : "It starts as the lid passes \(degrees)° and ends as it lands.")
         } else {
-            parts.append("It starts as the lid comes down and ends as it lands.")
+            parts.append(s.playsToEnd ? "It starts as the lid comes down and plays to the end; your Mac sleeps right after."
+                                      : "It starts as the lid comes down and ends as it lands.")
         }
         if s.candidates.count > 1 {
             parts.append(s.mode == .random ? "A different one each time." : "Next: \(s.next ?? first).")
@@ -137,6 +141,12 @@ enum LidSoundText {
         case .outside: return "That part is outside the file."
         }
     }
+    static let playsToEndAbout = "Your Mac waits for the sound, then sleeps at once. Off: a short fade as the lid lands, whatever the length."
+    static let findPartsAbout = "Shut looks for the silences and marks a part between each. Name them, then add them all at once."
+    static func partsFound(_ count: Int) -> String {
+        count <= 1 ? "No silence to split at: it is one part. Drag the edges instead." : "\(count) parts, by the silence between them. Name them, then add."
+    }
+    static func partName(_ index: Int) -> String { "Part \(index + 1)" }
     static let clipAbout = "Plays from here, for \(Int(LidSoundLibrary.clipLength)) s at most. How much is heard depends on where the lid starts it and how fast it closes."
 
     static func outputLine(deviceName: String) -> String { "Through \(deviceName)." }

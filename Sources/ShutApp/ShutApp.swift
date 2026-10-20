@@ -147,7 +147,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         stayAwake = StayAwakeController()
         // Lid sound: wakes the audio hardware as the lid starts down, plays as the overlay
         // appears, fades when the close ends early, and plays again on opening if asked.
-        lidSound = LidSoundController(settings: LidSoundSettings(), appSettings: settings, sensor: sensor, hasLid: stayAwake.hasLid)
+        lidSound = LidSoundController(settings: LidSoundSettings(), appSettings: settings, sensor: sensor, hasLid: stayAwake.hasLid,
+                                      lidIsHeldElsewhere: { [weak self] in self?.stayAwake.arbiter.state.holdsLid ?? false })
         controller.onLidStartedClosing = { [weak self] in self?.stayAwake.lidStartedClosing(); self?.lidSound.lidStartedClosing() }
         controller.onCloseBeginning = { [weak self] in self?.stayAwake.closeBeginning(); self?.lidSound.closeBeginning() }
         controller.onCloseEnded = { [weak self] reason in self?.lidSound.closeEnded(reason: reason) }
