@@ -80,7 +80,13 @@ machine (`LidSoundCue`) then starts the sound when the hinge crosses the thresho
 overlay would have used, so Lid sound works on its own.
 
 One sound per close. Once a close's sound has played, the cue is spent until the lid comes
-back up (progress near 0), and a wake or a reopen to the top forgets it. Without that, a
+back up to a quarter of the band (a lid lifted halfway and closed again is a new close), and
+a wake forgets it.
+
+A close while a sleep from the last close is still finishing (see "When the Mac takes 30 s
+to sleep" in `docs/AWAKE.md`) plays its sound as usual, but cannot sleep the Mac; the page
+and the tab say "Still going to sleep" meanwhile, and the sound's line adds "The sound still
+plays." Without that, a
 Mac awake with the lid down, held by Stay awake or a few seconds from sleep, replayed the
 sound from the hinge every 0.3 s: play, land-fade, play again, and sleep came late behind
 the audio.

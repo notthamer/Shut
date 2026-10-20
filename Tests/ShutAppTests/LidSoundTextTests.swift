@@ -33,6 +33,12 @@ final class LidSoundTextTests: XCTestCase {
         angled.playsToEnd = true
         XCTAssertEqual(LidSoundText.copy(angled).detail, "It starts as the lid passes 45° and plays to the end; your Mac sleeps right after.")
         XCTAssertEqual(LidSoundText.partsFound(3), "3 parts, by the silence between them. Name them, then add.")
+        var pending = situation(); pending.sleepPendingSeconds = 7
+        XCTAssertEqual(LidSoundText.tabLine(pending), "Still going to sleep")
+        XCTAssertEqual(LidSoundText.copy(pending).headline, "Your Mac is still going to sleep from the last close.")
+        XCTAssertEqual(LidSoundText.copy(pending).detail, "Closing the lid again does nothing until that finishes: 7 s so far. The sound still plays.")
+        var slow = situation(candidates: ["Rain"]); slow.slowSleepers = ["Logitech G Hub"]
+        XCTAssertTrue(LidSoundText.copy(slow).detail.hasSuffix("Your Mac takes a while to sleep; the note below says why."))
         XCTAssertTrue(LidSoundText.partsFound(1).hasPrefix("No silence to split at"))
         XCTAssertEqual(LidSoundText.copy(situation()).headline, "Closing the lid plays one of 3 sounds.")
         XCTAssertTrue(LidSoundText.copy(situation()).detail.hasSuffix("A different one each time."))

@@ -139,7 +139,8 @@ enum AwakeText {
     /// The "Stay awake" tab's second line: its state in three or four words, so the tab is
     /// plainly a section with a life of its own, and the state shows from the other section.
     static func tabLine(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
-                        pendingApp: String? = nil, armed: Armed? = nil, now: Date) -> String {
+                        pendingApp: String? = nil, armed: Armed? = nil, sleepPendingSeconds: Int? = nil, now: Date) -> String {
+        if sleepPendingSeconds != nil { return "Still going to sleep" }
         if let pendingApp, state == .ready { return "\(pendingApp) is asking" }
         switch state {
         case .off: return "Off"
@@ -186,7 +187,8 @@ enum AwakeText {
 
     /// The menu bar badge: what the lid would do now, without the journal's unread receipt
     /// (that belongs to the panel, and would leave a ring up until someone read it).
-    static func badge(state: HoldState, conditions: PowerConditions, limits: HoldLimits) -> Dot {
+    static func badge(state: HoldState, conditions: PowerConditions, limits: HoldLimits, sleepPending: Bool = false) -> Dot {
+        if sleepPending { return .warning }
         switch state {
         case .off, .ready: return .idle
         case .holding:
@@ -213,7 +215,8 @@ enum AwakeText {
     /// `watchingApps`: "An app is busy" is on. When it is not, the page says so, because then
     /// an agent or a build will not keep the Mac awake and nothing else would mention it.
     static func hero(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
-                     watchingApps: Bool = true, armed: Armed? = nil, now: Date) -> Hero {
+                     watchingApps: Bool = true, armed: Armed? = nil, sleepPendingSeconds: Int? = nil, now: Date) -> Hero {
+        if let seconds = sleepPendingSeconds { return sleepPendingHero(seconds: seconds) }
         let willSleep = "Closing the lid will sleep your Mac."
         let staysAwake = "Closing the lid keeps your Mac awake."
         // A no-break space: "20" at the end of one line and "% battery" on the next reads badly.
@@ -284,6 +287,28 @@ enum AwakeText {
             return Hero(headline: staysAwake,
                         detail: "\(why). It sleeps by itself when \(reasons.count > 1 ? "they end" : "that ends")\(floor).", showsCards: low)
         }
+    }
+
+    // MARK: A sleep still going
+
+    /// A lid close started a sleep that has not finished: macOS waits up to 30 s for every
+    /// app to answer, and a lid closed again meanwhile does nothing. The one honest answer.
+    static func sleepPendingHero(seconds: Int) -> Hero {
+        Hero(headline: "Your Mac is still going to sleep from the last close.",
+             detail: "Closing the lid again does nothing until that finishes: \(seconds) s so far.", showsCards: false)
+    }
+    static let sleepPendingCaption = "Still going to sleep from the last close"
+
+    static func slowSleepTitle(seconds: Int) -> String { "Your Mac takes \(seconds) s to sleep." }
+    static func slowSleepDetail(names: [String], seconds: Int) -> String {
+        let who: String
+        switch names.count {
+        case 0: return "Something did not answer the sleep. Until it does, closing the lid again inside those \(seconds) s does nothing, and the Mac sleeps on its own when it times out."
+        case 1: who = names[0]
+        case 2: who = "\(names[0]) and \(names[1])"
+        default: who = names.dropLast().joined(separator: ", ") + " and " + names[names.count - 1]
+        }
+        return "\(who) did not answer the sleep. Until \(names.count == 1 ? "it does" : "they do"), closing the lid again inside those \(seconds) s does nothing, and the Mac sleeps on its own when \(names.count == 1 ? "it times" : "they time") out. Quit or update \(names.count == 1 ? "it" : "them")."
     }
 
     /// One trigger's line while it is the one at work: "Claude Code in Cursor · 47 min",
@@ -358,7 +383,9 @@ enum AwakeText {
         let hint: String?
     }
 
-    static func closingCaption(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, teachOption: Bool) -> Caption? {
+    static func closingCaption(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, teachOption: Bool,
+                               sleepPending: Bool = false) -> Caption? {
+        if sleepPending { return Caption(text: sleepPendingCaption, warning: true, hint: nil) }
         guard let text = caption(state: state, reasons: reasons, conditions: conditions) else { return nil }
         let warning: Bool
         switch state {

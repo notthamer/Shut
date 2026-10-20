@@ -28,7 +28,8 @@ final class AwakeSnapshotTests: XCTestCase {
     }
 
     private func makeModel(on: Bool, reasons: [HoldReason], asking: [AssertionAttribution.Owner]? = nil,
-                           power: PowerConditions = PowerConditions(onCharger: true, batteryPercent: 90)) throws -> (PopoverModel, StayAwakeController) {
+                           power: PowerConditions = PowerConditions(onCharger: true, batteryPercent: 90),
+                           sleepWatch: SleepWatch? = nil) throws -> (PopoverModel, StayAwakeController) {
         let suite = UserDefaults(suiteName: "AwakeSnapshot-\(UUID().uuidString)")!
         let awakeSettings = StayAwakeSettings(defaults: suite)
         awakeSettings.hasConsented = on
@@ -50,7 +51,7 @@ final class AwakeSnapshotTests: XCTestCase {
         let preview = try PreviewModel(registry: registry, settings: settings, sensor: sensor)
         preview.capturePlaceholder()
         let model = PopoverModel(settings: settings, registry: registry, preview: preview, sensor: sensor,
-                                 thumbnails: try TransitionThumbnailRenderer(), stayAwake: awake)
+                                 thumbnails: try TransitionThumbnailRenderer(), stayAwake: awake, sleep: sleepWatch)
         return (model, awake)
     }
 

@@ -164,6 +164,17 @@ final class LidSoundSnapshotTests: XCTestCase {
         on.restoreStarterSounds()
         XCTAssertEqual(sound.settings.shown.count, 3)
 
+        // A sleep from the last close still going, and the note about a slow one.
+        on.sleep.sleepBegan(now: Date().addingTimeInterval(-12))
+        XCTAssertEqual(on.lidSoundTabLine, "Still going to sleep")
+        try render(on, name: "sleep-pending")
+        on.sleep.woke(now: Date())
+        XCTAssertEqual(on.lidSoundTabLine, "3 sounds · in order")
+        on.sleep.sleepBegan(now: Date().addingTimeInterval(-31))
+        on.sleep.woke(now: Date())
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertNil(on.sleep.slow, "with no power log to read, nothing is pinned on anyone")
+
         let (edges, _) = try makeModel(on: true, capability: .lidStateOnly)
         XCTAssertTrue(LidSoundText.copy(edges.lidSound.situation()).detail.contains("only reports the lid shut"))
         sound.shutDown()
@@ -179,8 +190,10 @@ final class LidSoundSnapshotTests: XCTestCase {
         model.stayAwake.settings.isOn = true
         model.stayAwake.arbiter.add(AwakeSnapshotTests.FixedSource([
             HoldReason(id: "working:cursor", kind: .working, title: "Cursor", tool: "Claude Code", since: since)]))
+        model.sleep.sleepBegan(now: Date().addingTimeInterval(-12))   // "Still going to sleep" on two tabs at once
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
         XCTAssertEqual(model.lidEffectsLine, "Fold · plain fade for now", "the longest Lid effects line")
+        XCTAssertEqual(model.lidSoundTabLine, "Still going to sleep")
         for hosted in [false, true] {
             let header = NSHostingView(rootView: PopoverHeader(model: model, hostedInWindow: hosted).fixedSize(horizontal: true, vertical: false).tunerThemed())
             header.layoutSubtreeIfNeeded()

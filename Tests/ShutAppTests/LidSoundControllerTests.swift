@@ -123,10 +123,10 @@ final class LidSoundControllerTests: XCTestCase {
         XCTAssertEqual(players.count, 1, "the lid is still down: no second sound")
         hinge(controller, 0.5, .opening)
         XCTAssertEqual(players.count, 1, "on the way up: still nothing")
-        hinge(controller, 0.001, .still)
-        hinge(controller, 0.005, .closing)
-        hinge(controller, 0.02, .closing)
-        XCTAssertEqual(players.count, 2, "a new close, a new sound")
+        hinge(controller, 0.2, .opening)
+        hinge(controller, 0.3, .closing)
+        hinge(controller, 0.4, .closing)
+        XCTAssertEqual(players.count, 2, "lifted to a quarter of the band and closed again: a new close, a new sound")
     }
 
     func testLiftingTheLidFadesItOut() {

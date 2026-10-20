@@ -15,6 +15,7 @@
 
 **Also**
 
+- When a sleep is still finishing from the last close (an app that never answers macOS holds every sleep open for 30 s; Logitech Options+ and G Hub do), the lid does nothing: the tabs, both pages, the closing caption and the menu bar mark now say "Still going to sleep", and after such a sleep a note names who held it up.
 - Stay awake is on for one close at a time: switch it on before you close the lid; when you open the lid again it switches itself off, and a launch never finds it on. A switch left on by mistake had kept a Mac awake through every close for days. The way you chose and the time on the dial are remembered. "Until I stop" on the dial now means until the lid opens.
 
 ## 0.3.1

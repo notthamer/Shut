@@ -26,6 +26,8 @@ public final class StayAwakeController: ObservableObject {
     private var lastLidWasOpen: Bool?
     /// The lid opened on a receipt nobody has read yet: the moment for the slip.
     var onReturn: ((HoldReceipt) -> Void)?
+    /// A sleep from the last close has not finished (`SleepWatch`): the caption says so.
+    var sleepPending: () -> Bool = { false }
     /// What Option did to this one close, so a second press can take it back.
     private enum Flip { case toSleep, toAwake }
     private var flip: Flip?
@@ -246,7 +248,7 @@ public final class StayAwakeController: ObservableObject {
     func closingCaption(beginning: Bool) -> AwakeText.Caption? {
         let teach = settings.optionHintsShown < StayAwakeSettings.optionHintLimit
         let caption = AwakeText.closingCaption(state: arbiter.state, reasons: arbiter.reasons,
-                                               conditions: arbiter.conditions, teachOption: teach)
+                                               conditions: arbiter.conditions, teachOption: teach, sleepPending: sleepPending())
         if beginning, caption?.hint != nil { settings.optionHintsShown += 1 }
         return caption
     }

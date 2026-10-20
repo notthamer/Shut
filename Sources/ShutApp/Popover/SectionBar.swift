@@ -43,7 +43,8 @@ struct SectionTabs: View {
                 SectionTab(title: "Stay awake",
                            line: AwakeText.tabLine(state: awake.arbiter.state, reasons: awake.arbiter.reasons,
                                                    conditions: awake.arbiter.conditions, limits: awake.arbiter.limits,
-                                                   pendingApp: awake.pendingApp?.name, armed: awake.armed, now: context.date),
+                                                   pendingApp: awake.pendingApp?.name, armed: awake.armed,
+                                                   sleepPendingSeconds: model.sleepPendingSeconds(now: context.date), now: context.date),
                            isSelected: model.page == .awake, emphasised: status.dot != .idle || awake.pendingApp != nil, maxWidth: width,
                            help: "Keep working with the lid shut: when, and its limits. " + AwakeText.tabLine(state: awake.arbiter.state, reasons: awake.arbiter.reasons, conditions: awake.arbiter.conditions, limits: awake.arbiter.limits, pendingApp: awake.pendingApp?.name, armed: awake.armed, now: context.date)) {
                     model.page = .awake
@@ -60,7 +61,7 @@ struct SectionTabs: View {
     /// Two tabs had 168 each; three share the same header, beside the wordmark, the window
     /// button and the switch, so each gets less and its second line truncates (the whole of
     /// it is in the tooltip and the accessibility label).
-    static func tabWidth(count: Int) -> CGFloat { count >= 3 ? 102 : 168 }
+    static func tabWidth(count: Int) -> CGFloat { count >= 3 ? 96 : 168 }
 }
 
 /// One tab: icon and name, its state under them. Chosen: a Linen ground and the spectrum.

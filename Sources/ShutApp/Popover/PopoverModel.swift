@@ -16,6 +16,7 @@ final class PopoverModel: ObservableObject {
     let thumbnails: TransitionThumbnailRenderer?
     let stayAwake: StayAwakeController
     let lidSound: LidSoundController
+    let sleep: SleepWatch
 
     /// Actions supplied by the app; tests pass no-ops.
     var openTuner: () -> Void = {}
@@ -51,7 +52,9 @@ final class PopoverModel: ObservableObject {
 
     /// Tests pass no `stayAwake` or `lidSound` and get ones on throwaway defaults that are never started.
     init(settings: AppSettings, registry: TransitionRegistry, preview: PreviewModel, sensor: LidSensorMonitor,
-         thumbnails: TransitionThumbnailRenderer?, stayAwake: StayAwakeController? = nil, lidSound: LidSoundController? = nil) {
+         thumbnails: TransitionThumbnailRenderer?, stayAwake: StayAwakeController? = nil, lidSound: LidSoundController? = nil,
+         sleep: SleepWatch? = nil) {
+        self.sleep = sleep ?? SleepWatch(defaults: UserDefaults(suiteName: "Sleep-\(UUID().uuidString)") ?? .standard, powerLog: { nil })
         self.stayAwake = stayAwake ?? StayAwakeController(
             settings: StayAwakeSettings(defaults: UserDefaults(suiteName: "StayAwake-\(UUID().uuidString)") ?? .standard))
         self.lidSound = lidSound ?? LidSoundController(
@@ -76,6 +79,7 @@ final class PopoverModel: ObservableObject {
         settings.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         self.stayAwake.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         self.lidSound.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        self.sleep.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         sensor.$capability.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
@@ -204,7 +208,20 @@ final class PopoverModel: ObservableObject {
         }
     }
 
-    var lidSoundTabLine: String { LidSoundText.tabLine(lidSound.situation()) }
+    /// Seconds since the last close's sleep began, while it has not finished.
+    func sleepPendingSeconds(now: Date = Date()) -> Int? {
+        sleep.pendingSince.map { Int(now.timeIntervalSince($0).rounded()) }
+    }
+
+    /// Everything the Lid sound words need, with what the sleep watcher knows.
+    func lidSoundSituation(now: Date = Date()) -> LidSoundText.Situation {
+        var situation = lidSound.situation()
+        situation.sleepPendingSeconds = sleepPendingSeconds(now: now)
+        situation.slowSleepers = sleep.slow?.names ?? []
+        return situation
+    }
+
+    var lidSoundTabLine: String { LidSoundText.tabLine(lidSoundSituation()) }
 
     var statusLine: String {
         if !settings.isEnabled { return "Paused" }

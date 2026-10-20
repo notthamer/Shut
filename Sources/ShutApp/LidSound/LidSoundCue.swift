@@ -37,6 +37,9 @@ struct LidSoundCue: Equatable {
     /// A few degrees above shut: the fade starts here and lands with the lid.
     static let landAt = 0.9
     static let topAt = 0.004
+    /// Lifted back to a quarter of the band: the next close is a new close (the lid does not
+    /// have to go all the way up).
+    static let liftedAt = 0.25
     /// The lid came back up this much from its lowest point: the user changed their mind.
     static let liftBy = 0.05
     static let landFade: TimeInterval = 0.3
@@ -63,7 +66,7 @@ struct LidSoundCue: Equatable {
         case .fading:
             return nil   // a second fade never restarts the clock
         case .spent:
-            if p <= Self.topAt { phase = .idle }
+            if p <= Self.liftedAt { phase = .idle }
             return nil
         }
     }

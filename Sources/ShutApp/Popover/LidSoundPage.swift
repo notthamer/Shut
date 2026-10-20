@@ -46,7 +46,7 @@ private struct LidSoundBand: View {
     private var isOn: Bool { settings.isOn }
 
     var body: some View {
-        let situation = sound.situation()
+        let situation = model.lidSoundSituation()
         let copy = LidSoundText.copy(situation)
         HStack(alignment: .top, spacing: 0) {
             ScrollView(.vertical, showsIndicators: false) {
@@ -63,6 +63,9 @@ private struct LidSoundBand: View {
                         .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                     action(situation).padding(.top, 6)
+                    if let slow = model.sleep.slow {
+                        SlowSleepCard(slow: slow) { model.sleep.dismissSlow() }
+                    }
                 }
                 .padding(.horizontal, 20).padding(.vertical, 22)
                 .frame(width: AwakePage.statusWidth, alignment: .topLeading)

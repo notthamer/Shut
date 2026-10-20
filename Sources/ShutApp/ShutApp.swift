@@ -82,6 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: AppController!
     private var stayAwake: StayAwakeController!
     private var lidSound: LidSoundController!
+    private var sleep: SleepWatch!
     private var menuBar: MenuBarController!
     private var previewModel: PreviewModel!
     private var tunerHost: TunerHost?
@@ -158,9 +159,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         stayAwake.onLockedWhileShut = { [weak self] in self?.controller.holdBlackUntilUnlock() }
         stayAwake.start()
         lidSound.start()   // first: puts back a mute a cut-short run still owed
+        // A sleep still going from the last close, and who held the last one up: said on
+        // the pages, the tabs, the caption and the mark, because the lid does nothing then.
+        sleep = SleepWatch()
+        sleep.start()
+        stayAwake.sleepPending = { [weak self] in self?.sleep.pendingSince != nil }
         menuBar = MenuBarController(controller: controller, settings: settings, registry: registry)
         menuBar.stayAwake = stayAwake
         menuBar.lidSound = lidSound
+        menuBar.sleep = sleep
         // The cards count minutes and show what is working right now, and the output device
         // is watched for its mute; only worth reading while one of Shut's windows is open.
         dock.onSurfacesChanged = { [weak self] open in
@@ -179,7 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         thumbnails = try? TransitionThumbnailRenderer()
         popoverModel = PopoverModel(settings: settings, registry: registry, preview: previewModel, sensor: sensor,
-                                    thumbnails: thumbnails, stayAwake: stayAwake, lidSound: lidSound)
+                                    thumbnails: thumbnails, stayAwake: stayAwake, lidSound: lidSound, sleep: sleep)
         // "Add a sound…": a file panel from a non-activating panel, the way the Tuner imports.
         popoverModel.addSounds = { [weak self] in
             guard let self else { return }

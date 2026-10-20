@@ -28,6 +28,10 @@ enum LidSoundText {
         var startDegrees: Int? = nil
         /// The Mac waits for the sound before it sleeps.
         var playsToEnd = false
+        /// A sleep from the last close is still finishing; how long so far.
+        var sleepPendingSeconds: Int? = nil
+        /// The last sleep was held up by these (plain names), for one line of the answer.
+        var slowSleepers: [String] = []
     }
 
     /// "Muted" is the fact that matters: with Stay quiet, no sound will come, whatever is set.
@@ -37,6 +41,7 @@ enum LidSoundText {
     static func tabLine(_ s: Situation) -> String {
         guard s.isOn else { return "Off" }
         if let playing = s.playing { return "Playing \(playing)…" }
+        if s.sleepPendingSeconds != nil { return "Still going to sleep" }
         if silencedByMute(s) { return "Muted" }
         if s.shownCount == 0 { return "No sounds yet" }
         guard let first = s.candidates.first else { return "No sound chosen" }
@@ -53,6 +58,10 @@ enum LidSoundText {
 
     /// The answer at the top of the page: what closing will do, and why.
     static func copy(_ s: Situation) -> Copy {
+        if s.isOn, let seconds = s.sleepPendingSeconds {
+            return Copy(headline: "Your Mac is still going to sleep from the last close.",
+                        detail: "Closing the lid again does nothing until that finishes: \(seconds) s so far. The sound still plays.")
+        }
         guard s.isOn else {
             return Copy(headline: silent,
                         detail: "Switch it on and the lid plays a sound as it closes: it starts as the lid comes down and ends as it lands.")
@@ -88,6 +97,7 @@ enum LidSoundText {
         if s.muted, s.whenMuted == .unmute { parts.append("Your Mac is muted; Shut unmutes for the sound and mutes again after.") }
         if s.onOpen { parts.append("Opening plays one too.") }
         if let output = s.outputName { parts.append(outputLine(deviceName: output)) }
+        if !s.slowSleepers.isEmpty { parts.append("Your Mac takes a while to sleep; the note below says why.") }
         return Copy(headline: headline, detail: parts.joined(separator: " "))
     }
 
