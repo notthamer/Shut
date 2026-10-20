@@ -187,6 +187,8 @@ final class PopoverModel: ObservableObject {
         guard pack.bundled, let index = lidSound.settings.packs.firstIndex(where: { $0.id == pack.id }) else { return }
         lidSound.settings.packs[index].hidden = hidden
         if hidden, lidSound.settings.playsFrom == .pack(pack.id) { lidSound.settings.playsFrom = .all }
+        // The last offer taken: the fold goes, and comes back folded.
+        if offeredPacks.isEmpty { showingOffers = false }
     }
 
     /// Copies the files in and says, once, why any was refused.
