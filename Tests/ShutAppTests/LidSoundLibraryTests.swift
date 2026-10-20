@@ -66,6 +66,27 @@ final class LidSoundLibraryTests: XCTestCase {
         XCTAssertEqual(library.state(of: second), .missing)
     }
 
+    /// A part cut from a sound shares its file; the file lives as long as any row plays it.
+    func testCutsShareTheFile() throws {
+        let song = try library.importFile(try wav(seconds: 14, name: "Song.wav"), existing: []).get()
+        let verse = try LidSoundLibrary.cut(song, from: 2, to: 6.5, name: "Verse", existing: [song]).get()
+        XCTAssertTrue(verse.isCut)
+        XCTAssertEqual(verse.fileName, song.fileName)
+        XCTAssertEqual(verse.clipStart, 2)
+        XCTAssertEqual(verse.clipEnd, 6.5)
+        XCTAssertEqual(try XCTUnwrap(verse.heardLength), 4.5, accuracy: 0.01)
+        XCTAssertFalse(verse.isLong)
+        XCTAssertNil(verse.contentHash, "a part never counts as the same file added twice")
+        XCTAssertEqual(LidSoundLibrary.cut(song, from: 2, to: 2.2, name: "Blip", existing: []), .failure(.tooShort))
+        XCTAssertEqual(LidSoundLibrary.cut(song, from: 10, to: 20, name: "Past", existing: []), .failure(.outside))
+        XCTAssertEqual(try LidSoundLibrary.cut(song, from: 0, to: 1, name: "Verse", existing: [song, verse]).get().displayName, "Verse 2")
+
+        library.remove(song, keptBy: [song, verse])
+        XCTAssertEqual(library.state(of: verse), .ok, "the source row went; the part still plays")
+        library.remove(verse, keptBy: [verse])
+        XCTAssertEqual(library.state(of: song), .missing, "the last row playing the file takes it with it")
+    }
+
     func testUniqueNames() {
         XCTAssertEqual(LidSoundLibrary.uniqueName("Rain", among: []), "Rain")
         XCTAssertEqual(LidSoundLibrary.uniqueName("rain", among: ["Rain"]), "rain 2", "case does not make a new name")

@@ -313,13 +313,16 @@ final class LidSoundController: ObservableObject {
         return liftedMute
     }
 
-    /// A long file stops after its thirty seconds, with the landing fade, however the lid
-    /// is held. Short files end by themselves.
+    /// A part stops at its end, and a long file after its thirty seconds, with the landing
+    /// fade, however the lid is held. Whole short files end by themselves.
     private func cap(_ item: LidSoundItem) {
         capEnd?.cancel()
         capEnd = nil
-        guard item.isLong else { return }
-        capEnd = after(LidSoundLibrary.clipLength) { [weak self] in
+        let length: TimeInterval
+        if let end = item.clipEnd { length = min(max(0, end - item.clipStart), LidSoundLibrary.clipLength) }
+        else if item.isLong { length = LidSoundLibrary.clipLength }
+        else { return }
+        capEnd = after(length) { [weak self] in
             guard let self, let player = self.player else { return }
             if let command = self.cue.capReached() { self.perform(command) }
             else { player.setVolume(0, fade: LidSoundCue.landFade); self.fadeEnd = self.after(LidSoundCue.landFade) { [weak self] in self?.finished() } }

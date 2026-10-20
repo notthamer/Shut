@@ -124,13 +124,36 @@ final class PopoverModel: ObservableObject {
 
     /// A row's ×: an own file is deleted, a starter is hidden so it can come back.
     func removeSound(_ item: LidSoundItem) {
-        lidSound.library.remove(item)
-        if item.isStarter {
+        lidSound.library.remove(item, keptBy: lidSound.settings.items)
+        if item.isStarter && !item.isCut {
             var hidden = item; hidden.hidden = true
             lidSound.settings.update(hidden)
         } else {
             lidSound.settings.items.removeAll { $0.id == item.id }
         }
+    }
+
+    /// A part of a sound, as a sound of its own, placed right under its source.
+    func cutSound(_ source: LidSoundItem, from: TimeInterval, to: TimeInterval, name: String) {
+        switch LidSoundLibrary.cut(source, from: from, to: to, name: name, existing: lidSound.settings.items) {
+        case .success(let part):
+            var items = lidSound.settings.items
+            let at = (items.firstIndex { $0.id == source.id } ?? items.count - 1) + 1
+            items.insert(part, at: min(at, items.count))
+            lidSound.settings.items = items
+            importNote = nil
+        case .failure(let error):
+            importNote = LidSoundText.cutRefusal(error)
+        }
+    }
+
+    /// The name on the row, the user's; never two the same.
+    func renameSound(_ item: LidSoundItem, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != item.displayName else { return }
+        var renamed = item
+        renamed.displayName = LidSoundLibrary.uniqueName(trimmed, among: lidSound.settings.items.filter { $0.id != item.id }.map(\.displayName))
+        lidSound.settings.update(renamed)
     }
 
     /// A row carried to a new place, by its position among the rows shown. Hidden starters

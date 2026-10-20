@@ -263,6 +263,20 @@ extension LidSoundControllerTests {
         XCTAssertEqual(players[1].volume, 0.7)
     }
 
+    /// A part plays from its start and stops at its end, with the landing fade.
+    func testAPartStopsAtItsEnd() {
+        let (controller, settings) = make()
+        var part = settings.items[0]
+        part.duration = 14; part.clipStart = 2; part.clipEnd = 6.5; part.isCut = true
+        settings.update(part)
+        controller.preview(part)
+        XCTAssertEqual(players[0].log, ["seek 2", "prepare", "play"])
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending[0].0, 4.5, accuracy: 0.01, "its length, not thirty seconds")
+        pending.removeFirst().1()
+        XCTAssertEqual(players[0].log.last, "fade 0.3")
+    }
+
     /// The opening's sound is made and prepared at wake, so the unlock only has to play it.
     func testTheOpeningIsWarmedAtWake() {
         let (controller, settings) = make()

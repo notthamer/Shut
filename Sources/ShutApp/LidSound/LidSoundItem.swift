@@ -14,9 +14,21 @@ struct LidSoundItem: Codable, Identifiable, Equatable {
     var duration: TimeInterval?
     /// SHA-256 of the file's bytes, so the same file added twice is one row.
     var contentHash: String?
-    /// A long file plays from here, in seconds: the clip the user chose.
+    /// The part that plays, in seconds into the file: from here, and, when set, to here.
     var clipStart: TimeInterval = 0
+    var clipEnd: TimeInterval?
+    /// A part cut from another sound: it shares that sound's file and owns no file of its own.
+    var isCut = false
 
-    /// Longer than the lid will ever play: it gets a clip.
-    var isLong: Bool { (duration ?? 0) > LidSoundLibrary.clipLength }
+    /// What is heard, in seconds: the part, or the whole file.
+    var heardLength: TimeInterval? {
+        guard let duration else { return nil }
+        let end = min(clipEnd ?? duration, duration)
+        return max(0, end - clipStart)
+    }
+
+    /// Longer than the lid will ever play: it gets a start of its own.
+    var isLong: Bool { (heardLength ?? 0) > LidSoundLibrary.clipLength }
+    /// Long enough to cut a part from.
+    var canCut: Bool { (duration ?? 0) >= LidSoundLibrary.shortestCut * 2 }
 }

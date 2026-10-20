@@ -269,11 +269,16 @@ private struct LidSoundList: View {
         max(0, min(count - 1, carry.from + Int((carry.offset / Self.rowHeight).rounded())))
     }
 
+    /// A row never leaves the well: the drag is clamped to the list, whatever the pointer does.
+    private func clamped(_ offset: CGFloat, from: Int, count: Int) -> CGFloat {
+        max(-CGFloat(from) * Self.rowHeight, min(CGFloat(count - 1 - from) * Self.rowHeight, offset))
+    }
+
     /// How far each row steps aside for the one being carried. The carried row follows the
     /// pointer; the others jump a row at a time, as the eyes jump between frames.
     private func shift(of index: Int, count: Int) -> CGFloat {
-        guard let carry else { return 0 }
-        if index == carry.from { return carry.offset }
+        guard let carry, carry.from < count else { return 0 }
+        if index == carry.from { return clamped(carry.offset, from: carry.from, count: count) }
         let target = target(carry, count: count)
         if carry.from < target, index > carry.from, index <= target { return -Self.rowHeight }
         if carry.from > target, index < carry.from, index >= target { return Self.rowHeight }
@@ -303,20 +308,23 @@ private struct LidSoundList: View {
                     LidSoundRow(model: model, item: item, clipping: Binding(get: { clipping == item.id }, set: { clipping = $0 ? item.id : nil }),
                                 carried: carry?.id == item.id, canMove: items.count > 1 && clipping == nil,
                                 hold: { carry = Carry(id: item.id, from: index) },
-                                drag: { offset in if carry?.id == item.id { carry?.offset = offset } },
-                                release: { drop(count: items.count) },
+                                drag: { offset in if carry?.id == item.id { carry?.offset = clamped(offset, from: index, count: items.count) } },
+                                release: { if carry?.id == item.id { drop(count: items.count) } },
                                 move: { up in model.moveSound(from: index, to: max(0, min(items.count - 1, index + (up ? -1 : 1)))) })
                         .offset(y: shift(of: index, count: items.count))
                         .zIndex(carry?.id == item.id ? 1 : 0)
-                    if clipping == item.id, item.isLong { LidSoundClip(model: model, item: item).transition(.blurFade) }
+                    if clipping == item.id { LidSoundCut(model: model, item: item, done: { clipping = nil }).transition(.blurFade) }
                 }
             }
             if CGFloat(items.count) > Self.visibleRows || clipping != nil {
-                ScrollView(showsIndicators: true) { rows }.frame(height: Self.rowHeight * Self.visibleRows)
+                ScrollView(showsIndicators: true) { rows }.frame(height: clipping == nil ? Self.rowHeight * Self.visibleRows : 236)
             } else {
                 rows
             }
         }
+        // A carried row whose list changed under it (removed, re-sorted) is let go of, so
+        // nothing is ever left floating out of view.
+        .onChange(of: items.map(\.id)) { _, ids in if let carry, !ids.contains(carry.id) { self.carry = nil } }
         .surface(.well, radius: TunerTheme.wellRadius)
         .overlay(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous)
             .strokeBorder(theme.ink, lineWidth: 1).opacity(dropTargeted ? 1 : 0))
@@ -354,12 +362,19 @@ private struct LidSoundRow: View {
     /// Move up (true) or down, one row: the keyboard and VoiceOver way to reorder.
     var move: (Bool) -> Void = { _ in }
     @State private var hover = false
+    /// The name, while it is being typed over (double-click to start, Return to keep, Escape to leave).
+    @State private var draft: String?
+    @FocusState private var naming: Bool
+    @GestureState private var holding = false
     @Environment(\.tunerTheme) private var theme
 
     /// Hold a moment, then drag: the name and the grip are the handle; the buttons stay buttons.
     private var carrying: some Gesture {
         LongPressGesture(minimumDuration: 0.15)
             .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
+            // A gesture state resets when the gesture ends or is cancelled, so the row is always
+            // let go of, even when SwiftUI drops the gesture without an end.
+            .updating($holding) { value, state, _ in if case .first(true) = value { state = true }; if case .second = value { state = true } }
             .onChanged { value in
                 switch value {
                 case .first(true): hold()
@@ -379,8 +394,21 @@ private struct LidSoundRow: View {
                 .disabled(state != .ok)
                 .accessibilityLabel("Play \(item.displayName)")
             HStack(spacing: 8) {
-                Text(item.displayName).font(live ? TunerTheme.bodyMedium : TunerTheme.body)
-                    .foregroundStyle(state == .ok ? theme.ink : theme.inkLabel).lineLimit(1).truncationMode(.middle)
+                if let draft {
+                    TextField("Name", text: Binding(get: { draft }, set: { self.draft = $0 }))
+                        .textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
+                        .focused($naming)
+                        .onSubmit { model.renameSound(item, to: draft); self.draft = nil }
+                        .onExitCommand { self.draft = nil }
+                        .onChange(of: naming) { _, focused in if !focused, let draft = self.draft { model.renameSound(item, to: draft); self.draft = nil } }
+                        .onAppear { naming = true }
+                        .help("Type the new name. Return keeps it, Escape leaves it.")
+                } else {
+                    Text(item.displayName).font(live ? TunerTheme.bodyMedium : TunerTheme.body)
+                        .foregroundStyle(state == .ok ? theme.ink : theme.inkLabel).lineLimit(1).truncationMode(.middle)
+                        .onTapGesture(count: 2) { draft = item.displayName }
+                        .help("Double-click to rename.")
+                }
                 if state != .ok {
                     Text(state == .missing ? "Missing" : "Can't be played")
                         .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineLimit(1)
@@ -397,14 +425,17 @@ private struct LidSoundRow: View {
                 }
             }
             .contentShape(Rectangle())
-            .gesture(canMove ? carrying : nil)
-            .help(canMove ? "Hold a moment, then drag up or down to reorder. In order plays down this list." : "")
-            if item.isLong, state == .ok {
-                // Longer than the lid will play: where it starts from is the user's to choose.
-                QuietButton(clipping ? "Done" : "Clip", disclosure: !clipping) { clipping.toggle() }
-                    .help("A long file plays from the point you choose, for \(Int(LidSoundLibrary.clipLength)) s at most.")
-            } else if let duration = item.duration {
-                Text(LidSoundText.durationText(duration)).font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
+            .gesture(canMove && draft == nil ? carrying : nil)
+            .onChange(of: holding) { _, held in if !held { release() } }
+            .help(canMove ? "Hold a moment, then drag up or down to reorder. Double-click the name to rename." : "Double-click the name to rename.")
+            if let length = item.heardLength {
+                Text(LidSoundText.durationText(length)).font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
+                    .help(item.clipEnd == nil ? "" : "The part from \(LidSoundText.clockText(item.clipStart)) to \(LidSoundText.clockText(item.clipEnd ?? 0)).")
+            }
+            if item.canCut, state == .ok {
+                // Any sound long enough: take a part of it, and give the part a name.
+                QuietButton(clipping ? "Done" : "Cut", disclosure: !clipping) { clipping.toggle() }
+                    .help("Cut a part out as a sound of its own, or make this row play only a part.")
             }
             SmallPill(isOn: item.enabled && state == .ok) {
                 var changed = item; changed.enabled.toggle()
@@ -430,31 +461,76 @@ private struct LidSoundRow: View {
     }
 }
 
-/// Under a long file's row: where it plays from. The ▶ beside it hears it from there.
-private struct LidSoundClip: View {
+/// Under a row: a part of the sound, from and to, with a name. "Add as a sound" makes it a
+/// row of its own under this one (they share the file); "Play only this part" makes this row
+/// play it. Letting go of either dial hears the part from its start.
+private struct LidSoundCut: View {
     @ObservedObject var model: PopoverModel
     let item: LidSoundItem
-    @State private var dragged: Double?
+    let done: () -> Void
+    @State private var from: Double
+    @State private var to: Double
+    @State private var name: String
     @Environment(\.tunerTheme) private var theme
 
+    init(model: PopoverModel, item: LidSoundItem, done: @escaping () -> Void) {
+        self.model = model; self.item = item; self.done = done
+        let duration = item.duration ?? LidSoundLibrary.clipLength
+        let start = item.clipStart, end = item.clipEnd ?? min(duration, start + LidSoundLibrary.clipLength)
+        _from = State(initialValue: start)
+        _to = State(initialValue: end)
+        _name = State(initialValue: LidSoundText.cutName(of: item.displayName, from: start, to: end))
+    }
+
+    private var duration: Double { item.duration ?? LidSoundLibrary.clipLength }
+    private var step: Double { duration > 60 ? 1 : 0.1 }
+
+    private func hear() {
+        var part = item; part.clipStart = from; part.clipEnd = to
+        model.lidSound.preview(part)
+    }
+
     var body: some View {
-        let settings = model.lidSound.settings
-        let length = item.duration ?? LidSoundLibrary.clipLength
-        let latest = max(0, length - 1)
-        let start = dragged ?? item.clipStart
         VStack(alignment: .leading, spacing: 2) {
-            StackedSlider("Starts from", valueText: LidSoundText.clockText(start) + " of " + LidSoundText.clockText(length),
-                          value: Binding(get: { start }, set: { dragged = $0 }), in: 0...latest, step: 1,
-                          onEditingEnded: {
-                              guard let dragged else { return }
-                              var changed = item; changed.clipStart = dragged
-                              settings.update(changed)
-                              self.dragged = nil
-                              model.lidSound.preview(changed)
-                          })
-            Text(LidSoundText.clipAbout)
+            StackedSlider("From", valueText: LidSoundText.clockText(from),
+                          value: Binding(get: { from }, set: { from = min($0, to - LidSoundLibrary.shortestCut); name = LidSoundText.cutName(of: item.displayName, from: from, to: to) }),
+                          in: 0...max(0, duration - LidSoundLibrary.shortestCut), step: step, onEditingEnded: hear)
+            StackedSlider("To", valueText: LidSoundText.clockText(to) + " of " + LidSoundText.clockText(duration),
+                          value: Binding(get: { to }, set: { to = max($0, from + LidSoundLibrary.shortestCut); name = LidSoundText.cutName(of: item.displayName, from: from, to: to) }),
+                          in: min(LidSoundLibrary.shortestCut, duration)...duration, step: step, onEditingEnded: hear)
+            HStack(spacing: 8) {
+                Text("Name").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
+                TextField("Name", text: $name).textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
+                    .padding(.horizontal, 10).frame(height: 30)
+                    .surface(.pill)
+                    .help("What the part is called in the list.")
+            }
+            .padding(.top, 6)
+            Text(LidSoundText.cutAbout)
                 .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+            HStack(spacing: 10) {
+                SecondaryButton("Add as a sound", prominent: true) {
+                    model.cutSound(item, from: from, to: to, name: name)
+                    done()
+                }
+                .help("A new row under this one, playing just this part. The file is shared.")
+                QuietButton(item.clipEnd == nil && from == 0 ? "Play only this part" : "Use this part for this row") {
+                    var changed = item; changed.clipStart = from; changed.clipEnd = to
+                    model.lidSound.settings.update(changed)
+                    done()
+                }
+                .help("This row plays only the part, from and to the dials.")
+                if item.clipEnd != nil || item.clipStart > 0 {
+                    QuietButton("Whole file") {
+                        var changed = item; changed.clipStart = 0; changed.clipEnd = nil
+                        model.lidSound.settings.update(changed)
+                        done()
+                    }
+                    .help("This row plays the whole file again.")
+                }
+            }
+            .padding(.top, 8)
         }
         .padding(.horizontal, 12).padding(.top, 2).padding(.bottom, 10)
         .background(theme.linen.opacity(0.5))

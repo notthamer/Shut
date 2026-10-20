@@ -12,6 +12,8 @@ final class LidSoundLibrary {
     static let clipLength: TimeInterval = 30
     /// The longest file that is still worth copying in. A song is fine; an album is not.
     static let longest: TimeInterval = 600
+    /// The shortest part worth cutting out.
+    static let shortestCut: TimeInterval = 0.5
 
     let directory: URL
     private let bundle: Bundle?
@@ -83,7 +85,7 @@ final class LidSoundLibrary {
         guard let duration = Self.duration(of: source) else { return .failure(.unreadable) }
         guard duration <= Self.longest else { return .failure(.tooLong(duration)) }
         let hash = Self.hash(of: source)
-        if let hash, let same = existing.first(where: { $0.contentHash == hash && !$0.hidden }) { return .failure(.duplicate(of: same.id)) }
+        if let hash, let same = existing.first(where: { $0.contentHash == hash && !$0.hidden && !$0.isCut }) { return .failure(.duplicate(of: same.id)) }
         let base = source.deletingPathExtension().lastPathComponent
         let ext = source.pathExtension.isEmpty ? "audio" : source.pathExtension
         let name = Self.uniqueName(base, among: existing.map(\.displayName))
@@ -111,11 +113,24 @@ final class LidSoundLibrary {
         return "\(candidate) \(n)"
     }
 
-    /// An own file is deleted from Shut's folder; a starter is for the caller to hide.
-    func remove(_ item: LidSoundItem) {
-        guard !item.isStarter, let url = url(for: item) else { return }
-        try? FileManager.default.removeItem(at: url)
+    /// An own file lives as long as any row plays it, the source or a part cut from it: the
+    /// last of them to go takes the file with it. A starter is for the caller to hide.
+    func remove(_ item: LidSoundItem, keptBy others: [LidSoundItem] = []) {
         unreadable.remove(item.id)
+        guard !item.isStarter, let url = url(for: item) else { return }
+        guard !others.contains(where: { $0.id != item.id && $0.fileName == item.fileName }) else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    enum CutError: Error, Equatable { case tooShort, outside }
+
+    /// A part of a sound as a sound of its own: the same file, from `from` to `to`.
+    static func cut(_ source: LidSoundItem, from: TimeInterval, to: TimeInterval, name: String, existing: [LidSoundItem]) -> Result<LidSoundItem, CutError> {
+        guard let duration = source.duration, from >= 0, to <= duration + 0.01 else { return .failure(.outside) }
+        guard to - from >= shortestCut else { return .failure(.tooShort) }
+        let name = uniqueName(name, among: existing.map(\.displayName))
+        return .success(LidSoundItem(id: UUID(), fileName: source.fileName, displayName: name, enabled: true, isStarter: source.isStarter,
+                                     duration: duration, contentHash: nil, clipStart: from, clipEnd: min(to, duration), isCut: true))
     }
 
     // MARK: Picking

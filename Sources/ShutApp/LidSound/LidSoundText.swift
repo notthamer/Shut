@@ -126,6 +126,17 @@ enum LidSoundText {
         "\(name) is \(durationText(seconds)) long: the lid plays up to \(Int(LidSoundLibrary.clipLength)) s of it, from where you choose (Clip, in its row)."
     }
 
+    /// A cut's default name: the sound and the part, "Rain · 0:03–0:07".
+    static func cutName(of source: String, from: TimeInterval, to: TimeInterval) -> String {
+        "\(source) · \(clockText(from))–\(clockText(to))"
+    }
+    static let cutAbout = "Choose the part, give it a name, and add it as a sound of its own. Cut as many parts from one file as you like; they share the file."
+    static func cutRefusal(_ error: LidSoundLibrary.CutError) -> String {
+        switch error {
+        case .tooShort: return "A part is half a second at least."
+        case .outside: return "That part is outside the file."
+        }
+    }
     static let clipAbout = "Plays from here, for \(Int(LidSoundLibrary.clipLength)) s at most. How much is heard depends on where the lid starts it and how fast it closes."
 
     static func outputLine(deviceName: String) -> String { "Through \(deviceName)." }

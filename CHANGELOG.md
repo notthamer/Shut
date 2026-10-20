@@ -5,7 +5,7 @@
 **Lid sound.** Close the lid and a sound plays: it starts as the lid comes down and ends as it lands. Three sounds come with the app; add your own, and with several Shut picks one each time. Off until you turn it on.
 
 - It ends with the lid. The sound starts the moment the closing effect does and fades out in the last few degrees, so it lands with the lid whatever its length. Speed, on Lid effects, sets how early it starts. Lift the lid back up and it fades out.
-- Your sounds. Add a sound… or drop files on the list: mp3, m4a, wav or aiff, copied into Shut so the original can move. Each has its own switch, a ▶ to hear it, and an × to remove it. A long file is clipped: choose where it starts from, and the lid plays up to 30 seconds of it.
+- Your sounds. Add a sound… or drop files on the list: mp3, m4a, wav or aiff, copied into Shut so the original can move. Each has its own switch, a ▶ to hear it, and an × to remove it. Cut parts out of any sound, as many as you like, each with its own name; double-click a name to rename it. A long file plays from where you choose, up to 30 seconds.
 - Random, or in order. Random never plays the same sound twice running; in order goes down the list, and the list reorders by hold and drag.
 - Starts at: the angle where the sound begins, always shown as a number. The same as the screen effect's Speed, so the two begin together, or an angle of its own.
 - Its own volume: Shut sets your Mac's volume to the dial for the sound and puts it back when it ends, so the dial is the level you hear whatever the Mac is set to. Or, under Settings, a share of the Mac's volume as it is. Let go of the slider to hear it.

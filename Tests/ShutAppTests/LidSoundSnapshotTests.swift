@@ -94,6 +94,31 @@ final class LidSoundSnapshotTests: XCTestCase {
         song.duration = 0.7; song.clipStart = 0
         sound.settings.update(song)
 
+        // A part cut out and named, and a rename.
+        var click = sound.settings.items[0]
+        click.duration = 14
+        sound.settings.update(click)
+        on.cutSound(sound.settings.items[0], from: 2, to: 6.5, name: "Verse")
+        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Click", "Verse", "Breath", "Hum"], "under its source")
+        XCTAssertEqual(sound.settings.shown[1].heardLength, 4.5)
+        on.renameSound(sound.settings.shown[1], to: "Chorus")
+        on.renameSound(sound.settings.shown[0], to: "Chorus")
+        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Chorus 2", "Chorus", "Breath", "Hum"], "never two the same")
+        on.renameSound(sound.settings.shown[0], to: "   ")
+        XCTAssertEqual(sound.settings.shown[0].displayName, "Chorus 2", "a blank name is no name")
+        on.cutSound(sound.settings.items[0], from: 1, to: 1.2, name: "Blip")
+        XCTAssertEqual(on.importNote, "A part is half a second at least.")
+        on.importNote = nil
+        try render(on, name: "parts")
+        on.removeSound(sound.settings.shown[0])
+        XCTAssertEqual(sound.library.state(of: sound.settings.shown[0]), .ok, "the part outlives its source row")
+        on.removeSound(sound.settings.shown[0])
+        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Breath", "Hum"])
+        click.duration = 0.06
+        sound.settings.update(click)
+        on.restoreStarterSounds()
+        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Click", "Breath", "Hum"])
+
         // A file that went missing, and an import that was refused.
         let gone = LidSoundItem(id: UUID(), fileName: "Rain.wav", displayName: "Rain", enabled: true, isStarter: false, duration: 2.4)
         sound.settings.items.append(gone)

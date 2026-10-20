@@ -135,6 +135,16 @@ refused over ten minutes, and copied into `~/Library/Application Support/Shut/So
 their own name ("Rain.wav", then "Rain 2.wav"); the same bytes added twice (SHA-256) is one
 row. The original is never needed again. Removing a row deletes Shut's copy.
 
+**Any sound long enough can be cut.** A row at least a second long has "Cut": two dials,
+From and To (letting go of either hears the part), and a name, which starts as "Song ·
+0:03–0:07". "Add as a sound" makes the part a row of its own, right under its source, with
+the source's file and no file of its own: cut as many parts from one file as you like, in
+any order, and rename them; the file is deleted only when the last row playing it goes.
+"Play only this part" makes the row itself play the part; "Whole file" undoes that. A part
+is half a second at least, and never outside the file. A part plays from its start and
+stops at its end with the landing fade, however the lid is held. Double-click a name to
+rename it: Return keeps it, Escape leaves it; two rows never share a name.
+
 **A long file is clipped, not refused.** Over 30 s, its row grows a "Clip" disclosure: a
 "Starts from" dial ("1:12 of 3:20"), and letting go of it plays from there. The lid plays
 from that point for 30 s at most, then the landing fade, however the lid is held; the ▶ in
