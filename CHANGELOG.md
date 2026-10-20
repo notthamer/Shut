@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0
+
+**Lid sound.** Close the lid and a sound plays: it starts as the lid comes down and ends as it lands. Three sounds come with the app; add your own, and with several Shut picks one each time. Off until you turn it on.
+
+- It ends with the lid. The sound starts the moment the closing effect does and fades out in the last few degrees, so it lands with the lid whatever its length. Speed, on Lid effects, sets how early it starts. Lift the lid back up and it fades out.
+- Your sounds. Add a sound… or drop files on the list: mp3, m4a, wav or aiff, 30 seconds at most, copied into Shut so the original can move. Each has its own switch, a ▶ to hear it, and an × to remove it.
+- Random, or in order. Random never plays the same sound twice running.
+- Its own volume, as a share of your Mac's, which Shut never changes. Let go of the slider to hear it.
+- Muted Mac: your call. Stay quiet (the page and the tab say "Muted"), or Unmute for it, and mute comes back when the sound ends.
+- Also on open: a sound as the desktop pours back in after you unlock. The close's pick again, or one in particular.
+- A third tab, Lid sound, beside Lid effects and Stay awake, with the three bars that move while a sound plays, and "Play a Sound on Close" in the menu.
+
+**Also**
+
+- Stay awake is on for one close at a time: switch it on before you close the lid; when you open the lid again it switches itself off, and a launch never finds it on. A switch left on by mistake had kept a Mac awake through every close for days. The way you chose and the time on the dial are remembered. "Until I stop" on the dial now means until the lid opens.
+
 ## 0.3.1
 
 **Stay awake is on for one close at a time.** Switch it on before you close the lid; when you open the lid again it switches itself off, and a launch never finds it on. A switch left on by mistake had kept a Mac awake through every close for days. The way you chose and the time on the dial are remembered, so arming it again is one flick. "Until I stop" on the dial now means until the lid opens.

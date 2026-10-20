@@ -178,6 +178,10 @@ final class AwakeSnapshotTests: XCTestCase {
         XCTAssertEqual(slides.map(\.stage), [.eyesWake, .lidAnswer, .twoWays, .batteryAndReceipt])
         XCTAssertNil(WhatsNewTour.slides(for: "0.2.1"), "the changelog's words, as before")
         XCTAssertNotNil(WhatsNewTour.slides(for: "0.3.1"), "a fix of 0.3 still shows what 0.3 brought")
+        XCTAssertEqual(WhatsNewTour.slides(for: "0.4.0")?.map(\.stage), [.soundPlays], "0.4 brings Lid sound")
+        let soundSlide = NSHostingView(rootView: WhatsNewTourView(slides: WhatsNewTour.slides(for: "0.4.0")!, version: "0.4.0"))
+        soundSlide.appearance = TunerTheme.appearance
+        XCTAssertEqual(soundSlide.fittingSize.width, WhatsNewTourView.width)
         var heights: Set<CGFloat> = []
         for index in slides.indices {
             let hosting = NSHostingView(rootView: WhatsNewTourView(slides: slides, version: "0.3.0", index: index))
