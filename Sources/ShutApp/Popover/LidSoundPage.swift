@@ -405,7 +405,8 @@ private struct LidSoundRow: View {
                         .help("Type the new name. Return keeps it, Escape leaves it.")
                 } else {
                     Text(item.displayName).font(live ? TunerTheme.bodyMedium : TunerTheme.body)
-                        .foregroundStyle(state == .ok ? theme.ink : theme.inkLabel).lineLimit(1).truncationMode(.middle)
+                        .foregroundStyle(state == .ok ? theme.ink : theme.inkLabel).lineLimit(1).truncationMode(.tail)
+                        .layoutPriority(1)
                         .onTapGesture(count: 2) { draft = item.displayName }
                         .help("Double-click to rename.")
                 }
@@ -428,14 +429,13 @@ private struct LidSoundRow: View {
             .gesture(canMove && draft == nil ? carrying : nil)
             .onChange(of: holding) { _, held in if !held { release() } }
             .help(canMove ? "Hold a moment, then drag up or down to reorder. Double-click the name to rename." : "Double-click the name to rename.")
-            if let length = item.heardLength {
-                Text(LidSoundText.durationText(length)).font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
-                    .help(item.clipEnd == nil ? "" : "The part from \(LidSoundText.clockText(item.clipStart)) to \(LidSoundText.clockText(item.clipEnd ?? 0)).")
-            }
-            if item.canCut, state == .ok {
-                // Any sound long enough: take a part of it, and give the part a name.
+            // The length, and, with the pointer near, Cut in its place: the name keeps its room.
+            if item.canCut, state == .ok, hover || clipping {
                 QuietButton(clipping ? "Done" : "Cut", disclosure: !clipping) { clipping.toggle() }
                     .help("Cut a part out as a sound of its own, or make this row play only a part.")
+            } else if let length = item.heardLength {
+                Text(LidSoundText.durationText(length)).font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
+                    .help(item.clipEnd == nil ? "" : "The part from \(LidSoundText.clockText(item.clipStart)) to \(LidSoundText.clockText(item.clipEnd ?? 0)).")
             }
             SmallPill(isOn: item.enabled && state == .ok) {
                 var changed = item; changed.enabled.toggle()

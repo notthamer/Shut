@@ -101,7 +101,7 @@ enum LidSoundText {
             let mac = macVolume.map { " (\(Int(($0 * 100).rounded())) % now)" } ?? ""
             return "Of your Mac's volume\(mac). Let go to hear it."
         case .ownLevel:
-            return "Your Mac is set to this for the sound, then put back. Let go to hear it."
+            return "Your Mac is set to this for it, then put back. Let go to hear it."
         }
     }
     static let shareOfMacAbout = "Its own level: Shut sets your Mac's volume to the dial for the sound and puts it back when it ends. Of the Mac's: a share of your Mac's volume as it is, so the lid follows the Mac, and a quiet Mac means a quiet lid."
