@@ -83,6 +83,13 @@ struct LidSoundCue: Equatable {
         }
     }
 
+    /// A long file has played its thirty seconds: fade, if it is still going.
+    mutating func capReached() -> Command? {
+        guard phase == .playing else { return nil }
+        phase = .fading
+        return .fade(Self.landFade)
+    }
+
     /// The player ended by itself, or the fade's clock ran out.
     mutating func finished() {
         phase = .idle

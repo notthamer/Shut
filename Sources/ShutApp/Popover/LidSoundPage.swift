@@ -246,6 +246,8 @@ private struct LidSoundControls: View {
 private struct LidSoundList: View {
     @ObservedObject var model: PopoverModel
     @State private var dropTargeted = false
+    /// The long file whose clip is being chosen, if one is.
+    @State private var clipping: UUID?
     @Environment(\.tunerTheme) private var theme
 
     static let rowHeight: CGFloat = 34
@@ -263,10 +265,11 @@ private struct LidSoundList: View {
             let rows = VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
-                    LidSoundRow(model: model, item: item)
+                    LidSoundRow(model: model, item: item, clipping: Binding(get: { clipping == item.id }, set: { clipping = $0 ? item.id : nil }))
+                    if clipping == item.id, item.isLong { LidSoundClip(model: model, item: item).transition(.blurFade) }
                 }
             }
-            if CGFloat(items.count) > Self.visibleRows {
+            if CGFloat(items.count) > Self.visibleRows || clipping != nil {
                 ScrollView(showsIndicators: true) { rows }.frame(height: Self.rowHeight * Self.visibleRows)
             } else {
                 rows
@@ -291,6 +294,7 @@ private struct LidSoundList: View {
             return true
         }
         .tunerAnimation(TunerTheme.ease, value: dropTargeted)
+        .tunerAnimation(TunerTheme.ease, value: clipping)
         .help("The sounds the lid may play. Drop audio files here to add them.")
     }
 }
@@ -298,6 +302,7 @@ private struct LidSoundList: View {
 private struct LidSoundRow: View {
     @ObservedObject var model: PopoverModel
     let item: LidSoundItem
+    @Binding var clipping: Bool
     @Environment(\.tunerTheme) private var theme
 
     var body: some View {
@@ -318,7 +323,11 @@ private struct LidSoundRow: View {
                 Circle().fill(TunerTheme.limeWash).overlay(Circle().strokeBorder(theme.ink, lineWidth: 1)).frame(width: 7, height: 7)
             }
             Spacer(minLength: 6)
-            if let duration = item.duration {
+            if item.isLong, state == .ok {
+                // Longer than the lid will play: where it starts from is the user's to choose.
+                QuietButton(clipping ? "Done" : "Clip", disclosure: !clipping) { clipping.toggle() }
+                    .help("A long file plays from the point you choose, for \(Int(LidSoundLibrary.clipLength)) s at most.")
+            } else if let duration = item.duration {
                 Text(LidSoundText.durationText(duration)).font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
             }
             SmallPill(isOn: item.enabled && state == .ok) {
@@ -335,6 +344,37 @@ private struct LidSoundRow: View {
         }
         .padding(.leading, 6).padding(.trailing, 8).frame(height: LidSoundList.rowHeight - 1)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Under a long file's row: where it plays from. The ▶ beside it hears it from there.
+private struct LidSoundClip: View {
+    @ObservedObject var model: PopoverModel
+    let item: LidSoundItem
+    @State private var dragged: Double?
+    @Environment(\.tunerTheme) private var theme
+
+    var body: some View {
+        let settings = model.lidSound.settings
+        let length = item.duration ?? LidSoundLibrary.clipLength
+        let latest = max(0, length - 1)
+        let start = dragged ?? item.clipStart
+        VStack(alignment: .leading, spacing: 2) {
+            StackedSlider("Starts from", valueText: LidSoundText.clockText(start) + " of " + LidSoundText.clockText(length),
+                          value: Binding(get: { start }, set: { dragged = $0 }), in: 0...latest, step: 1,
+                          onEditingEnded: {
+                              guard let dragged else { return }
+                              var changed = item; changed.clipStart = dragged
+                              settings.update(changed)
+                              self.dragged = nil
+                              model.lidSound.preview(changed)
+                          })
+            Text(LidSoundText.clipAbout)
+                .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+        }
+        .padding(.horizontal, 12).padding(.top, 2).padding(.bottom, 10)
+        .background(theme.linen.opacity(0.5))
     }
 }
 

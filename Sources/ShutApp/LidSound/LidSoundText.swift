@@ -92,10 +92,26 @@ enum LidSoundText {
         (onOpen ? "A sound on open too" : "Silent on open") + " · " + (whenMuted == .unmute ? "unmutes for it" : "stays quiet when muted")
     }
 
-    /// "0.8 s", "2.4 s", "12 s": one decimal under ten seconds, none above.
+    /// "0.8 s", "2.4 s", "12 s", "3 min 20 s": one decimal under ten seconds, none above.
     static func durationText(_ seconds: TimeInterval) -> String {
-        seconds < 10 ? String(format: "%.1f s", seconds) : "\(Int(seconds.rounded())) s"
+        if seconds < 10 { return String(format: "%.1f s", seconds) }
+        let whole = Int(seconds.rounded())
+        if whole < 60 { return "\(whole) s" }
+        return whole % 60 == 0 ? "\(whole / 60) min" : "\(whole / 60) min \(whole % 60) s"
     }
+
+    /// A place in a file, as a clock reads: "0:07", "1:12".
+    static func clockText(_ seconds: TimeInterval) -> String {
+        let whole = Int(seconds.rounded())
+        return String(format: "%d:%02d", whole / 60, whole % 60)
+    }
+
+    /// After a long file came in: it will be clipped, and where to do that.
+    static func longNote(name: String, seconds: TimeInterval) -> String {
+        "\(name) is \(durationText(seconds)) long: the lid plays up to \(Int(LidSoundLibrary.clipLength)) s of it, from where you choose (Clip, in its row)."
+    }
+
+    static let clipAbout = "Plays from here, for \(Int(LidSoundLibrary.clipLength)) s at most. How much is heard depends on where the lid starts it and how fast it closes."
 
     static func outputLine(deviceName: String) -> String { "Through \(deviceName)." }
 
@@ -104,13 +120,13 @@ enum LidSoundText {
     static func refusal(_ error: LidSoundLibrary.ImportError, name: String, duplicateOf: String? = nil) -> String {
         switch error {
         case .unreadable: return "Shut could not read \(name)."
-        case .tooLong(let seconds): return "\(name) is \(durationText(seconds)) long. Sounds are \(Int(LidSoundLibrary.longest)) seconds at most."
+        case .tooLong(let seconds): return "\(name) is \(durationText(seconds)) long. Sounds are \(Int(LidSoundLibrary.longest / 60)) minutes at most."
         case .duplicate: return "\(duplicateOf ?? name) is already in the list."
         case .copyFailed: return "Shut could not copy \(name) into its Sounds folder."
         }
     }
 
-    static let addHint = "mp3, m4a, wav or aiff · \(Int(LidSoundLibrary.longest)) s at most. Or drop files here."
+    static let addHint = "mp3, m4a, wav or aiff. Or drop files here. A long one plays from where you choose."
     static let endsWithTheLid = "The sound ends with the lid: a short fade as it lands, whatever its length. Starts at, above, sets how early it begins."
     static func startsWithEffectAbout(_ degrees: Int) -> String { "Where the screen effect starts: \(degrees)°, from Speed on Lid effects." }
     static let ownStartAbout = "Its own angle, whatever the screen effect does."

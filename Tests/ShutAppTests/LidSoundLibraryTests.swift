@@ -46,10 +46,14 @@ final class LidSoundLibraryTests: XCTestCase {
         XCTAssertEqual(second.displayName, "Rain 2")
         XCTAssertEqual(second.fileName, "Rain 2.wav")
 
-        // Too long, and not audio at all.
+        // Longer than the lid plays: taken in, to be clipped. An album is not.
         let long = try wav(seconds: 31, name: "Long.wav")
-        guard case .failure(.tooLong(let seconds)) = library.importFile(long, existing: []) else { return XCTFail("31 s must be refused") }
-        XCTAssertEqual(seconds, 31, accuracy: 0.01)
+        let song = try library.importFile(long, existing: []).get()
+        XCTAssertTrue(song.isLong)
+        XCTAssertEqual(song.clipStart, 0, "from the start until the user chooses")
+        let album = try wav(seconds: 601, name: "Album.wav")
+        guard case .failure(.tooLong(let seconds)) = library.importFile(album, existing: []) else { return XCTFail("ten minutes and more is refused") }
+        XCTAssertEqual(seconds, 601, accuracy: 0.01)
         let text = folder.appendingPathComponent("Notes.txt")
         try "hello".write(to: text, atomically: true, encoding: .utf8)
         XCTAssertEqual(library.importFile(text, existing: []), .failure(.unreadable))

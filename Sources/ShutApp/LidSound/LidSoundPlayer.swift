@@ -8,6 +8,8 @@ protocol SoundPlaying: AnyObject {
     /// Called on the main queue when the sound ends by itself.
     var onFinish: (() -> Void)? { get set }
     func prepare()
+    /// Where to start from, in seconds; before `play`.
+    func seek(to seconds: TimeInterval)
     func play()
     func setVolume(_ volume: Float, fade: TimeInterval)
     func stop()
@@ -50,6 +52,7 @@ final class AudioPlayer: NSObject, SoundPlaying, AVAudioPlayerDelegate {
         set { pendingVolume = newValue; Self.queue.async { [self] in player?.volume = newValue } }
     }
     func prepare() { Self.queue.async { [self] in made()?.prepareToPlay() } }
+    func seek(to seconds: TimeInterval) { Self.queue.async { [self] in made()?.currentTime = seconds } }
     func play() { Self.queue.async { [self] in made()?.play() } }
     func setVolume(_ volume: Float, fade: TimeInterval) { Self.queue.async { [self] in player?.setVolume(volume, fadeDuration: fade) } }
     /// Blocks for a moment while the hardware is released; on the queue, nobody waits.

@@ -52,7 +52,10 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertEqual(LidSoundText.durationText(12.3), "12 s")
         XCTAssertEqual(LidSoundText.settingsSummary(onOpen: false, whenMuted: .stayQuiet), "Silent on open · stays quiet when muted")
         XCTAssertEqual(LidSoundText.settingsSummary(onOpen: true, whenMuted: .unmute), "A sound on open too · unmutes for it")
-        XCTAssertEqual(LidSoundText.refusal(.tooLong(45), name: "Song.mp3"), "Song.mp3 is 45 s long. Sounds are 30 seconds at most.")
+        XCTAssertEqual(LidSoundText.refusal(.tooLong(900), name: "Album.m4a"), "Album.m4a is 15 min long. Sounds are 10 minutes at most.")
+        XCTAssertEqual(LidSoundText.durationText(200), "3 min 20 s")
+        XCTAssertEqual(LidSoundText.clockText(72), "1:12")
+        XCTAssertEqual(LidSoundText.longNote(name: "Song", seconds: 200), "Song is 3 min 20 s long: the lid plays up to 30 s of it, from where you choose (Clip, in its row).")
         XCTAssertEqual(LidSoundText.refusal(.unreadable, name: "Notes.txt"), "Shut could not read Notes.txt.")
         XCTAssertEqual(LidSoundText.refusal(.duplicate(of: UUID()), name: "Rain.wav", duplicateOf: "Rain"), "Rain is already in the list.")
     }

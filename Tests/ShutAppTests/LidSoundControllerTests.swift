@@ -13,6 +13,7 @@ final class LidSoundControllerTests: XCTestCase {
         var onFinish: (() -> Void)?
         var log: [String] = []
         func prepare() { log.append("prepare") }
+        func seek(to seconds: TimeInterval) { log.append("seek \(Int(seconds))") }
         func play() { log.append("play") }
         func setVolume(_ volume: Float, fade: TimeInterval) { log.append("fade \(fade)") }
         func stop() { log.append("stop") }
@@ -212,6 +213,23 @@ extension LidSoundControllerTests {
         settings.startsWithEffect = true
         spin()
         XCTAssertEqual(Int(controller.startDegrees), Int(controller.effectStartDegrees), "the dial shows the effect's angle")
+    }
+
+    /// A long file plays from the clip the user chose, and for thirty seconds at most.
+    func testALongFileIsClipped() {
+        let (controller, settings) = make()
+        var song = settings.items[0]
+        song.duration = 200; song.clipStart = 72
+        settings.update(song)
+        settings.onOpen = true
+        settings.onOpenPick = .item(song.id)
+        XCTAssertTrue(song.isLong)
+        controller.openingBeginning()
+        XCTAssertEqual(players[0].log, ["seek 72", "prepare", "play"], "from 1:12")
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending[0].0, LidSoundLibrary.clipLength, "its thirty seconds are counted from play")
+        pending.removeFirst().1()
+        XCTAssertEqual(players[0].log.last, "fade 0.3", "then it fades, however the lid is held")
     }
 
     /// The opening's sound is made and prepared at wake, so the unlock only has to play it.

@@ -6,8 +6,12 @@ import Foundation
 /// `~/Library/Application Support/Shut/Sounds`. Files are copied in at import, so the
 /// original can move or go; nothing here is ever read while idle.
 final class LidSoundLibrary {
-    /// The longest a sound may be. A close is a second or two; thirty is generous.
-    static let longest: TimeInterval = 30
+    /// The most the lid ever plays of a file: a close is a second or two; thirty is generous.
+    /// A longer file is not refused, it is clipped: it plays from where the user chooses, for
+    /// this long at most.
+    static let clipLength: TimeInterval = 30
+    /// The longest file that is still worth copying in. A song is fine; an album is not.
+    static let longest: TimeInterval = 600
 
     let directory: URL
     private let bundle: Bundle?

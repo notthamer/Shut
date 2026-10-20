@@ -4,8 +4,8 @@ import Tuner
 
 /// The app's three sections, in the header, as tabs that each carry their own state:
 ///
-///     ▭ Lid effects     ◉◉ Stay awake          ))) Lid sound
-///     Fold · On         Claude Code · 47 min   3 sounds · random
+///     ▭ Lid effects     ))) Lid sound          ◉◉ Stay awake
+///     Fold · On         3 sounds · random      Claude Code · 47 min
 ///
 /// A name alone read as a subtitle of "Shut.", not as somewhere to go. An icon, a second
 /// line that changes, a filled ground under the chosen one and the spectrum line beneath it
@@ -30,6 +30,16 @@ struct SectionTabs: View {
                 } icon: {
                     Image(systemName: "laptopcomputer").font(.system(size: 12, weight: .medium))
                 }
+                let sound = model.lidSound
+                let soundLine = model.lidSoundTabLine
+                SectionTab(title: "Lid sound", line: soundLine, isSelected: model.page == .sound,
+                           emphasised: sound.playing != nil, maxWidth: width,
+                           help: "A sound as the lid closes: which, and how loud. " + soundLine) {
+                    model.page = .sound
+                } icon: {
+                    LidSoundGlyph(playing: sound.playing != nil, height: 13,
+                                  tint: sound.settings.isOn ? theme.ink : theme.inkLabel, breathes: sound.settings.isOn)
+                }
                 SectionTab(title: "Stay awake",
                            line: AwakeText.tabLine(state: awake.arbiter.state, reasons: awake.arbiter.reasons,
                                                    conditions: awake.arbiter.conditions, limits: awake.arbiter.limits,
@@ -40,16 +50,6 @@ struct SectionTabs: View {
                 } icon: {
                     AwakeEyes(mood: .init(status.dot, isOn: isOn, lidSleeps: status.lidSleeps, lidHolds: status.lidHolds), pixel: 1.25,
                               tint: status.dot == .idle && !status.lidHolds ? theme.inkLabel : theme.ink)
-                }
-                let sound = model.lidSound
-                let soundLine = model.lidSoundTabLine
-                SectionTab(title: "Lid sound", line: soundLine, isSelected: model.page == .sound,
-                           emphasised: sound.playing != nil, maxWidth: width,
-                           help: "A sound as the lid closes: which, and how loud. " + soundLine) {
-                    model.page = .sound
-                } icon: {
-                    LidSoundGlyph(playing: sound.playing != nil, height: 13,
-                                  tint: sound.settings.isOn ? theme.ink : theme.inkLabel, breathes: sound.settings.isOn)
                 }
             }
             .tunerAnimation(TunerTheme.ease, value: status)

@@ -157,14 +157,16 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(angleItem)
         menu.addItem(.separator())
 
+        lidSoundItem.target = self
+        menu.addItem(lidSoundItem)
+        menu.addItem(.separator())
+
         awakeStatusItem.isEnabled = false
         menu.addItem(awakeStatusItem)
         letItSleepItem.target = self
         menu.addItem(letItSleepItem)
         stayAwakeItem.target = self
         menu.addItem(stayAwakeItem)
-        lidSoundItem.target = self
-        menu.addItem(lidSoundItem)
         menu.addItem(.separator())
 
         let transitionItem = NSMenuItem(title: "Transition", action: nil, keyEquivalent: "")

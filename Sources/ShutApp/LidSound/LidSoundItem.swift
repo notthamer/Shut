@@ -14,4 +14,9 @@ struct LidSoundItem: Codable, Identifiable, Equatable {
     var duration: TimeInterval?
     /// SHA-256 of the file's bytes, so the same file added twice is one row.
     var contentHash: String?
+    /// A long file plays from here, in seconds: the clip the user chose.
+    var clipStart: TimeInterval = 0
+
+    /// Longer than the lid will ever play: it gets a clip.
+    var isLong: Bool { (duration ?? 0) > LidSoundLibrary.clipLength }
 }

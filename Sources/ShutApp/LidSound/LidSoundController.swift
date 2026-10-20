@@ -38,6 +38,8 @@ final class LidSoundController: ObservableObject {
     /// the desktop pours back in, not during it.
     private var warmOpening: (item: LidSoundItem, player: SoundPlaying)?
     private var fadeEnd: DispatchWorkItem?
+    /// A long file's thirty seconds, counted from `play`.
+    private var capEnd: DispatchWorkItem?
     private var liftedMute = false
     private var hingeSink: AnyCancellable?
     private var listener: AnyCancellable?
@@ -241,6 +243,7 @@ final class LidSoundController: ObservableObject {
             guard lift(forPlaying: item) else { cue.finished(); dropPlayer(); return }
             player.play()
             playing = item.displayName
+            cap(item)
             settings.lastPickID = item.id
             if settings.mode == .inOrder {
                 let candidates = library.candidates(settings.items)
@@ -269,6 +272,7 @@ final class LidSoundController: ObservableObject {
         self.player = player
         prepared = item
         playing = item.displayName
+        cap(item)
         Log.sound.info("playing \(item.displayName, privacy: .public) (\(reason, privacy: .public))")
     }
 
@@ -277,6 +281,7 @@ final class LidSoundController: ObservableObject {
         do {
             let player = try makePlayer(url)
             player.volume = Float(settings.volume)
+            if item.clipStart > 0 { player.seek(to: item.clipStart) }
             player.onFinish = { [weak self] in self?.finished() }
             return player
         } catch {
@@ -302,7 +307,22 @@ final class LidSoundController: ObservableObject {
         return liftedMute
     }
 
+    /// A long file stops after its thirty seconds, with the landing fade, however the lid
+    /// is held. Short files end by themselves.
+    private func cap(_ item: LidSoundItem) {
+        capEnd?.cancel()
+        capEnd = nil
+        guard item.isLong else { return }
+        capEnd = after(LidSoundLibrary.clipLength) { [weak self] in
+            guard let self, let player = self.player else { return }
+            if let command = self.cue.capReached() { self.perform(command) }
+            else { player.setVolume(0, fade: LidSoundCue.landFade); self.fadeEnd = self.after(LidSoundCue.landFade) { [weak self] in self?.finished() } }
+        }
+    }
+
     private func finished() {
+        capEnd?.cancel()
+        capEnd = nil
         fadeEnd?.cancel()
         fadeEnd = nil
         cue.finished()
@@ -311,6 +331,8 @@ final class LidSoundController: ObservableObject {
     }
 
     private func dropPlayer() {
+        capEnd?.cancel()
+        capEnd = nil
         playing = nil
         prepared = nil
         guard let player else { return }

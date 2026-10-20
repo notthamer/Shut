@@ -6,7 +6,7 @@ lid opens. Off until you turn it on.
 
 ## What you see
 
-- **A third tab, "Lid sound"**, beside Lid effects and Stay awake, with the feature's face:
+- **A tab, "Lid sound"**, between Lid effects and Stay awake, with the feature's face:
   three bars, still at rest, moving only while a sound plays (`LidSoundGlyph`; a pure
   function of time, a clock only while on screen, stilled by Reduce Motion). Its second
   line is the state in a few words: "Off", "Click · On", "3 sounds · random", "3 sounds ·
@@ -120,9 +120,16 @@ missing starter is a "Missing" row, never a crash, and `--self-check` counts the
 removed starter is hidden, not deleted, so it can be restored.
 
 Own files are validated with `AVAudioFile` (length and sample rate give the duration),
-refused over 30 s, and copied into `~/Library/Application Support/Shut/Sounds/` under
+refused over ten minutes, and copied into `~/Library/Application Support/Shut/Sounds/` under
 their own name ("Rain.wav", then "Rain 2.wav"); the same bytes added twice (SHA-256) is one
 row. The original is never needed again. Removing a row deletes Shut's copy.
+
+**A long file is clipped, not refused.** Over 30 s, its row grows a "Clip" disclosure: a
+"Starts from" dial ("1:12 of 3:20"), and letting go of it plays from there. The lid plays
+from that point for 30 s at most, then the landing fade, however the lid is held; the ▶ in
+the row hears it from there too. The line under the dial says what the user is really
+choosing: how much is heard depends on where the lid starts the sound and how fast it
+closes. The note after such an import says so as well.
 
 The list, the way chosen, the volume, the on-open choice and the mute setting are saved
 under `lidSound.*` in UserDefaults; the list is one JSON blob so order is kept and a row's

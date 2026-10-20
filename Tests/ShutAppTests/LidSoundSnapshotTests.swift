@@ -85,6 +85,15 @@ final class LidSoundSnapshotTests: XCTestCase {
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
         XCTAssertNil(sound.playing)
 
+        // A long file, clipped: where it starts from is on the page.
+        var song = sound.settings.items[1]
+        song.duration = 200; song.clipStart = 72
+        sound.settings.update(song)
+        XCTAssertTrue(sound.settings.items[1].isLong)
+        try render(on, name: "long")
+        song.duration = 0.7; song.clipStart = 0
+        sound.settings.update(song)
+
         // A file that went missing, and an import that was refused.
         let gone = LidSoundItem(id: UUID(), fileName: "Rain.wav", displayName: "Rain", enabled: true, isStarter: false, duration: 2.4)
         sound.settings.items.append(gone)

@@ -112,6 +112,7 @@ final class PopoverModel: ObservableObject {
             switch lidSound.library.importFile(url, existing: lidSound.settings.items) {
             case .success(let item):
                 lidSound.settings.items.append(item)
+                if item.isLong, let duration = item.duration { notes.append(LidSoundText.longNote(name: item.displayName, seconds: duration)) }
             case .failure(let error):
                 var duplicateOf: String?
                 if case .duplicate(let id) = error { duplicateOf = lidSound.settings.items.first { $0.id == id }?.displayName }
