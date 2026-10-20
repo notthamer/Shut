@@ -25,7 +25,13 @@ lid opens. Off until you turn it on.
 - **Pick, Volume and Starts at**, on the right of the band. Random never plays the same
   sound twice running; In order goes down the list. Volume is Lid sound's own, as a share of
   the Mac's, which Shut never changes; letting go of the slider plays the sound at that
-  level. Starts at is the angle above shut where the sound begins, always shown as a number:
+  level. What the dial means is a choice under Settings: **Of the Mac's** (the default: a
+  share of the Mac's volume as it is, so a quiet Mac means a quiet lid; the line under the
+  dial says the Mac's level now) or **Its own level** (Shut sets the Mac's volume to the
+  dial for the sound, with the player at full, and puts it back when the sound ends; the
+  old value is written to defaults first, so a sleep in between still gets it put back at
+  the next launch, on the same output only). Outputs with no volume Shut can set keep the
+  dial a share. Starts at is the angle above shut where the sound begins, always shown as a number:
   with "Same as the screen effect" on (the default) it is Speed's angle from Lid effects, so
   the sound and the screen begin together; off, the dial sets the sound's own angle, 20° to
   130°, and the hinge, not the overlay, says when. The answer at the top says it too: "It
@@ -107,7 +113,7 @@ Playback is silent while the Mac is muted or its volume is at zero, so the page 
   alone, and the debt forgiven). Outputs with no mute control Shut can reach (some Bluetooth
   and HDMI outputs) cannot be unmuted; the page says so.
 
-The Mac's volume is never changed. The sound goes where the Mac's sound goes (AirPods,
+The Mac's volume is changed only under "Its own level", and always put back. The sound goes where the Mac's sound goes (AirPods,
 a display's speakers); the page names the device. The output device is watched for its mute
 and name only while one of Shut's windows is open.
 

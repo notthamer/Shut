@@ -134,8 +134,10 @@ private struct LidSoundVolume: View {
                 Text("Quiet"); Spacer(); Text("Loud")
             }
             .font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
+            Text(LidSoundText.volumeAbout(sound.canSetVolume ? settings.volumeMode : .shareOfMac, macVolume: sound.macVolume))
+                .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
         }
-        .help("Of your Mac's volume, which Shut never changes. Let go to hear it.")
     }
 }
 
@@ -232,7 +234,7 @@ private struct LidSoundControls: View {
         let settings = sound.settings
         return VStack(alignment: .leading, spacing: TunerTheme.sectionGap) {
             FoldedSection("Settings", number: "02",
-                          summary: LidSoundText.settingsSummary(onOpen: settings.onOpen, whenMuted: settings.whenMuted),
+                          summary: LidSoundText.settingsSummary(onOpen: settings.onOpen, whenMuted: settings.whenMuted, volumeMode: settings.volumeMode),
                           isOpen: Binding(get: { model.showingSoundSettings }, set: { model.showingSoundSettings = $0 }),
                           help: "A sound on open, what to do when the Mac is muted, and the starter sounds.")
             if model.showingSoundSettings { LidSoundSettingsRows(model: model).transition(.blurFade) }
@@ -410,7 +412,15 @@ private struct LidSoundSettingsRows: View {
                 .transition(.blurFade).padding(.bottom, 6)
             }
 
-            Eyebrow("When the Mac is muted").padding(.top, 28).padding(.bottom, 12)
+            Eyebrow("Volume").padding(.top, 28).padding(.bottom, 12)
+            Explained(sound.canSetVolume ? LidSoundText.shareOfMacAbout : LidSoundText.noVolumeControl) {
+                SegmentedRow("The dial is", options: ["Of the Mac's", "Its own level"],
+                             selection: Binding(get: { settings.volumeMode == .ownLevel ? 1 : 0 }, set: { settings.volumeMode = $0 == 1 ? .ownLevel : .shareOfMac }),
+                             help: "What the Volume dial means.")
+                    .disabled(!sound.canSetVolume)
+            }
+
+            Eyebrow("When the Mac is muted").padding(.top, 8).padding(.bottom, 12)
             Explained(sound.canUnmute ? LidSoundText.unmuteAbout : "This output has no mute switch Shut can lift, so it stays quiet either way.") {
                 SegmentedRow("Muted", options: ["Stay quiet", "Unmute for it"],
                              selection: Binding(get: { settings.whenMuted == .unmute ? 1 : 0 }, set: { settings.whenMuted = $0 == 1 ? .unmute : .stayQuiet }),

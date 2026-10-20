@@ -13,6 +13,11 @@ protocol OutputMuting: AnyObject {
     /// Some outputs (Bluetooth, HDMI) have no mute control Shut can reach.
     var canSetMute: Bool { get }
     @discardableResult func setMuted(_ muted: Bool) -> Bool
+    /// The output's volume, 0…1; nil when the device has none Shut can read.
+    var volume: Float? { get }
+    var canSetVolume: Bool { get }
+    /// Only "Its own level" ever calls this, and always puts the old value back.
+    @discardableResult func setVolume(_ volume: Float) -> Bool
     /// Calls back on the main queue when the default output or its mute changes. The
     /// listener exists only while something is listening (the panel is open).
     func listen(_ onChange: @escaping () -> Void) -> AnyCancellable
@@ -68,8 +73,45 @@ final class CoreAudioOutput: OutputMuting {
     var isMuted: Bool {
         guard let device = defaultDevice else { return false }
         if uint32(Self.muteAddress, of: device) == 1 { return true }
-        let volume = float(Self.volumeAddress, of: device) ?? float(Self.channelVolumeAddress, of: device)
         return volume.map { $0 <= 0.001 } ?? false
+    }
+
+    var volume: Float? {
+        guard let device = defaultDevice else { return nil }
+        return float(Self.volumeAddress, of: device) ?? float(Self.channelVolumeAddress, of: device)
+    }
+
+    private static let secondChannelVolumeAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar,
+                                                                               mScope: kAudioObjectPropertyScopeOutput, mElement: 2)
+
+    private func settable(_ address: AudioObjectPropertyAddress, of device: AudioObjectID) -> Bool {
+        var address = address
+        var settable: DarwinBoolean = false
+        return AudioObjectHasProperty(device, &address)
+            && AudioObjectIsPropertySettable(device, &address, &settable) == noErr && settable.boolValue
+    }
+
+    var canSetVolume: Bool {
+        guard let device = defaultDevice else { return false }
+        return settable(Self.volumeAddress, of: device) || settable(Self.channelVolumeAddress, of: device)
+    }
+
+    /// The main element when the device has one; otherwise both channels, as the menu bar does.
+    @discardableResult
+    func setVolume(_ volume: Float) -> Bool {
+        guard let device = defaultDevice else { return false }
+        var value = max(0, min(1, volume))
+        let size = UInt32(MemoryLayout<Float32>.size)
+        if settable(Self.volumeAddress, of: device) {
+            var address = Self.volumeAddress
+            return AudioObjectSetPropertyData(device, &address, 0, nil, size, &value) == noErr
+        }
+        var done = false
+        for channel in [Self.channelVolumeAddress, Self.secondChannelVolumeAddress] where settable(channel, of: device) {
+            var address = channel
+            done = AudioObjectSetPropertyData(device, &address, 0, nil, size, &value) == noErr || done
+        }
+        return done
     }
 
     var canSetMute: Bool {

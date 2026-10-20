@@ -8,7 +8,7 @@
 - Your sounds. Add a sound… or drop files on the list: mp3, m4a, wav or aiff, copied into Shut so the original can move. Each has its own switch, a ▶ to hear it, and an × to remove it. A long file is clipped: choose where it starts from, and the lid plays up to 30 seconds of it.
 - Random, or in order. Random never plays the same sound twice running.
 - Starts at: the angle where the sound begins, always shown as a number. The same as the screen effect's Speed, so the two begin together, or an angle of its own.
-- Its own volume, as a share of your Mac's, which Shut never changes. Let go of the slider to hear it.
+- Its own volume. A share of your Mac's as it is, or, under Settings, its own level: Shut sets your Mac's volume to the dial for the sound and puts it back when it ends. Let go of the slider to hear it.
 - Muted Mac: your call. Stay quiet (the page and the tab say "Muted"), or Unmute for it, and mute comes back when the sound ends.
 - Also on open: a sound as the desktop pours back in after you unlock. The close's pick again, or one in particular.
 - A third tab, Lid sound, beside Lid effects and Stay awake, with the three bars that move while a sound plays, and "Play a Sound on Close" in the menu.

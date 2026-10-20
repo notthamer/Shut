@@ -10,6 +10,9 @@ final class LidSoundSettings: ObservableObject {
 
     enum Mode: String, Codable { case random, inOrder }
     enum WhenMuted: String, Codable { case stayQuiet, unmute }
+    /// What the Volume dial means: a share of the Mac's volume as it is, or a level of its
+    /// own that Shut sets the Mac to for the sound and puts back after.
+    enum VolumeMode: String, Codable { case shareOfMac, ownLevel }
     /// What "Also on open" plays: the close's pick again, or one sound in particular.
     enum OnOpenPick: Equatable {
         case samePick
@@ -27,6 +30,7 @@ final class LidSoundSettings: ObservableObject {
     @Published var onOpen: Bool { didSet { defaults.set(onOpen, forKey: "lidSound.onOpen") } }
     @Published var onOpenPick: OnOpenPick { didSet { defaults.set(onOpenPick.stored, forKey: "lidSound.onOpenPick") } }
     @Published var whenMuted: WhenMuted { didSet { defaults.set(whenMuted.rawValue, forKey: "lidSound.whenMuted") } }
+    @Published var volumeMode: VolumeMode { didSet { defaults.set(volumeMode.rawValue, forKey: "lidSound.volumeMode") } }
     /// The sound starts where the screen effect does (Speed, on Lid effects), or at its own
     /// angle, `startDegrees` above shut.
     @Published var startsWithEffect: Bool { didSet { defaults.set(startsWithEffect, forKey: "lidSound.startsWithEffect") } }
@@ -39,6 +43,8 @@ final class LidSoundSettings: ObservableObject {
     /// first). Restored on the next launch or wake, on the same output device only.
     var muteToRestore: Bool { didSet { defaults.set(muteToRestore, forKey: "lidSound.muteToRestore") } }
     var muteToRestoreDeviceUID: String? { didSet { defaults.set(muteToRestoreDeviceUID, forKey: "lidSound.muteToRestoreDeviceUID") } }
+    /// "Its own level" set the Mac's volume and has not put it back yet; the value owed.
+    var volumeToRestore: Double? { didSet { defaults.set(volumeToRestore, forKey: "lidSound.volumeToRestore") } }
 
     /// The sounds that ship with the app, as `(display name, file in Resources/Sounds)`.
     nonisolated static let starters: [(name: String, file: String)] = [("Click", "Click.wav"), ("Breath", "Breath.wav"), ("Hum", "Hum.wav")]
@@ -58,12 +64,14 @@ final class LidSoundSettings: ObservableObject {
         onOpen = bool("lidSound.onOpen", false)
         onOpenPick = OnOpenPick(stored: defaults.string(forKey: "lidSound.onOpenPick"))
         whenMuted = defaults.string(forKey: "lidSound.whenMuted").flatMap(WhenMuted.init(rawValue:)) ?? .stayQuiet
+        volumeMode = defaults.string(forKey: "lidSound.volumeMode").flatMap(VolumeMode.init(rawValue:)) ?? .shareOfMac
         startsWithEffect = bool("lidSound.startsWithEffect", true)
         startDegrees = defaults.object(forKey: "lidSound.startDegrees") as? Double ?? 60
         lastPickID = defaults.string(forKey: "lidSound.lastPickID").flatMap(UUID.init(uuidString:))
         nextIndex = defaults.integer(forKey: "lidSound.nextIndex")
         muteToRestore = defaults.bool(forKey: "lidSound.muteToRestore")
         muteToRestoreDeviceUID = defaults.string(forKey: "lidSound.muteToRestoreDeviceUID")
+        volumeToRestore = defaults.object(forKey: "lidSound.volumeToRestore") as? Double
     }
 
     /// The rows on the page: everything that is not a hidden starter.

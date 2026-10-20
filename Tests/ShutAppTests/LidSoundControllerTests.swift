@@ -27,6 +27,11 @@ final class LidSoundControllerTests: XCTestCase {
         var sets: [Bool] = []
         var isMuted: Bool { muted }
         func setMuted(_ muted: Bool) -> Bool { sets.append(muted); self.muted = muted; return true }
+        var level: Float? = 0.5
+        var canSetVolume = true
+        var volumes: [Float] = []
+        var volume: Float? { level }
+        func setVolume(_ volume: Float) -> Bool { volumes.append(volume); level = volume; return true }
         func listen(_ onChange: @escaping () -> Void) -> AnyCancellable { AnyCancellable {} }
     }
 
@@ -230,6 +235,32 @@ extension LidSoundControllerTests {
         XCTAssertEqual(pending[0].0, LidSoundLibrary.clipLength, "its thirty seconds are counted from play")
         pending.removeFirst().1()
         XCTAssertEqual(players[0].log.last, "fade 0.3", "then it fades, however the lid is held")
+    }
+
+    /// "Its own level": the Mac is set to the dial for the sound and put back after; a sleep
+    /// in between gets it put back at the next launch.
+    func testItsOwnLevelSetsTheMacAndPutsItBack() throws {
+        output.level = 0.06   // one bar
+        let (controller, settings) = make()
+        settings.volumeMode = .ownLevel
+        settings.volume = 0.7
+        hinge(controller, 0.005, .closing)
+        controller.closeBeginning()
+        XCTAssertEqual(output.volumes, [0.7], "the Mac is set to the dial")
+        XCTAssertEqual(players[0].volume, 1, "and the player plays at full, so the dial is the level heard")
+        XCTAssertEqual(try XCTUnwrap(LidSoundSettings(defaults: suite).volumeToRestore), 0.06, accuracy: 0.001, "the old value is written down first")
+        players[0].onFinish?()
+        spin()
+        XCTAssertEqual(output.volumes, [0.7, 0.06], "put back when the sound ends")
+        XCTAssertNil(LidSoundSettings(defaults: suite).volumeToRestore)
+
+        // Of the Mac's: nothing is touched; the player carries the share.
+        settings.volumeMode = .shareOfMac
+        output.volumes = []
+        hinge(controller, 0.005, .closing)
+        controller.closeBeginning()
+        XCTAssertTrue(output.volumes.isEmpty)
+        XCTAssertEqual(players[1].volume, 0.7)
     }
 
     /// The opening's sound is made and prepared at wake, so the unlock only has to play it.

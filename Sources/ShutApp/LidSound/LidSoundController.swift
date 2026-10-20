@@ -21,6 +21,9 @@ final class LidSoundController: ObservableObject {
     @Published private(set) var outputName: String?
     @Published private(set) var isMuted = false
     @Published private(set) var canUnmute = true
+    @Published private(set) var canSetVolume = true
+    /// The Mac's volume as last read, 0…1, for the page.
+    @Published private(set) var macVolume: Float?
 
     private let appSettings: AppSettings
     private let sensor: LidSensorMonitor
@@ -208,6 +211,8 @@ final class LidSoundController: ObservableObject {
         outputName = output.deviceName
         isMuted = output.isMuted
         canUnmute = output.canSetMute
+        canSetVolume = output.canSetVolume
+        macVolume = output.volume
     }
 
     /// Everything the words need, gathered once.
@@ -280,7 +285,7 @@ final class LidSoundController: ObservableObject {
         guard let url = library.url(for: item) else { return nil }
         do {
             let player = try makePlayer(url)
-            player.volume = Float(settings.volume)
+            player.volume = settings.volumeMode == .ownLevel && output.canSetVolume ? 1 : Float(settings.volume)
             if item.clipStart > 0 { player.seek(to: item.clipStart) }
             player.onFinish = { [weak self] in self?.finished() }
             return player
@@ -296,6 +301,7 @@ final class LidSoundController: ObservableObject {
     /// back. The debt is written before the mute is touched, so a sleep in between still
     /// gets it repaid at the next launch.
     private func lift(forPlaying item: LidSoundItem) -> Bool {
+        takeTheVolume()
         guard output.isMuted else { return true }
         guard settings.whenMuted == .unmute, output.canSetMute else {
             Log.sound.info("muted; staying quiet for \(item.displayName, privacy: .public)")
@@ -318,6 +324,20 @@ final class LidSoundController: ObservableObject {
             if let command = self.cue.capReached() { self.perform(command) }
             else { player.setVolume(0, fade: LidSoundCue.landFade); self.fadeEnd = self.after(LidSoundCue.landFade) { [weak self] in self?.finished() } }
         }
+    }
+
+    /// "Its own level": the Mac's volume is set to the dial for the sound. The old value is
+    /// written down first, so a sleep in between still gets it put back at the next launch.
+    private func takeTheVolume() {
+        guard settings.volumeMode == .ownLevel, output.canSetVolume, let current = output.volume else { return }
+        let wanted = Float(settings.volume)
+        guard abs(current - wanted) > 0.005 else { return }
+        if settings.volumeToRestore == nil {
+            settings.volumeToRestore = Double(current)
+            settings.muteToRestoreDeviceUID = settings.muteToRestoreDeviceUID ?? output.deviceUID
+        }
+        output.setVolume(wanted)
+        Log.sound.info("volume set to \(Int(wanted * 100)) % for the sound")
     }
 
     private func finished() {
@@ -343,15 +363,21 @@ final class LidSoundController: ObservableObject {
         DispatchQueue.global(qos: .utility).async { player.stop() }
     }
 
+    /// Whatever "Unmute for it" or "Its own level" changed on the output, put back: on the
+    /// same device only; another device is left alone and the debt forgiven.
     private func restoreMuteIfOwed() {
-        guard settings.muteToRestore else { return }
-        if settings.muteToRestoreDeviceUID == nil || settings.muteToRestoreDeviceUID == output.deviceUID {
-            output.setMuted(true)
-            Log.sound.info("mute put back")
-        } else {
-            Log.sound.notice("mute was lifted on another output; leaving this one alone")
+        guard settings.muteToRestore || settings.volumeToRestore != nil else { return }
+        let sameDevice = settings.muteToRestoreDeviceUID == nil || settings.muteToRestoreDeviceUID == output.deviceUID
+        if let volume = settings.volumeToRestore {
+            if sameDevice { output.setVolume(Float(volume)); Log.sound.info("volume put back to \(Int(volume * 100)) %") }
+            else { Log.sound.notice("volume was set on another output; leaving this one alone") }
+        }
+        if settings.muteToRestore {
+            if sameDevice { output.setMuted(true); Log.sound.info("mute put back") }
+            else { Log.sound.notice("mute was lifted on another output; leaving this one alone") }
         }
         settings.muteToRestore = false
+        settings.volumeToRestore = nil
         settings.muteToRestoreDeviceUID = nil
         liftedMute = false
     }
