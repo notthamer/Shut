@@ -62,6 +62,13 @@ final class LidSoundController: ObservableObject {
 
     func start() {
         restoreMuteIfOwed()
+        // The starters' lengths, read once: three small files, the first time only.
+        for var item in settings.items where item.duration == nil {
+            if let url = library.url(for: item), let duration = LidSoundLibrary.duration(of: url) {
+                item.duration = duration
+                settings.update(item)
+            }
+        }
         // A sleep cut whatever was playing; the next close starts clean.
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {

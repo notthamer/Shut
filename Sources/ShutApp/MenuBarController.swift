@@ -25,6 +25,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let awakeStatusItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let letItSleepItem = NSMenuItem(title: "Let It Sleep Now", action: #selector(letItSleep), keyEquivalent: "")
     private let stayAwakeItem = NSMenuItem(title: "Stay Awake with the Lid Shut", action: #selector(toggleStayAwake), keyEquivalent: "")
+    private let lidSoundItem = NSMenuItem(title: "Play a Sound on Close", action: #selector(toggleLidSound), keyEquivalent: "")
     private let permissionItem = NSMenuItem(title: "Grant Screen Recording…", action: #selector(openPermission), keyEquivalent: "")
 
     /// Wired by the app once the Tuner host exists.
@@ -41,6 +42,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     var showAwakePage: (() -> Void)?
     /// "What's New…": the card an update shows once, on request.
     var showWhatsNew: (() -> Void)?
+    /// Set once by the app: the menu's checkmark follows its switch.
+    var lidSound: LidSoundController?
 
     /// Set once by the app. The mark carries a small badge that says what the lid will do,
     /// in the one place that is always on screen: a dot while holding, a ring while winding
@@ -160,6 +163,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(letItSleepItem)
         stayAwakeItem.target = self
         menu.addItem(stayAwakeItem)
+        lidSoundItem.target = self
+        menu.addItem(lidSoundItem)
         menu.addItem(.separator())
 
         let transitionItem = NSMenuItem(title: "Transition", action: nil, keyEquivalent: "")
@@ -232,6 +237,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             stayAwakeItem.state = on ? .on : .off
             stayAwakeItem.isHidden = !stayAwake.hasLid
         }
+        if let lidSound {
+            lidSoundItem.state = lidSound.settings.isOn ? .on : .off
+            lidSoundItem.isHidden = !lidSound.hasLid
+        }
         presetMenu.removeAllItems()
         let items = presetMenuProvider?() ?? []
         presetItem.isHidden = items.isEmpty
@@ -281,6 +290,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func toggleLaunchAtLogin() { LaunchAtLogin.toggle() }
     @objc private func openWhatsNew() { showWhatsNew?() }
     @objc private func letItSleep() { stayAwake?.perform(.letItSleep) }
+    @objc private func toggleLidSound() { lidSound?.settings.isOn.toggle() }
     @objc private func toggleStayAwake() {
         guard let stayAwake else { return }
         if stayAwake.needsConsent { showAwakePage?() } else { stayAwake.settings.isOn.toggle() }

@@ -81,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var renderer: TransitionRenderer!
     private var controller: AppController!
     private var stayAwake: StayAwakeController!
+    private var lidSound: LidSoundController!
     private var menuBar: MenuBarController!
     private var previewModel: PreviewModel!
     private var tunerHost: TunerHost?
@@ -144,17 +145,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Stay awake starts by undoing anything a crashed run left behind, so it
         // comes up before the lid can move.
         stayAwake = StayAwakeController()
-        controller.onLidStartedClosing = { [weak self] in self?.stayAwake.lidStartedClosing() }
-        controller.onCloseBeginning = { [weak self] in self?.stayAwake.closeBeginning() }
+        // Lid sound: wakes the audio hardware as the lid starts down, plays as the overlay
+        // appears, fades when the close ends early, and plays again on opening if asked.
+        lidSound = LidSoundController(settings: LidSoundSettings(), appSettings: settings, sensor: sensor, hasLid: stayAwake.hasLid)
+        controller.onLidStartedClosing = { [weak self] in self?.stayAwake.lidStartedClosing(); self?.lidSound.lidStartedClosing() }
+        controller.onCloseBeginning = { [weak self] in self?.stayAwake.closeBeginning(); self?.lidSound.closeBeginning() }
+        controller.onCloseEnded = { [weak self] reason in self?.lidSound.closeEnded(reason: reason) }
+        controller.onOpeningBeginning = { [weak self] in self?.lidSound.openingBeginning() }
         controller.closingCaption = { [weak self] beginning in self?.stayAwake.closingCaption(beginning: beginning) }
         controller.onOptionWhileClosing = { [weak self] in self?.stayAwake.flipDecision() ?? false }
         stayAwake.onLockedWhileShut = { [weak self] in self?.controller.holdBlackUntilUnlock() }
         stayAwake.start()
+        lidSound.start()   // first: puts back a mute a cut-short run still owed
         menuBar = MenuBarController(controller: controller, settings: settings, registry: registry)
         menuBar.stayAwake = stayAwake
-        // The cards count minutes and show what is working right now; only worth
-        // reading while one of Shut's windows is open.
-        dock.onSurfacesChanged = { [weak self] open in self?.stayAwake.arbiter.setLiveUpdates(open) }
+        menuBar.lidSound = lidSound
+        // The cards count minutes and show what is working right now, and the output device
+        // is watched for its mute; only worth reading while one of Shut's windows is open.
+        dock.onSurfacesChanged = { [weak self] open in
+            self?.stayAwake.arbiter.setLiveUpdates(open)
+            self?.lidSound.setLiveUpdates(open)
+        }
 
         tunerHost = TunerHost(registry: registry, previewModel: previewModel, controller: controller, settings: settings)
         menuBar.openTuner = { [weak self] in self?.tunerHost?.toggle() }
@@ -167,7 +178,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         thumbnails = try? TransitionThumbnailRenderer()
         popoverModel = PopoverModel(settings: settings, registry: registry, preview: previewModel, sensor: sensor,
-                                    thumbnails: thumbnails, stayAwake: stayAwake)
+                                    thumbnails: thumbnails, stayAwake: stayAwake, lidSound: lidSound)
+        // "Add a sound…": a file panel from a non-activating panel, the way the Tuner imports.
+        popoverModel.addSounds = { [weak self] in
+            guard let self else { return }
+            let pick = {
+                let panel = NSOpenPanel()
+                panel.allowedContentTypes = [.audio]
+                panel.allowsMultipleSelection = true
+                panel.canChooseDirectories = false
+                panel.message = "Choose sounds for the lid. Each one is copied into Shut, so the original can move."
+                NSApp.activate(ignoringOtherApps: true)
+                if panel.runModal() == .OK { self.popoverModel.importSounds(panel.urls) }
+            }
+            if let popover = self.popover { popover.holdingOpen(pick) } else { pick() }
+        }
         popoverModel.openTuner = { [weak self] in self?.popover.close(); self?.tunerHost?.toggle() }
         popoverModel.allowScreenRecording = {
             ScreenRecordingPermission.request()
@@ -295,6 +320,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // Quit, an update relaunch, a newer copy taking over: the lid goes back to normal.
         stayAwake?.shutDown()
+        lidSound?.shutDown()
         controller?.teardown(reason: "quit")
         sensor?.stop()
     }

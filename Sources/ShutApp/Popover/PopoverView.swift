@@ -46,6 +46,8 @@ struct PopoverView: View {
                     .transition(.blurFade)
                 case .awake:
                     AwakePage(model: model).transition(.blurFade)
+                case .sound:
+                    LidSoundPage(model: model).transition(.blurFade)
                 }
             }
             .frame(width: Self.width, height: bodyHeight)
@@ -76,7 +78,9 @@ struct PopoverHeader: View {
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
             MarkGlyph(size: 26, tint: theme.ink)
+            // The wordmark never gives: with three tabs it is their lines that truncate.
             Text("Shut.").font(TunerTheme.displayFont).tracking(TunerTheme.displayTracking).foregroundStyle(theme.ink)
+                .fixedSize().layoutPriority(1)
                 .help(model.statusLine)
             Circle().fill(statusColor).frame(width: 6, height: 6)
                 .tunerAnimation(TunerTheme.ease, value: statusColor)
@@ -97,6 +101,12 @@ struct PopoverHeader: View {
                 SmallPill(isOn: on, size: .regular) { model.toggleAwake() }
                     .help("Keep your Mac awake the next time you close the lid. It switches itself off when you open the lid again.")
                     .accessibilityLabel("Stay awake")
+            } else if model.page == .sound, model.lidSound.hasLid {
+                let on = model.lidSound.settings.isOn
+                Text(on ? "On" : "Off").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                SmallPill(isOn: on, size: .regular) { model.lidSound.settings.isOn.toggle() }
+                    .help("Play a sound as the lid closes.")
+                    .accessibilityLabel("Lid sound")
             } else {
                 Text(model.settings.isEnabled ? "On" : "Off").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                 SmallPill(isOn: model.settings.isEnabled, size: .regular) { model.settings.isEnabled.toggle() }

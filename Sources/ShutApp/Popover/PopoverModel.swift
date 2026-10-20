@@ -15,6 +15,7 @@ final class PopoverModel: ObservableObject {
     let sensor: LidSensorMonitor
     let thumbnails: TransitionThumbnailRenderer?
     let stayAwake: StayAwakeController
+    let lidSound: LidSoundController
 
     /// Actions supplied by the app; tests pass no-ops.
     var openTuner: () -> Void = {}
@@ -37,8 +38,8 @@ final class PopoverModel: ObservableObject {
     var shareView: (String, Binding<Bool>) -> AnyView = { _, _ in AnyView(EmptyView()) }
     var resetStyle: (String) -> Void = { _ in }
 
-    /// The panel has two pages of the same size: the lid styles, and Stay awake.
-    enum Page { case styles, awake }
+    /// The panel has three pages of the same size: the lid styles, Stay awake, and Lid sound.
+    enum Page { case styles, awake, sound }
     @Published var page: Page = .styles
     @Published var showingAwakeConsent = false
 
@@ -48,11 +49,15 @@ final class PopoverModel: ObservableObject {
     @Published private(set) var thumbnailVersions: [String: Int] = [:]
     private var cancellables = Set<AnyCancellable>()
 
-    /// Tests pass no `stayAwake` and get one on throwaway defaults that is never started.
+    /// Tests pass no `stayAwake` or `lidSound` and get ones on throwaway defaults that are never started.
     init(settings: AppSettings, registry: TransitionRegistry, preview: PreviewModel, sensor: LidSensorMonitor,
-         thumbnails: TransitionThumbnailRenderer?, stayAwake: StayAwakeController? = nil) {
+         thumbnails: TransitionThumbnailRenderer?, stayAwake: StayAwakeController? = nil, lidSound: LidSoundController? = nil) {
         self.stayAwake = stayAwake ?? StayAwakeController(
             settings: StayAwakeSettings(defaults: UserDefaults(suiteName: "StayAwake-\(UUID().uuidString)") ?? .standard))
+        self.lidSound = lidSound ?? LidSoundController(
+            settings: LidSoundSettings(defaults: UserDefaults(suiteName: "LidSound-\(UUID().uuidString)") ?? .standard),
+            appSettings: settings, sensor: sensor, hasLid: self.stayAwake.hasLid,
+            library: LidSoundLibrary(directory: FileManager.default.temporaryDirectory.appendingPathComponent("LidSound-\(UUID().uuidString)")))
         self.settings = settings
         self.registry = registry
         self.preview = preview
@@ -70,6 +75,7 @@ final class PopoverModel: ObservableObject {
         }
         settings.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         self.stayAwake.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
+        self.lidSound.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         sensor.$capability.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)
@@ -89,6 +95,61 @@ final class PopoverModel: ObservableObject {
         if stayAwake.needsConsent { showingAwakeConsent = true }
         else { stayAwake.settings.isOn.toggle() }
     }
+
+    // MARK: Lid sound
+
+    /// "Add a sound…": the file panel, supplied by the app (a test leaves it empty).
+    var addSounds: () -> Void = {}
+    /// The folded Settings on the Lid sound page.
+    @Published var showingSoundSettings = false
+    /// One line under the list after an import that was refused; nil when there is none.
+    @Published var importNote: String?
+
+    /// Copies the files in and says, once, why any was refused.
+    func importSounds(_ urls: [URL]) {
+        var notes: [String] = []
+        for url in urls {
+            switch lidSound.library.importFile(url, existing: lidSound.settings.items) {
+            case .success(let item):
+                lidSound.settings.items.append(item)
+            case .failure(let error):
+                var duplicateOf: String?
+                if case .duplicate(let id) = error { duplicateOf = lidSound.settings.items.first { $0.id == id }?.displayName }
+                notes.append(LidSoundText.refusal(error, name: url.lastPathComponent, duplicateOf: duplicateOf))
+            }
+        }
+        importNote = notes.isEmpty ? nil : notes.joined(separator: " ")
+    }
+
+    /// A row's ×: an own file is deleted, a starter is hidden so it can come back.
+    func removeSound(_ item: LidSoundItem) {
+        lidSound.library.remove(item)
+        if item.isStarter {
+            var hidden = item; hidden.hidden = true
+            lidSound.settings.update(hidden)
+        } else {
+            lidSound.settings.items.removeAll { $0.id == item.id }
+        }
+    }
+
+    func restoreStarterSounds() {
+        for var item in lidSound.settings.items where item.isStarter && item.hidden {
+            item.hidden = false; item.enabled = true
+            lidSound.settings.update(item)
+        }
+    }
+
+    /// "Try it": the sound the next close would play, and the close itself in the preview.
+    func tryTheSound() {
+        lidSound.playClosePreview()
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            preview.glide(to: registry.current.thumbnailProgress)
+        } else {
+            preview.playRound()
+        }
+    }
+
+    var lidSoundTabLine: String { LidSoundText.tabLine(lidSound.situation()) }
 
     var statusLine: String {
         if !settings.isEnabled { return "Paused" }
