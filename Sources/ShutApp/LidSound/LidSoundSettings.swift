@@ -69,19 +69,29 @@ final class LidSoundSettings: ObservableObject {
         let manifest = manifest ?? LidSoundLibrary().packs()
         isOn = bool("lidSound.isOn", false)
         let firstLaunch: Bool
+        let loaded: [LidSoundItem]
         if let data = defaults.data(forKey: "lidSound.items"), let saved = try? JSONDecoder().decode([LidSoundItem].self, from: data) {
-            items = saved
+            loaded = saved
             firstLaunch = false
         } else {
             // First launch: the starters, switched on, so the first close has something to play.
-            items = manifest.flatMap(\.starters).map { $0.item() }
+            loaded = manifest.flatMap(\.starters).map { $0.item() }
             firstLaunch = true
         }
-        // The packs: bundled from the manifest, with the hidden flags saved; the user's own after.
+        items = loaded
+        // The packs: bundled from the manifest, with what the user decided about each saved
+        // (in the list or out of it); a pack never seen before starts as the manifest says,
+        // unless its sounds are already in this list. The user's own packs after.
         let hiddenBundled = Set(defaults.stringArray(forKey: "lidSound.hiddenPacks") ?? [])
+        let shownBundled = Set(defaults.stringArray(forKey: "lidSound.shownPacks") ?? [])
         let userPacks = (defaults.data(forKey: "lidSound.packs")).flatMap { try? JSONDecoder().decode([LidSoundPack].self, from: $0) } ?? [LidSoundPack.mine]
-        packs = manifest.map { var pack = $0.pack; pack.hidden = hiddenBundled.contains(pack.id); return pack }
-            + (userPacks.contains { $0.id == LidSoundPack.mineID } ? userPacks : [LidSoundPack.mine] + userPacks)
+        let listed = firstLaunch ? [] : Set(loaded.map(\.packID))
+        packs = manifest.map { entry in
+            var pack = entry.pack
+            if hiddenBundled.contains(pack.id) { pack.hidden = true }
+            else if shownBundled.contains(pack.id) || listed.contains(pack.id) { pack.hidden = false }
+            return pack
+        } + (userPacks.contains { $0.id == LidSoundPack.mineID } ? userPacks : [LidSoundPack.mine] + userPacks)
         playsFrom = PlaysFrom(stored: defaults.string(forKey: "lidSound.playsFrom"))
         nextIndexByScope = (defaults.data(forKey: "lidSound.nextIndexByScope")).flatMap { try? JSONDecoder().decode([String: Int].self, from: $0) } ?? [:]
         mode = defaults.string(forKey: "lidSound.mode").flatMap(Mode.init(rawValue:)) ?? .random
@@ -105,6 +115,7 @@ final class LidSoundSettings: ObservableObject {
     private func savePacks() {
         defaults.set(try? JSONEncoder().encode(packs.filter { !$0.bundled }), forKey: "lidSound.packs")
         defaults.set(packs.filter { $0.bundled && $0.hidden }.map(\.id), forKey: "lidSound.hiddenPacks")
+        defaults.set(packs.filter { $0.bundled && !$0.hidden }.map(\.id), forKey: "lidSound.shownPacks")
     }
 
     /// An older list's manifest sounds carry no pack: give each the manifest pack that lists
@@ -143,9 +154,15 @@ final class LidSoundSettings: ObservableObject {
     /// manifest sound, or the same name and part as a sound of the user's own) is added,
     /// switched on, at the end of its pack. Hidden ones stay hidden.
     func adoptNewPacks(_ manifest: [LidSoundLibrary.ManifestPack]) {
-        let hiddenBundled = hiddenPackIDs
+        let known = Dictionary(uniqueKeysWithValues: packs.filter(\.bundled).map { ($0.id, $0.hidden) })
+        let listed = Set(items.map(\.packID))
         let userPacks = packs.filter { !$0.bundled }
-        packs = manifest.map { var pack = $0.pack; pack.hidden = hiddenBundled.contains(pack.id); return pack } + userPacks
+        packs = manifest.map { entry in
+            var pack = entry.pack
+            if let decided = known[entry.id] { pack.hidden = decided }
+            else if listed.contains(entry.id) { pack.hidden = false }
+            return pack
+        } + userPacks
         var added: [LidSoundItem] = []
         for starter in manifest.flatMap(\.starters) {
             let from = starter.from ?? 0, to = starter.to

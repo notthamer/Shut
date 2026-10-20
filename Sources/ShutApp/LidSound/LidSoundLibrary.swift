@@ -67,9 +67,17 @@ final class LidSoundLibrary {
         var id: String
         var name: String
         var credit: String?
+        /// In the list the first time it is seen (the default), or offered under "Add a pack"
+        /// for whoever wants it: a pack is an offer, not a fixture.
+        var onByDefault: Bool?
         var sounds: [Starter]
 
-        var pack: LidSoundPack { LidSoundPack(id: id, name: name, bundled: true, credit: credit) }
+        init(id: String, name: String, credit: String? = nil, onByDefault: Bool? = nil, sounds: [Starter]) {
+            self.id = id; self.name = name; self.credit = credit; self.onByDefault = onByDefault; self.sounds = sounds
+        }
+
+        var startsInTheList: Bool { onByDefault ?? true }
+        var pack: LidSoundPack { LidSoundPack(id: id, name: name, bundled: true, credit: credit, hidden: !startsInTheList) }
         /// The sounds, each knowing its pack.
         var starters: [Starter] { sounds.map { var s = $0; s.packID = id; return s } }
     }

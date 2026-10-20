@@ -874,73 +874,109 @@ private struct LidSoundLibraryRows: View {
     }
 }
 
-/// The packs, under Settings: a bundled one can be put away whole and brought back, with
-/// where its audio came from under its name; the user's own can be renamed (double-click)
-/// and removed (its sounds go to Mine). A new one is made here too.
+/// The packs, under Settings: the ones in the list, each removable with one click (a bundled
+/// pack then waits under "Add a pack", with where its audio came from, for whoever wants it;
+/// a user pack's sounds go to Mine); the user's own can be renamed (double-click). A pack is
+/// an offer, not a fixture: nobody has to keep what they did not choose.
 private struct LidSoundPackRows: View {
     @ObservedObject var model: PopoverModel
     @State private var draft: (id: String, name: String)?
     @State private var newName: String?
+    @State private var offering = false
     @FocusState private var naming: Bool
     @Environment(\.tunerTheme) private var theme
 
     var body: some View {
         let settings = model.lidSound.settings
-        VStack(spacing: 0) {
-            ForEach(Array(settings.packs.enumerated()), id: \.element.id) { index, pack in
-                if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
-                let count = settings.items.filter { $0.packID == pack.id && !$0.hidden && !$0.kept }.count
-                HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        if let draft, draft.id == pack.id {
-                            TextField("Name", text: Binding(get: { draft.name }, set: { self.draft = (pack.id, $0) }))
-                                .textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
-                                .focused($naming)
-                                .onSubmit { model.renamePack(pack, to: draft.name); self.draft = nil }
-                                .onExitCommand { self.draft = nil }
-                                .onAppear { naming = true }
-                        } else {
-                            Text(pack.name).font(TunerTheme.body).foregroundStyle(pack.hidden ? theme.inkLabel : theme.ink).lineLimit(1)
-                                .onTapGesture(count: 2) { if !pack.bundled { draft = (pack.id, pack.name) } }
-                                .help(pack.bundled ? "Comes with the app." : "Double-click to rename.")
+        let inUse = settings.packs.filter { !$0.hidden }
+        let offered = settings.packs.filter { $0.bundled && $0.hidden }
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(spacing: 0) {
+                ForEach(Array(inUse.enumerated()), id: \.element.id) { index, pack in
+                    if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
+                    let count = settings.items.filter { $0.packID == pack.id && !$0.hidden && !$0.kept }.count
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            if let draft, draft.id == pack.id {
+                                TextField("Name", text: Binding(get: { draft.name }, set: { self.draft = (pack.id, $0) }))
+                                    .textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
+                                    .focused($naming)
+                                    .onSubmit { model.renamePack(pack, to: draft.name); self.draft = nil }
+                                    .onExitCommand { self.draft = nil }
+                                    .onAppear { naming = true }
+                            } else {
+                                Text(pack.name).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
+                                    .onTapGesture(count: 2) { if !pack.bundled { draft = (pack.id, pack.name) } }
+                                    .help(pack.bundled ? "Comes with the app." : "Double-click to rename.")
+                            }
+                            if let credit = pack.credit {
+                                Text(credit).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1).truncationMode(.tail).help(credit)
+                            }
                         }
-                        if let credit = pack.credit {
-                            Text(credit).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1).truncationMode(.tail).help(credit)
+                        Spacer(minLength: 6)
+                        Text(count == 1 ? "1 sound" : "\(count) sounds").font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
+                        if pack.id != LidSoundPack.mineID {
+                            IconButton("xmark", help: pack.bundled ? "Take the pack out of the list. It stays in the app; Add a pack brings it back."
+                                                                     : "Remove the pack. Its sounds go to Mine.") { model.removePack(pack) }
+                                .accessibilityLabel("Remove the pack \(pack.name)")
                         }
                     }
-                    Spacer(minLength: 6)
-                    Text(count == 1 ? "1 sound" : "\(count) sounds").font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
-                    if pack.bundled {
-                        QuietButton(pack.hidden ? "Show" : "Hide") { model.setPack(pack, hidden: !pack.hidden) }
-                            .help(pack.hidden ? "Put the pack back in the list." : "Put the whole pack away. Its sounds stay in the app; Show brings them back.")
-                    } else if pack.id != LidSoundPack.mineID {
-                        IconButton("xmark", help: "Remove the pack. Its sounds go to Mine.") { model.removePack(pack) }
-                            .accessibilityLabel("Remove the pack \(pack.name)")
-                    }
+                    .padding(.horizontal, 10).frame(minHeight: 36)
                 }
-                .padding(.horizontal, 10).frame(minHeight: 36)
+                Rectangle().fill(theme.hairline).frame(height: 1)
+                if let name = newName {
+                    HStack(spacing: 8) {
+                        Text("New pack").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
+                        TextField("Name", text: Binding(get: { name }, set: { newName = $0 }))
+                            .textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
+                            .focused($naming)
+                            .onSubmit { model.newPack(named: name); newName = nil }
+                            .onExitCommand { newName = nil }
+                            .onAppear { naming = true }
+                    }
+                    .padding(.horizontal, 10).frame(height: 36)
+                } else {
+                    QuietButton("New pack…") { newName = "" }
+                        .help("A pack of your own. Move sounds into it from a row's menu.")
+                        .padding(.horizontal, 4).frame(height: 36).frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            Rectangle().fill(theme.hairline).frame(height: 1)
-            if let name = newName {
-                HStack(spacing: 8) {
-                    Text("New pack").font(TunerTheme.body).foregroundStyle(theme.inkLabel)
-                    TextField("Name", text: Binding(get: { name }, set: { newName = $0 }))
-                        .textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
-                        .focused($naming)
-                        .onSubmit { model.newPack(named: name); newName = nil }
-                        .onExitCommand { newName = nil }
-                        .onAppear { naming = true }
+            .surface(.well, radius: TunerTheme.wellRadius)
+            .clipShape(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous))
+
+            // The packs that come with the app but are not in the list: an offer.
+            if !offered.isEmpty {
+                QuietButton(offering ? "Done" : (offered.count == 1 ? "Add a pack" : "Add a pack (\(offered.count))"), disclosure: !offering) { offering.toggle() }
+                    .help("Packs that come with the app and are not in your list. Add one and its sounds join the list, switched on.")
+                    .padding(.leading, -6)
+                if offering {
+                    VStack(spacing: 0) {
+                        ForEach(Array(offered.enumerated()), id: \.element.id) { index, pack in
+                            if index > 0 { Rectangle().fill(theme.hairline).frame(height: 1) }
+                            let count = settings.items.filter { $0.packID == pack.id && !$0.hidden }.count
+                            HStack(spacing: 8) {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(pack.name).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
+                                    if let credit = pack.credit {
+                                        Text(credit).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1).truncationMode(.tail).help(credit)
+                                    }
+                                }
+                                Spacer(minLength: 6)
+                                Text(count == 1 ? "1 sound" : "\(count) sounds").font(TunerTheme.mono(10)).foregroundStyle(theme.inkTertiary).fixedSize()
+                                QuietButton("Add") { model.setPack(pack, hidden: false) }
+                                    .help("Into the list, its sounds switched on.")
+                            }
+                            .padding(.horizontal, 10).frame(minHeight: 36)
+                        }
+                    }
+                    .surface(.well, radius: TunerTheme.wellRadius)
+                    .clipShape(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous))
+                    .transition(.blurFade)
                 }
-                .padding(.horizontal, 10).frame(height: 36)
-            } else {
-                QuietButton("New pack…") { newName = "" }
-                    .help("A pack of your own. Move sounds into it from a row's menu.")
-                    .padding(.horizontal, 4).frame(height: 36).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .surface(.well, radius: TunerTheme.wellRadius)
-        .clipShape(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous))
         .tunerAnimation(TunerTheme.ease, value: newName == nil)
+        .tunerAnimation(TunerTheme.ease, value: offering)
     }
 }
 

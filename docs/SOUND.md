@@ -169,8 +169,13 @@ rename it: Return keeps it, Escape leaves it; two rows never share a name.
 
 **Packs.** Every sound belongs to one pack. Bundled packs come from `starters.json` (the
 adhkar, and Click, Breath, Hum), each with a `credit` line saying where its audio came
-from, written beside it (rule 6); the user's own sounds live in "Mine", and "New pack…"
-(under Settings, or from a row's "Move to") makes more. "Plays from", above the list, is
+from, written beside it (rule 6), and an `onByDefault` flag: a pack is an offer, not a
+fixture. Click, Breath and Hum start in the list; the adhkar do not, and wait under "Add a
+pack" (Settings → Packs) with their credit, for whoever wants them. Any pack in the list
+comes out with one × (a bundled one goes back to the offer; it never leaves the app), and
+what the user decided about each bundled pack is kept across launches and releases. A pack
+whose sounds are already in a list stays in it when the flag arrives. The user's own sounds
+live in "Mine", and "New pack…" (under Settings, or from a row's "Move to") makes more. "Plays from", above the list, is
 All or one pack: Random and In order work inside what is chosen, and In order keeps its
 place per pack. Under All the list shows a small heading per pack; a sound carried across a
 heading moves into that pack. A row's "…" menu has Hear, Rename, Cut, Move to, Keep for

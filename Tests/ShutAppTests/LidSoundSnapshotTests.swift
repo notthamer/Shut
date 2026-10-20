@@ -203,9 +203,10 @@ final class LidSoundSnapshotTests: XCTestCase {
         packed.moveSound(from: 2, to: 0)
         XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Breath", "Click", "Hum"])
         XCTAssertEqual(packedSound.settings.items.first { $0.displayName == "Breath" }?.packID, "generated", "dropped among the bundled pack's rows: it is theirs now")
-        packed.setPack(packedSound.settings.packs[0], hidden: true)
-        XCTAssertTrue(packed.displayedSounds.isEmpty, "the bundled pack put away: nothing shown")
-        packed.restoreStarterSounds()
+        packed.removePack(packedSound.settings.packs[0])
+        XCTAssertTrue(packed.displayedSounds.isEmpty, "the bundled pack taken out of the list: nothing shown")
+        XCTAssertEqual(packedSound.settings.packs[0].hidden, true, "and offered under Add a pack, never gone from the app")
+        packed.setPack(packedSound.settings.packs[0], hidden: false)
         XCTAssertEqual(packed.displayedSounds.count, 3)
         packedSound.shutDown()
 

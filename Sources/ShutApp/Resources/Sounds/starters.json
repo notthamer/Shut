@@ -4,6 +4,7 @@
       "id": "adhkar",
       "name": "Adhkar",
       "credit": "Recorded by the author of Shut.",
+      "onByDefault": false,
       "sounds": [
         { "name": "توكل على الله", "file": "Adhkar.mp3", "from": 11.2, "to": 13.1 },
         { "name": "اذكر الله يذكرك", "file": "Adhkar.mp3", "from": 8.3, "to": 10.9 },

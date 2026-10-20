@@ -164,9 +164,11 @@ final class PopoverModel: ObservableObject {
         lidSound.settings.packs[index].name = LidSoundLibrary.uniqueName(trimmed, among: lidSound.settings.packs.filter { $0.id != pack.id }.map(\.name))
     }
 
-    /// A user pack goes; its sounds go to Mine, never deleted. Mine itself stays.
+    /// A pack out of the list. A bundled one stays in the app, out of sight, and "Add a pack"
+    /// brings it back; a user pack goes, its sounds to Mine, never deleted. Mine itself stays.
     func removePack(_ pack: LidSoundPack) {
-        guard !pack.bundled, pack.id != LidSoundPack.mineID else { return }
+        if pack.bundled { setPack(pack, hidden: true); return }
+        guard pack.id != LidSoundPack.mineID else { return }
         lidSound.settings.items = lidSound.settings.items.map { var item = $0; if item.packID == pack.id { item.packID = LidSoundPack.mineID }; return item }
         lidSound.settings.packs.removeAll { $0.id == pack.id }
         if lidSound.settings.playsFrom == .pack(pack.id) { lidSound.settings.playsFrom = .all }
