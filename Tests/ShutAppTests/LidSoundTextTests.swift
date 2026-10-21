@@ -18,18 +18,17 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertEqual(LidSoundText.tabLine(situation(whenMuted: .unmute, muted: true)), "3 sounds · random", "it will unmute for it")
         var playing = situation(); playing.playing = "Rain"
         XCTAssertEqual(LidSoundText.tabLine(playing), "Playing Rain…")
-        XCTAssertEqual(LidSoundText.tabLine(situation(shown: 3, candidates: [])), "No sound chosen")
+        XCTAssertEqual(LidSoundText.tabLine(situation(shown: 3, candidates: [])), "Nothing on the lid")
         XCTAssertEqual(LidSoundText.tabLine(situation(shown: 0, candidates: [])), "No sounds yet")
-        var scoped = situation(); scoped.scopeName = "Adhkar"
-        XCTAssertEqual(LidSoundText.tabLine(scoped), "Adhkar · random")
-        XCTAssertEqual(LidSoundText.copy(scoped).headline, "Closing the lid plays one of 3 Adhkar sounds.")
-        var empty = situation(candidates: []); empty.scopeName = "Voices"
-        XCTAssertEqual(LidSoundText.tabLine(empty), "Nothing to play in Voices")
-        XCTAssertEqual(LidSoundText.copy(empty).detail, "Nothing to play in Voices: switch a sound on, or choose All.")
-        XCTAssertEqual(LidSoundText.libraryLine(0), "Nothing kept for later.")
-        XCTAssertEqual(LidSoundText.libraryLine(2), "2 sounds kept for later, out of the list.")
-        XCTAssertEqual(LidSoundText.offersLine([(name: "Adhkar", count: 5)]), "Adhkar · 5 sounds")
-        XCTAssertEqual(LidSoundText.offersLine([(name: "Adhkar", count: 5), (name: "Bells", count: 1)]), "Adhkar · 5 sounds, Bells · 1 sound")
+        XCTAssertEqual(LidSoundText.shelfLine(onLid: 3, of: 8), "3 of 8")
+        XCTAssertEqual(LidSoundText.shelfLine(onLid: 8, of: 8), "All 8")
+        XCTAssertEqual(LidSoundText.shelfLine(onLid: 0, of: 1), "0 of 1")
+        XCTAssertEqual(LidSoundText.shelfLine(onLid: 0, of: 0), "Empty")
+        XCTAssertEqual(LidSoundText.timingSummary(startDegrees: 60, withEffect: true, playsToEnd: false), "Starts at 60°, with the screen effect")
+        XCTAssertEqual(LidSoundText.timingSummary(startDegrees: 45, withEffect: false, playsToEnd: true), "Starts at 45° · plays to the end")
+        XCTAssertEqual(LidSoundText.timingSummary(startDegrees: nil, withEffect: false, playsToEnd: false), "Starts as the lid comes down")
+        XCTAssertEqual(LidSoundText.bundledPacksLine(packs: ["Starters", "Pops", "Toys", "Machines", "Retro"], sounds: 75), "Starters, Pops, Toys and 2 more · 75 sounds")
+        XCTAssertEqual(LidSoundText.bundledPacksLine(packs: ["Starters"], sounds: 3), "Starters · 3 sounds")
         var edges = situation(candidates: ["Rain"]); edges.capability = .lidStateOnly
         XCTAssertEqual(LidSoundText.tabLine(edges), "Rain · after the lid shuts")
     }
@@ -42,7 +41,8 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertEqual(LidSoundText.copy(angled).detail, "It starts as the lid passes 45° and ends as it lands.")
         angled.playsToEnd = true
         XCTAssertEqual(LidSoundText.copy(angled).detail, "It starts as the lid passes 45° and plays to the end; your Mac sleeps right after.")
-        XCTAssertEqual(LidSoundText.partsFound(3), "3 parts, by the silence between them. Name them, then add.")
+        XCTAssertEqual(LidSoundText.partsFound(3), "3 parts, by the silence between them. Click one and drag the handles to fix it, × leaves one out; name them, then add.")
+        XCTAssertEqual(LidSoundText.partsSuggested(5), "5 parts, by the silence between them: one sound each, in one go.")
         var pending = situation(); pending.sleepPendingSeconds = 7
         XCTAssertEqual(LidSoundText.tabLine(pending), "Still going to sleep")
         XCTAssertEqual(LidSoundText.copy(pending).headline, "Your Mac is still going to sleep from the last close.")
@@ -59,7 +59,7 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertTrue(LidSoundText.copy(situation(whenMuted: .unmute, muted: true)).detail.contains("unmutes for the sound"))
         var noSwitch = situation(whenMuted: .unmute, muted: true); noSwitch.canUnmute = false
         XCTAssertTrue(LidSoundText.copy(noSwitch).detail.contains("no mute switch"))
-        XCTAssertEqual(LidSoundText.copy(situation(shown: 3, candidates: [])).detail, "No sound is switched on. Switch one on below.")
+        XCTAssertEqual(LidSoundText.copy(situation(shown: 3, candidates: [])).detail, "Nothing is on the lid. Drag a sound onto it from a pack, or press + beside one.")
         XCTAssertEqual(LidSoundText.copy(situation(shown: 0, candidates: [])).detail, "No sounds yet. Add one below.")
         var output = situation(candidates: ["Rain"]); output.outputName = "AirPods Pro"; output.onOpen = true
         XCTAssertEqual(LidSoundText.copy(output).detail,

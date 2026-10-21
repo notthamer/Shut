@@ -179,6 +179,9 @@ final class AwakeSnapshotTests: XCTestCase {
         XCTAssertEqual(slides.map(\.stage), [.eyesWake, .lidAnswer, .twoWays, .batteryAndReceipt])
         XCTAssertNil(WhatsNewTour.slides(for: "0.2.1"), "the changelog's words, as before")
         XCTAssertNotNil(WhatsNewTour.slides(for: "0.3.1"), "a fix of 0.3 still shows what 0.3 brought")
+        XCTAssertNotNil(WhatsNewTour.slides(for: "0.4.1", seenBefore: "0.3.0"), "straight from 0.3 to 0.4.1: the 0.4 tour")
+        XCTAssertNil(WhatsNewTour.slides(for: "0.4.1", seenBefore: "0.4.0"), "already saw the 0.4 tour: 0.4.1's own words")
+        XCTAssertNil(WhatsNewTour.slides(for: "0.4.1", seenBefore: "0.4.1"), "the same version again: the words")
         XCTAssertEqual(WhatsNewTour.slides(for: "0.4.0")?.map(\.stage), [.soundPlays], "0.4 brings Lid sound")
         let soundSlide = NSHostingView(rootView: WhatsNewTourView(slides: WhatsNewTour.slides(for: "0.4.0")!, version: "0.4.0"))
         soundSlide.appearance = TunerTheme.appearance
@@ -325,6 +328,34 @@ final class AwakeSnapshotTests: XCTestCase {
         watch.dismissSlow()
         XCTAssertNil(carded.sleep.slow)
         cardedAwake.shutDown()
+
+        // Known in advance: the laggard is named while it runs, before any sleep, with Stop;
+        // while it shows, the after-the-fact card for the same names stays away.
+        let early = UserDefaults(suiteName: "SleepCard-\(UUID().uuidString)")!
+        var stopped: [String] = []
+        let seen = SleepWatch(defaults: early, powerLog: { SleepWatchTests.powerLog },
+                              runningBundleIDs: { ["com.logi.ghub.agent", "com.logi.cp-dev-mgr"] }, stopper: { stopped.append($0.name) })
+        seen.refreshLaggards()
+        XCTAssertEqual(seen.running.map(\.name), ["Logitech Options+", "Logitech G Hub"])
+        seen.sleepBegan(now: t0); seen.woke(now: t0.addingTimeInterval(31))
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertNotNil(seen.slow, "the slow sleep is still noted")
+        let (warned, warnedAwake) = try makeModel(on: true, reasons: [], asking: [], sleepWatch: seen)
+        warned.page = .awake
+        try render(warned, name: "page-laggards")
+        warned.page = .sound
+        try render(warned, name: "sound-laggards")
+        seen.sleepBegan(now: Date().addingTimeInterval(-12))
+        warned.lidSound.settings.isOn = true
+        XCTAssertTrue(LidSoundText.copy(warned.lidSoundSituation()).detail.contains("Logitech Options+ and Logitech G Hub are holding it up"), "named during the wait, not after")
+        XCTAssertTrue(AwakeText.hero(state: warnedAwake.arbiter.state, reasons: [], conditions: warnedAwake.arbiter.conditions, limits: warnedAwake.arbiter.limits,
+                                     sleepPendingSeconds: warned.sleepPendingSeconds(), sleepHeldBy: seen.running.map(\.name), now: Date()).detail.contains("are holding it up"))
+        seen.woke(now: Date())
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        seen.stop(seen.running[0])
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertEqual(stopped, ["Logitech Options+"])
+        warnedAwake.shutDown()
     }
 
     // MARK: The first run

@@ -149,9 +149,16 @@ struct PopoverFooter: View {
                     HStack(spacing: 8) {
                         Text("Auto-update").font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                         SmallPill(isOn: on) { automaticUpdates = !on; model.setAutomaticUpdates(!on) }
-                            .help("Check for a new version about once a day. Off: only when you choose Check for Updates.")
+                            .help("Check for a new version about once an hour, and at launch. Off: only when you press Check for updates.")
                     }
                 }
+                // The same check as in the footer, here beside the switch it belongs to. A press
+                // asks Sparkle now, whatever its schedule says, and Sparkle answers in its own
+                // window. Dimmed in a copy built from source, which has no updater.
+                QuietButton("Check for updates") { model.checkForUpdates() }
+                    .disabled(automaticUpdates == nil)
+                    .help(automaticUpdates == nil ? "This copy was built from source, so it has no updater. The release from GitHub checks for updates."
+                                                  : "Look for a new version right away. Shut says what it found.")
                 Spacer()
                 // The tour again, for whoever pressed Later (it is in the menu bar menu too).
                 if WhatsNewTour.slides(for: InstanceVersion.current.short) != nil || WhatsNew.bundled() != nil {
@@ -162,6 +169,14 @@ struct PopoverFooter: View {
                 IconButton("gearshape", help: "Open at login, Dock icon, updates.") { showingSettings = true }
                     .accessibilityLabel("App settings")
                 Spacer()
+                // In the open, beside the version: for whoever heard of a release before the
+                // hourly check found it. Only a release-signed build has an updater to ask; a
+                // copy built from source shows the button dimmed, and says why, so the footer is
+                // the same footer in both.
+                QuietButton("Check for updates") { model.checkForUpdates() }
+                    .disabled(automaticUpdates == nil)
+                    .help(automaticUpdates == nil ? "This copy was built from source, so it has no updater. The release from GitHub checks for updates."
+                                                  : "Look for a new version right away. Shut says what it found.")
                 VersionMark()
                 QuietButton("Quit", action: model.quit)
                     .keyboardShortcut("q", modifiers: .command)

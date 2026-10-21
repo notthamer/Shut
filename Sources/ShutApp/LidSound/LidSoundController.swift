@@ -178,8 +178,8 @@ final class LidSoundController: ObservableObject {
         perform(cue.closeEnded())
     }
 
-    /// The sounds a close may pick from, in the scope chosen.
-    var candidates: [LidSoundItem] { library.candidates(settings.items, scope: settings.playsFrom, hiddenPacks: settings.hiddenPackIDs) }
+    /// The sounds a close may pick from: on the lid, and on disk.
+    var candidates: [LidSoundItem] { library.candidates(settings.items) }
 
     /// What the opening would play right now, if anything.
     private func openingPick() -> LidSoundItem? {
@@ -216,7 +216,7 @@ final class LidSoundController: ObservableObject {
     /// "Try it", and the Volume slider let go: the close's own pick, at the volume set.
     func playClosePreview() {
         guard let pick = LidSoundLibrary.pick(from: candidates, mode: settings.mode, lastPickID: settings.lastPickID,
-                                              nextIndex: settings.nextIndex(for: settings.playsFrom)) else { return }
+                                              nextIndex: settings.nextIndex) else { return }
         playNow(pick.item, reason: "try it")
     }
 
@@ -269,13 +269,10 @@ final class LidSoundController: ObservableObject {
         let candidates = self.candidates
         var next: String?
         if settings.mode == .inOrder, let pick = LidSoundLibrary.pick(from: candidates, mode: .inOrder, lastPickID: nil,
-                                                                      nextIndex: settings.nextIndex(for: settings.playsFrom)) {
+                                                                      nextIndex: settings.nextIndex) {
             next = pick.item.displayName
         }
-        var scopeName: String?
-        if case .pack(let id) = settings.playsFrom { scopeName = settings.pack(id)?.name ?? id }
-        return LidSoundText.Situation(isOn: settings.isOn, shownCount: settings.shown.count, candidates: candidates.map(\.displayName),
-                                      scopeName: scopeName, keptCount: settings.kept.count,
+        return LidSoundText.Situation(isOn: settings.isOn, shownCount: settings.items.count, candidates: candidates.map(\.displayName),
                                       mode: settings.mode, whenMuted: settings.whenMuted, muted: isMuted, canUnmute: canUnmute,
                                       playing: playing, outputName: outputName, onOpen: settings.onOpen,
                                       capability: capability(), next: next, startDegrees: Int(startDegrees.rounded()),
@@ -289,7 +286,7 @@ final class LidSoundController: ObservableObject {
         switch command {
         case .prepare:
             guard let pick = LidSoundLibrary.pick(from: candidates, mode: settings.mode, lastPickID: settings.lastPickID,
-                                                  nextIndex: settings.nextIndex(for: settings.playsFrom)) else {
+                                                  nextIndex: settings.nextIndex) else {
                 cue.finished(); return
             }
             guard let player = make(pick.item) else { cue.finished(); return }
@@ -307,7 +304,7 @@ final class LidSoundController: ObservableObject {
             settings.lastPickID = item.id
             if settings.mode == .inOrder {
                 let candidates = self.candidates
-                if let index = candidates.firstIndex(where: { $0.id == item.id }) { settings.setNextIndex((index + 1) % max(candidates.count, 1), for: settings.playsFrom) }
+                if let index = candidates.firstIndex(where: { $0.id == item.id }) { settings.nextIndex = (index + 1) % max(candidates.count, 1) }
             }
             Log.sound.info("playing \(item.displayName, privacy: .public)")
         case .fade(let seconds):

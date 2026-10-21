@@ -31,6 +31,7 @@ final class PopoverModel: ObservableObject {
     /// nil when there is no updater (a build not signed for release): the switch is hidden.
     var automaticUpdates: () -> Bool? = { nil }
     var setAutomaticUpdates: (Bool) -> Void = { _ in }
+    var checkForUpdates: () -> Void = {}
     /// The featured dials for a style, drawn with Tuner rows.
     var featuredDials: (String) -> AnyView = { _ in AnyView(EmptyView()) }
     /// The rest of a style's dials, grouped in folders, for "All dials".
@@ -102,49 +103,108 @@ final class PopoverModel: ObservableObject {
 
     // MARK: Lid sound
 
+    /// Where an added sound goes: onto the lid (and into Mine, since every sound has a pack),
+    /// or into one pack, where it waits off the lid like anything else put in a playlist.
+    enum SoundDestination: Equatable {
+        case lid
+        case pack(LidSoundPack)
+        var packID: String { if case .pack(let pack) = self { return pack.id } else { return LidSoundPack.mineID } }
+        var packName: String? { if case .pack(let pack) = self { return pack.name } else { return nil } }
+        var onLid: Bool { self == .lid }
+    }
     /// "Add a sound…": the file panel, supplied by the app (a test leaves it empty).
-    var addSounds: () -> Void = {}
+    var addSounds: (SoundDestination) -> Void = { _ in }
     /// The folded Settings on the Lid sound page.
     @Published var showingSoundSettings = false
     /// One line under the list after an import that was refused; nil when there is none.
     @Published var importNote: String?
     /// A row whose cut editor is open, for a test that draws the page.
     @Published var cuttingSoundForTest: UUID?
-    /// The library, folded under the list.
-    @Published var showingLibrary = false
-    /// "More from Shut" is open: the bundled packs not in the list, each one click from it.
-    @Published var showingOffers = false
+    /// The pack open under Packs, one at a time; nil when all are closed.
+    @Published var openPackID: String?
+    /// The folded Timing under the stage.
+    @Published var showingSoundTiming = false
+    /// "From Shut" is open: the packs that came with the app, under the user's own.
+    @Published var showingBundledPacks = false
+    /// Edit, on the stage: a check beside each row, and the ticked ones come off the lid at once.
+    @Published var editingStage = false { didSet { if !editingStage { stageSelection = [] } } }
+    @Published var stageSelection: Set<UUID> = []
     /// "New pack…" was chosen for this sound: a name is being typed for the pack.
     @Published var newPackFor: UUID?
 
-    /// The rows, in pack order (Mine, then the user's packs, then the bundled ones as the
-    /// manifest lists them), each pack keeping its own order; with a pack chosen, that pack only.
-    var displayedSounds: [LidSoundItem] {
-        let settings = lidSound.settings
-        let order = Dictionary(uniqueKeysWithValues: settings.packs.enumerated().map { ($1.id, $0) })
-        var rows = settings.shown
-        if case .pack(let id) = settings.playsFrom { rows = rows.filter { $0.packID == id } }
-        return rows.enumerated().sorted { a, b in
-            let pa = order[a.element.packID] ?? Int.max, pb = order[b.element.packID] ?? Int.max
-            return pa != pb ? pa < pb : a.offset < b.offset
-        }.map(\.element)
+    /// The stage: what a close picks from, in the order In order walks.
+    var stage: [LidSoundItem] { lidSound.settings.onTheLid }
+
+    /// The sounds on a shelf, in list order.
+    func shelf(_ packID: String) -> [LidSoundItem] { lidSound.settings.shelf(packID) }
+
+    /// + and ✓: a sound onto the lid, or off it, onto its shelf. Nothing else about it changes.
+    func setOnLid(_ item: LidSoundItem, _ on: Bool) {
+        guard item.enabled != on else { return }
+        var changed = item; changed.enabled = on
+        lidSound.settings.update(changed)
     }
 
-    /// The packs that came with the app and are not in the list: offered under the list,
-    /// never pressed on anyone.
-    var offeredPacks: [LidSoundPack] { lidSound.settings.packs.filter { $0.bundled && $0.hidden } }
-
-    /// Keep for later: out of the list and out of every pick, file and all kept.
-    func keep(_ item: LidSoundItem) {
-        var kept = item; kept.kept = true
-        lidSound.settings.update(kept)
+    /// "Add all" / "Take all off" under an open pack: every sound in it, at once.
+    func setShelf(_ pack: LidSoundPack, onLid: Bool) {
+        lidSound.settings.items = lidSound.settings.items.map { var item = $0; if item.packID == pack.id { item.enabled = onLid }; return item }
     }
 
-    /// Back from the library, into its pack, switched on.
-    func useAgain(_ item: LidSoundItem) {
-        var back = item; back.kept = false; back.enabled = true
-        if lidSound.settings.pack(back.packID) == nil || lidSound.settings.pack(back.packID)?.hidden == true { back.packID = LidSoundPack.mineID }
-        lidSound.settings.update(back)
+    func toggleStageSelection(_ id: UUID) {
+        if stageSelection.contains(id) { stageSelection.remove(id) } else { stageSelection.insert(id) }
+    }
+
+    /// Every row on the stage ticked, or none.
+    func selectWholeStage(_ all: Bool) { stageSelection = all ? Set(stage.map(\.id)) : [] }
+
+    /// Edit's one action: the ticked sounds off the lid, back in their packs; then Edit is done.
+    func removeSelectedFromLid() {
+        let chosen = stageSelection
+        lidSound.settings.items = lidSound.settings.items.map { var item = $0; if chosen.contains(item.id) { item.enabled = false }; return item }
+        editingStage = false
+    }
+
+    /// A whole pack dropped on the stage at `index`: every sound in it onto the lid, together,
+    /// in list order, at that place among the sounds already there. Ones of the pack's that
+    /// were on the lid already move into the group.
+    func putPackOnLid(_ packID: String, at index: Int) {
+        var items = lidSound.settings.items
+        guard items.contains(where: { $0.packID == packID }) else { return }
+        // Where in the rest of the stage the group goes: the gap counted rows of this pack too.
+        let stageBefore = items.filter(\.enabled)
+        let target = stageBefore.prefix(max(0, min(index, stageBefore.count))).filter { $0.packID != packID }.count
+        for i in items.indices where items[i].packID == packID { items[i].enabled = true }
+        let pack = items.filter { $0.packID == packID }   // after the switch-on, so each is written back on
+        let slots = items.indices.filter { items[$0].enabled }
+        let others = slots.map { items[$0] }.filter { $0.packID != packID }
+        let stage = Array(others.prefix(target)) + pack + Array(others.dropFirst(target))
+        for (slot, item) in zip(slots, stage) { items[slot] = item }
+        lidSound.settings.items = items
+    }
+
+    /// "Play this pack": the stage becomes exactly this pack, in list order, the way choosing
+    /// a playlist replaces what was playing.
+    func playOnly(_ pack: LidSoundPack) {
+        lidSound.settings.items = lidSound.settings.items.map { var item = $0; item.enabled = item.packID == pack.id; return item }
+    }
+
+    /// A sound dropped on the stage at `index` (a place between its rows, 0…count): onto the
+    /// lid if it was not, and into that place among the sounds that are. The sounds on their
+    /// shelves keep their places in the list.
+    func putOnLid(_ id: UUID, at index: Int) {
+        var items = lidSound.settings.items
+        guard let at = items.firstIndex(where: { $0.id == id }) else { return }
+        let wasOnLid = items[at].enabled
+        items[at].enabled = true
+        let slots = items.indices.filter { items[$0].enabled }
+        var stage = slots.map { items[$0] }
+        guard let from = stage.firstIndex(where: { $0.id == id }) else { return }
+        var to = index
+        if wasOnLid, index > from { to -= 1 }   // the gap counted the row itself
+        to = max(0, min(stage.count - 1, to))
+        stage.insert(stage.remove(at: from), at: to)
+        for (slot, item) in zip(slots, stage) { items[slot] = item }
+        lidSound.settings.items = items
     }
 
     func moveSound(_ item: LidSoundItem, to packID: String) {
@@ -172,31 +232,24 @@ final class PopoverModel: ObservableObject {
         lidSound.settings.packs[index].name = LidSoundLibrary.uniqueName(trimmed, among: lidSound.settings.packs.filter { $0.id != pack.id }.map(\.name))
     }
 
-    /// A pack out of the list. A bundled one stays in the app, out of sight, and "Add a pack"
-    /// brings it back; a user pack goes, its sounds to Mine, never deleted. Mine itself stays.
+    /// A user's pack goes, its sounds to Mine, never deleted. A bundled pack and Mine stay:
+    /// they are shelves, and a shelf is not something to remove.
     func removePack(_ pack: LidSoundPack) {
-        if pack.bundled { setPack(pack, hidden: true); return }
-        guard pack.id != LidSoundPack.mineID else { return }
+        guard !pack.bundled, pack.id != LidSoundPack.mineID else { return }
         lidSound.settings.items = lidSound.settings.items.map { var item = $0; if item.packID == pack.id { item.packID = LidSoundPack.mineID }; return item }
         lidSound.settings.packs.removeAll { $0.id == pack.id }
-        if lidSound.settings.playsFrom == .pack(pack.id) { lidSound.settings.playsFrom = .all }
+        if openPackID == pack.id { openPackID = nil }
     }
 
-    /// A bundled pack put away whole, or brought back.
-    func setPack(_ pack: LidSoundPack, hidden: Bool) {
-        guard pack.bundled, let index = lidSound.settings.packs.firstIndex(where: { $0.id == pack.id }) else { return }
-        lidSound.settings.packs[index].hidden = hidden
-        if hidden, lidSound.settings.playsFrom == .pack(pack.id) { lidSound.settings.playsFrom = .all }
-        // The last offer taken: the fold goes, and comes back folded.
-        if offeredPacks.isEmpty { showingOffers = false }
-    }
-
-    /// Copies the files in and says, once, why any was refused.
-    func importSounds(_ urls: [URL]) {
+    /// Copies the files in, to the lid or into a pack, and says, once, why any was refused.
+    func importSounds(_ urls: [URL], to destination: SoundDestination = .lid) {
         var notes: [String] = []
         for url in urls {
             switch lidSound.library.importFile(url, existing: lidSound.settings.items) {
-            case .success(let item):
+            case .success(let imported):
+                var item = imported
+                item.packID = destination.packID
+                item.enabled = destination.onLid
                 lidSound.settings.items.append(item)
                 if item.isLong, let duration = item.duration { notes.append(LidSoundText.longNote(name: item.displayName, seconds: duration)) }
             case .failure(let error):
@@ -208,12 +261,12 @@ final class PopoverModel: ObservableObject {
         importNote = notes.isEmpty ? nil : notes.joined(separator: " ")
     }
 
-    /// A row's ×: an own file is deleted, a starter is hidden so it can come back.
+    /// Remove: an own file is deleted, with its row. A bundled sound has nothing to delete
+    /// and cannot leave the app: it comes off the lid and waits on its shelf.
     func removeSound(_ item: LidSoundItem) {
         lidSound.library.remove(item, keptBy: lidSound.settings.items)
         if item.fromManifest {
-            var hidden = item; hidden.hidden = true
-            lidSound.settings.update(hidden)
+            setOnLid(item, false)
         } else {
             lidSound.settings.items.removeAll { $0.id == item.id }
         }
@@ -261,26 +314,16 @@ final class PopoverModel: ObservableObject {
         lidSound.settings.update(renamed)
     }
 
-    /// A row carried to a new place, by its position among the rows displayed. Landing among
-    /// another pack's rows moves the sound into that pack. Rows not displayed (hidden, kept,
-    /// another pack while one is chosen) keep out of the way at the end.
+    /// A row carried to a new place on the lid, by its position there. The sounds on the lid
+    /// take one another's places in the list; the ones on their shelves stay where they are.
     func moveSound(from: Int, to: Int) {
-        var rows = displayedSounds
-        guard rows.indices.contains(from), rows.indices.contains(to), from != to else { return }
-        var item = rows.remove(at: from)
-        rows.insert(item, at: to)
-        let neighbour = to > 0 ? rows[to - 1] : (rows.count > 1 ? rows[1] : nil)
-        if let neighbour, neighbour.packID != item.packID { item.packID = neighbour.packID; rows[to] = item }
-        let displayed = Set(rows.map(\.id))
-        lidSound.settings.items = rows + lidSound.settings.items.filter { !displayed.contains($0.id) }
-    }
-
-    func restoreStarterSounds() {
-        for var item in lidSound.settings.items where item.fromManifest && item.hidden {
-            item.hidden = false; item.enabled = true
-            lidSound.settings.update(item)
-        }
-        for pack in lidSound.settings.packs where pack.bundled && pack.hidden { setPack(pack, hidden: false) }
+        var items = lidSound.settings.items
+        let slots = items.indices.filter { items[$0].enabled }
+        var stage = slots.map { items[$0] }
+        guard stage.indices.contains(from), stage.indices.contains(to), from != to else { return }
+        stage.insert(stage.remove(at: from), at: to)
+        for (slot, item) in zip(slots, stage) { items[slot] = item }
+        lidSound.settings.items = items
     }
 
     /// "Try it": the sound the next close would play, and the close itself in the preview.
@@ -303,6 +346,7 @@ final class PopoverModel: ObservableObject {
         var situation = lidSound.situation()
         situation.sleepPendingSeconds = sleepPendingSeconds(now: now)
         situation.slowSleepers = sleep.slow?.names ?? []
+        situation.sleepHeldBy = sleep.running.map(\.name)
         return situation
     }
 

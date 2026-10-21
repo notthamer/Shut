@@ -5,7 +5,8 @@ import Tuner
 /// On, they breathe, slowly; while a sound plays they move to it. On the page they lean
 /// toward the pointer when it comes near, and a click on them plays the sound. Every
 /// movement is a pure function of time (`heights(at:)`), so only a glyph that moves has a
-/// clock, only while it is on screen, and Reduce Motion stills it.
+/// clock, only while it is on screen, and Reduce Motion stills it. Thirty frames a second,
+/// breathing or playing: at fifteen the breath was seen to step.
 struct LidSoundGlyph: View {
     let playing: Bool
     let height: CGFloat
@@ -21,6 +22,7 @@ struct LidSoundGlyph: View {
     static let reach: CGFloat = 44
     @State private var hover: Hover?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.displayScale) private var scale
 
     /// Where the pointer is across the glyph, -1 (left) to 1 (right), and since when, so the
     /// lean eases in over a moment instead of jumping.
@@ -62,7 +64,7 @@ struct LidSoundGlyph: View {
     var body: some View {
         Group {
             if moves {
-                TimelineView(.periodic(from: .now, by: playing ? 1 / 30 : 1 / 15)) { context in
+                TimelineView(.periodic(from: .now, by: 1 / 30)) { context in
                     bars(Self.heights(at: context.date.timeIntervalSinceReferenceDate, playing: playing, breathing: breathes, hover: hover))
                 }
             } else {
@@ -94,13 +96,18 @@ struct LidSoundGlyph: View {
         .help(onTap == nil ? "" : "Hear the sound the next close would play.")
     }
 
-    private var width: CGFloat { height / 4 }
-    private var spacing: CGFloat { width * 0.75 }
+    private var width: CGFloat { snapped(height / 4) }
+    private var spacing: CGFloat { snapped(width * 0.75) }
+
+    /// A length on the device pixel grid. A capsule whose ends fall between pixels is drawn
+    /// with a blurred edge, and as the bars breathe that blur moves, which reads as rough;
+    /// on the grid every frame has the same crisp edge.
+    private func snapped(_ points: CGFloat) -> CGFloat { (points * scale).rounded() / scale }
 
     private func bars(_ fractions: [CGFloat]) -> some View {
         HStack(alignment: .center, spacing: spacing) {
             ForEach(Array(fractions.enumerated()), id: \.offset) { _, fraction in
-                Capsule().fill(tint).frame(width: width, height: max(width, height * fraction))
+                Capsule().fill(tint).frame(width: width, height: snapped(max(width, height * fraction)))
             }
         }
         .frame(height: height)

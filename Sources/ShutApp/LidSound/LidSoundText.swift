@@ -8,14 +8,10 @@ enum LidSoundText {
     /// What the page knows, gathered once per draw.
     struct Situation: Equatable {
         var isOn: Bool
-        /// Every row on the page (hidden starters excluded).
+        /// Every sound the app has, on the lid or on a shelf.
         var shownCount: Int
-        /// The sounds a close may pick from, in order; names only.
+        /// The sounds on the lid, in order; names only.
         var candidates: [String]
-        /// The pack chosen under "Plays from", by name; nil for all packs.
-        var scopeName: String? = nil
-        /// Sounds kept for later, in the library.
-        var keptCount = 0
         var mode: LidSoundSettings.Mode
         var whenMuted: LidSoundSettings.WhenMuted
         var muted: Bool
@@ -36,6 +32,8 @@ enum LidSoundText {
         var sleepPendingSeconds: Int? = nil
         /// The last sleep was held up by these (plain names), for one line of the answer.
         var slowSleepers: [String] = []
+        /// Known laggards running now (plain names): named while a sleep waits, not after.
+        var sleepHeldBy: [String] = []
     }
 
     /// "Muted" is the fact that matters: with Stay quiet, no sound will come, whatever is set.
@@ -48,9 +46,8 @@ enum LidSoundText {
         if s.sleepPendingSeconds != nil { return "Still going to sleep" }
         if silencedByMute(s) { return "Muted" }
         if s.shownCount == 0 { return "No sounds yet" }
-        guard let first = s.candidates.first else { return s.scopeName.map { "Nothing to play in \($0)" } ?? "No sound chosen" }
+        guard let first = s.candidates.first else { return "Nothing on the lid" }
         if s.candidates.count == 1 { return s.capability == .lidStateOnly ? "\(first) · after the lid shuts" : "\(first) · On" }
-        if let scope = s.scopeName { return "\(scope) · \(s.mode == .random ? "random" : "in order")" }
         return "\(s.candidates.count) sounds · \(s.mode == .random ? "random" : "in order")"
     }
 
@@ -65,7 +62,7 @@ enum LidSoundText {
     static func copy(_ s: Situation) -> Copy {
         if s.isOn, let seconds = s.sleepPendingSeconds {
             return Copy(headline: "Your Mac is still going to sleep from the last close.",
-                        detail: "Closing the lid again does nothing until that finishes: \(seconds) s so far. The sound still plays.")
+                        detail: "Closing the lid again does nothing until that finishes: \(seconds) s so far.\(AwakeText.heldByLine(s.sleepHeldBy)) The sound still plays.")
         }
         guard s.isOn else {
             return Copy(headline: silent,
@@ -78,13 +75,9 @@ enum LidSoundText {
         }
         if s.shownCount == 0 { return Copy(headline: silent, detail: "No sounds yet. Add one below.") }
         guard let first = s.candidates.first else {
-            return Copy(headline: silent, detail: s.scopeName.map { "Nothing to play in \($0): switch a sound on, or choose All." }
-                                                  ?? "No sound is switched on. Switch one on below.")
+            return Copy(headline: silent, detail: "Nothing is on the lid. Drag a sound onto it from a pack, or press + beside one.")
         }
-        // The pack's name goes before "sounds", not after: "5 Adhkar sounds" keeps the line
-        // to two, where "5 sounds from Adhkar in turn" ran to three and pushed the button
-        // out of the band.
-        let sounds = s.scopeName.map { "\(s.candidates.count) \($0) sounds" } ?? "\(s.candidates.count) sounds"
+        let sounds = "\(s.candidates.count) sounds"
         let headline: String
         if s.candidates.count == 1 {
             headline = "Closing the lid plays \(first)."
@@ -156,7 +149,11 @@ enum LidSoundText {
     static func cutName(of source: String, from: TimeInterval, to: TimeInterval) -> String {
         "\(source) · \(clockText(from))–\(clockText(to))"
     }
-    static let cutAbout = "Drag the edges around the part you want, give it a name, and add it as a sound of its own. Cut as many parts from one file as you like; they share the file."
+    static let cutAbout = "Drag the two handles to where the part begins and ends, or drag the part itself to slide it; let go to hear it. Then name it and add it as a sound of its own. Cut as many parts from one file as you like; they share the file."
+    /// The offer under the shape, before the user asks: what the silences would make of it.
+    static func partsSuggested(_ count: Int) -> String {
+        "\(count) parts, by the silence between them: one sound each, in one go."
+    }
     static func cutRefusal(_ error: LidSoundLibrary.CutError) -> String {
         switch error {
         case .tooShort: return "A part is half a second at least."
@@ -166,7 +163,8 @@ enum LidSoundText {
     static let playsToEndAbout = "Your Mac waits for the sound, then sleeps at once. Off: a short fade as the lid lands, whatever the length."
     static let findPartsAbout = "Shut looks for the silences and marks a part between each. Name them, then add them all at once."
     static func partsFound(_ count: Int) -> String {
-        count <= 1 ? "No silence to split at: it is one part. Drag the edges instead." : "\(count) parts, by the silence between them. Name them, then add."
+        count <= 1 ? "No silence to split at: it is one part. Drag the handles instead."
+                   : "\(count) parts, by the silence between them. Click one and drag the handles to fix it, × leaves one out; name them, then add."
     }
     static func partName(_ index: Int) -> String { "Part \(index + 1)" }
     static let clipAbout = "Plays from here, for \(Int(LidSoundLibrary.clipLength)) s at most. How much is heard depends on where the lid starts it and how fast it closes."
@@ -184,21 +182,32 @@ enum LidSoundText {
         }
     }
 
-    /// The folded library row.
-    static func libraryLine(_ count: Int) -> String {
-        switch count {
-        case 0: return "Nothing kept for later."
-        case 1: return "1 sound kept for later, out of the list."
-        default: return "\(count) sounds kept for later, out of the list."
-        }
-    }
     /// The folded "More from Shut" row: what waits there.
-    static func offersLine(_ packs: [(name: String, count: Int)]) -> String {
-        packs.map { "\($0.name) · \($0.count == 1 ? "1 sound" : "\($0.count) sounds")" }.joined(separator: ", ")
+    /// The shelf heading's count of what is on the lid: "3 of 8". Short, since the heading
+    /// also holds All on and All off, and the well's help says what the count is of.
+    static func shelfLine(onLid: Int, of count: Int) -> String {
+        count == 0 ? "Empty" : (onLid == count ? "All \(count)" : "\(onLid) of \(count)")
     }
-    static let offersAbout = "Packs that come with Shut and are not in your list. Add one and its sounds join the list, switched on; the × beside a pack under Settings puts it back here."
-    static let keepAbout = "Out of the list and out of every pick, file and all kept; one click from coming back."
-    static let addHint = "Choose audio files: mp3, m4a, wav or aiff. Each is copied into Shut, so the original can move or go. A long one plays from where you choose. Files can also be dropped on the list."
+    static let onTheLidAbout = "The sounds a close may play, in the order In order walks. Hold a row a moment, then drag to reorder. Drag a sound here from a pack, or drop audio files to add them."
+    static let packsAbout = "Your packs: Mine, and the ones you make. Open one, then drag a sound onto the lid or press +. Play this pack makes the lid play that pack and nothing else."
+    static let stageEmpty = "Nothing on the lid. Drag a sound here from a pack, or press + beside it."
+    static let shelfEmpty = "Nothing here yet. Add a sound… below, or drop audio files on this pack."
+    /// The folded "From Shut" line: what waits in it.
+    static func bundledPacksLine(packs: [String], sounds: Int) -> String {
+        let named = packs.prefix(3).joined(separator: ", ")
+        let rest = packs.count - min(3, packs.count)
+        let names = rest > 0 ? "\(named) and \(rest) more" : named
+        return "\(names) · \(sounds == 1 ? "1 sound" : "\(sounds) sounds")"
+    }
+    static let bundledPacksAbout = "The packs that came with Shut. Open one, then drag a sound onto the lid or press +. Your own packs are above, where you put them."
+    /// The folded Timing's one line: where the sound begins.
+    static func timingSummary(startDegrees: Int?, withEffect: Bool, playsToEnd: Bool) -> String {
+        var line = startDegrees.map { "Starts at \($0)°" } ?? "Starts as the lid comes down"
+        if withEffect { line += ", with the screen effect" }
+        if playsToEnd { line += " · plays to the end" }
+        return line
+    }
+    static let addHint = "Choose audio files: mp3, m4a, wav or aiff. They go straight onto the lid, in Mine, no pack to choose. Each is copied into Shut, so the original can move or go. A long one plays from where you choose. Files can also be dropped on the stage."
     static let endsWithTheLid = "The sound ends with the lid: a short fade as it lands, whatever its length. Starts at, above, sets how early it begins."
     static func startsWithEffectAbout(_ degrees: Int) -> String { "Where the screen effect starts: \(degrees)°, from Speed on Lid effects." }
     static let ownStartAbout = "Its own angle, whatever the screen effect does."

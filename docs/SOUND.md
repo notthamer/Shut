@@ -33,30 +33,57 @@ lid opens. Off until you turn it on.
   old value is written to defaults first, so a sleep in between still gets it put back at
   the next launch, on the same output only). Outputs with no volume Shut can set keep the
   dial a share.
-- **02 Timing**, the lower right, always in view over the folded Settings: Starts at is
+- **01 On the lid**: the stage, on the left, a well as long as the list is, the way a
+  music app keeps what is playing apart from the playlists. The column scrolls, once; the
+  well never scrolls inside it (it did, at four and a half rows, and six sounds made a
+  scroll inside a scroll). Each row has a ▶ to hear it, its name, the pack it came from in
+  the faintest ink, its length, and a … menu (Hear, Rename, Cut a part…, Move to, Remove
+  from the lid, which puts it back in its pack, and Delete from Shut for the user's own files). A row at work is in ink with a Lime dot. A
+  file that went missing says "Missing"; one Core Audio cannot open says "Can't be played".
+  "Edit", in the heading, puts a tick where ▶ was on every row: tick what should go (All
+  ticks the lot), and "Remove 3" takes them off the lid together, back into their packs,
+  nothing deleted; Done leaves Edit, and an emptied stage leaves it by itself.
+  "Add a sound…" sits in the section's heading, so it is there before the list is scrolled
+  (a file panel; the popover stays open around it): the files go straight onto the lid, in
+  Mine, with no pack to choose; its tooltip carries the rule: mp3, m4a, wav or aiff, or drop
+  files on the stage. Every open pack has its own "Add a sound…" under its rows, and takes
+  dropped files: those go into that pack, off the lid, like anything put in a playlist
+  (`PopoverModel.SoundDestination`). Rows reorder by hold and drag: a grip shows when
+  the pointer is near; hold the name a moment and the row lifts onto Linen and follows the
+  pointer, the others step aside a row at a time (they jump, as the eyes jump between
+  frames; nothing eases into place), and letting go keeps the order, which is what "In
+  order" plays down; the sounds in their packs only keep their places in the list. VoiceOver
+  gets Move up and Move down on each row. The stage is also where a sound dragged from a
+  pack lands, at the row it is dropped on (`LidSoundStageDrop`, a `DropDelegate` that takes
+  the sound's id as plain text under a prefix, or audio files); dropped where it already is,
+  nothing moves. A refused import says why in one Saffron line: too long, unreadable,
+  already in the list, could not be copied.
+- **02 Packs**, on the right: the user's packs first (Mine and the ones they make, with
+  "New pack…" at the foot of the well), and under them a fold, "From Shut", with the packs
+  that came with the app, so a new user sees Mine and one line, not a wall of starters.
+  Every pack is a row (name, "3 of 8" on the lid, a chevron), one open at a time across both
+  wells (`PopoverModel.openPackID`). Open, the pack's sounds sit a step in under
+  its name: ▶, name, length, + to put a sound on the lid, and on a sound that is on it the
+  Lid sound glyph itself, tiny and still in ink (an × when the pointer is near, to take it off),
+  and a … menu without Take off the lid; each row is a drag handle onto the stage, and so
+  is the pack's own row: dropped on the stage, every sound in it lands there together, in
+  the pack's order (`PopoverModel.putPackOnLid`).
+  Under them, "Play this pack" (the stage becomes exactly this pack, in list order, as
+  choosing a playlist replaces what was playing) and "Add all" ("Take all off" once every
+  sound is on), with "Add a sound…" at the right; a pack of the user's own has a second
+  line, "Rename" (the name becomes a field in the row) and "Remove pack" (its sounds go to
+  Mine, never deleted). The credit is the row's help. No drag within a pack: a pack is not
+  an order.
+- **03 Timing**, folded under the stage with its answer on the fold ("Starts at 60°, with the screen effect"): Starts at is
   the angle above shut where the sound begins, always shown as a number:
   with "Same as the screen effect" on (the default) it is Speed's angle from Lid effects, so
   the sound and the screen begin together; off, the dial sets the sound's own angle, 20° to
   130°, and the hinge, not the overlay, says when. The answer at the top says it too: "It
   starts as the lid passes 60°".
-- **01 Sounds**: the list, a well as long as the list is. The column scrolls, once; the
-  well never scrolls inside it (it did, at four and a half rows, and six sounds made a
-  scroll inside a scroll). Each row has a ▶ to hear it, its name, its length, a switch, and
-  a … menu. A row at work is in ink with a Lime dot. A file that went missing says
-  "Missing", with the switch off and disabled; one Core Audio cannot open says "Can't be
-  played". "Add a sound…" sits in the section's heading, so it is there before the list is
-  scrolled (a file panel; the popover stays open around it); its tooltip carries the rule:
-  mp3, m4a, wav or aiff, or drop files on the list. Rows reorder by hold and drag: a grip shows
-  when the pointer is near; hold the name a moment and the row lifts onto Linen and follows
-  the pointer, the others step aside a row at a time (they jump, as the eyes jump between
-  frames; nothing eases into place), and letting go keeps the order, which is what "In
-  order" plays down. VoiceOver gets Move up and Move down on each row. The old rule line:
-  m4a, wav or aiff, 30 s at most, or drop files on the list. A refused import says why in
-  one Saffron line: too long, unreadable, already in the list, could not be copied.
-- **02 Settings**, folded, with a summary ("Silent on open · stays quiet when muted").
+- **04 Settings**, folded, with a summary ("Silent on open · stays quiet when muted").
   Opened: "On open" (Also on open, and which: the close's pick again, or one in
   particular), "When the Mac is muted" (Stay quiet, or Unmute for it), and "Extras" (how
-  the sound ends with the lid, and "Restore the starter sounds" once one has been removed).
+  the sound ends with the lid).
 - **The menu bar menu** has "Play a Sound on Close" with a checkmark. The closing caption
   stays Stay awake's.
 - **The update tour** for 0.4 has one slide: the glyph, the sentence, and a Play button
@@ -142,16 +169,20 @@ and name only while one of Shut's windows is open.
 ## Files
 
 The starters are listed in `Resources/Sounds/starters.json` beside their files: a name, a
-file, and for a part of a file, from and to. Eight ship: five adhkar, each a part of
-`Adhkar.mp3` (the author's own recording), and Click, Breath and Hum, generated by
-`scripts/make-sounds.swift` (every sample computed, nothing recorded or borrowed, under a
-second each). Adding one is a file and a line in the manifest. They are found through
+file, and for a part of a file, from and to. Seventy-five ship, in nine packs: Starters
+(Click, Blob, Pop, Boing, Coin, CRT off, Breath, Hum), Pops, Toys, Machines, Retro, Night,
+Encore, a tune (Ode to Joy: one file, every note a part of it, so In order plays the
+tune one close at a time) and five adhkar, each a part of
+`Adhkar.mp3` (the author's own recording). Everything but the adhkar is generated by
+`scripts/make-sounds.swift` (every sample computed, nothing recorded or borrowed): Click,
+Breath and Hum as WAV, the rest as AAC in `.m4a` through `afconvert`, so seventy sounds
+add under a megabyte to the download. Adding one is a file and a line in the manifest. They are found through
 `AppAssets.resourceBundle()`; a missing file is a "Missing" row, never a crash; a missing
 manifest falls back to the generated three; `--self-check` confirms every listed file is
 in the bundle. The list is seeded from the manifest on first launch, and a release that
-brings new starters adds them at the end of an existing list (one the user already cut
-themselves, by that name and part, is not doubled). A removed starter, whole or a part, is
-hidden, not deleted, so it can be restored.
+brings new starters adds them to their shelves, off the lid, at the end of an existing list
+(one the user already cut themselves, by that name and part, is not doubled). A starter is
+never deleted: off the lid, it waits on its shelf.
 
 Own files are validated with `AVAudioFile` (length and sample rate give the duration),
 refused over ten minutes, and copied into `~/Library/Application Support/Shut/Sounds/` under
@@ -161,8 +192,10 @@ row. The original is never needed again. Removing a row deletes Shut's copy.
 **Any sound long enough can be cut.** A row at least a second long has "Cut" (in the
 length's slot, with the pointer near): the sound's shape as bars, one per slice of the
 file, read once off the main thread and kept only in memory, with the part on a Lime Wash
-between two edges. Drag an edge to move it, or the part itself to slide it along; letting
-go hears the part; the readout under it says from, to and how long. VoiceOver gets the
+between two edges. Each edge has a handle, a small Paper White pill on the ink line the
+way a slider's knob says "me"; the pointer turns to a resize arrow near a handle and to a
+hand over the part, and the handle in hand shows its time. Drag a handle to move the
+edge, or the part itself to slide it along; letting go hears the part; the readout under it says from, to and how long. VoiceOver gets the
 part as an adjustable element. Then a name, which starts as "Song · 0:03–0:07" and follows
 the edges until the user writes one. "Add as a sound" makes the part a row of its own, right under its source, with
 the source's file and no file of its own: cut as many parts from one file as you like, in
@@ -172,40 +205,48 @@ is half a second at least, and never outside the file. A part plays from its sta
 stops at its end with the landing fade, however the lid is held. Double-click a name to
 rename it: Return keeps it, Escape leaves it; two rows never share a name.
 
-**Packs.** Every sound belongs to one pack. Bundled packs come from `starters.json` (the
-adhkar, and Starters, the generated Click, Breath and Hum), each with a `credit` line saying where its audio came
-from, written beside it (rule 6), and an `onByDefault` flag: a pack is an offer, not a
-fixture. Click, Breath and Hum start in the list; the adhkar do not, and wait folded under
-the list as "More from Shut", with their credit, for whoever wants them, the way a phone
-folds its older ringtones under the ones you chose. Mine leads the list and the bundled packs
-follow it. Each pack's heading in the well (under All with more than one pack, or on top
-with one pack chosen) carries its count and, with the pointer near, one × that takes the
-whole pack out (a bundled one goes back under "More from Shut"; it never leaves the app;
-Settings → Packs has the same ×), and
-what the user decided about each bundled pack is kept across launches and releases. A pack
-whose sounds are already in a list stays in it when the flag arrives. The user's own sounds
-live in "Mine", and "New pack…" (under Settings, or from a row's "Move to") makes more. "Plays from", above the list, is
-All or one pack: Random and In order work inside what is chosen, and In order keeps its
-place per pack. Under All the list shows a small heading per pack; a sound carried across a
-heading moves into that pack. A row's "…" menu has Hear, Rename, Cut, Move to, Keep for
-later and Remove. A bundled pack can be put away whole (Hide, under Settings) and brought
-back; a user pack can be renamed and removed, its sounds going to Mine, never deleted.
+**The stage and the packs.** Two places, one list, as a music app keeps what is playing
+apart from the playlists. "On the lid", on the left, is the stage: the sounds a close picks
+from, in the order In order walks, never out of view. "Packs", on the right, are the
+playlists: every sound Shut has, one pack open at a time, each sound with + to put it on
+the lid and ✓, on Lime Wash, to take it off, or dragged onto the stage at the place it
+should play; "Play this pack" makes the stage that pack. A pack is a playlist, never a
+switch: nothing to add or remove, and one sound from each of nine packs is nine drags. In
+the model this is one flag, `LidSoundItem.enabled` (on the lid), and one list, `items`,
+whose order is the stage's order; `LidSoundPack` has no state of its own. A release's new
+sounds land in their packs, off the lid; the first launch puts the `onByDefault` packs
+(Starters) on the lid and the rest in their packs.
 
-**The library.** "Keep for later" takes a sound out of the list and out of every pick,
-file, cuts, name and clip all kept, and the folded "Library" row under the list counts it;
-opened, each kept sound has Hear, "Use again" (back into its pack, switched on) and Remove.
-The library is local to this Mac: no sync, no export.
+Bundled packs come from `starters.json`, each with a `credit` line saying where its audio
+came from, written beside it (rule 6). Mine leads the shelves and the bundled packs follow
+it. The user's own sounds live in "Mine", and "New pack…" (under Settings, or from a row's
+"Move to") makes more; a user pack can be renamed and removed under Settings → Packs, its
+sounds going to Mine, never deleted. A bundled sound cannot be removed: Remove is not
+offered for it, and taking it off the lid leaves it on its shelf. Either well takes dropped
+files, into Mine and onto the lid.
+
+**From 0.4.0.** The one list had three ways for a sound to be out of the pick besides its
+switch: kept for later (the Library), a starter hidden (Remove), or its whole pack put away
+("More from Shut"). On first launch after the update every such sound is off the lid, on
+its shelf, and whatever played still plays; the three flags and the `playsFrom` scope are
+cleared and never written again. No sync, no export: the list is local to this Mac.
 
 **What ships, and what cannot.** Only audio that is free to publish can be bundled: the
 app is open source under MIT and every file goes to every user. The adhkar are the
-author's own recording; Click, Breath and Hum are generated. Clips of actors or famous
+author's own recording; every other bundled sound is generated, and the tune is
+Beethoven's, two centuries out of copyright. Clips of actors or famous
 people are copyrighted performances (and a recognisable voice carries personality rights),
 so they are never bundled; a user is free to add such a clip to their own list, which stays
 on their Mac. Every bundled pack is in every download, so the Sounds folder is kept small.
 
-**Find the parts.** In the cut editor, "Find the parts" looks for the silences and marks a
+**Find the parts.** As soon as the shape is in, the cut editor looks for the silences
+itself (`LidSoundLibrary.parts`, pure, on the peaks it already has) and, when they would
+split the sound into more than one part, says so in a Saffron line under the shape with
+"Split there", so nobody has to know to ask. "Find the parts" looks for the silences and marks a
 part between each on the shape, numbered, with a list under it: a name to type for each
-(Tab moves on), its times, a ▶ to hear it, and a click to put the edges on it. "Add N
+(Tab moves on), its times, a ▶ to hear it, an × to leave it out, and a click to put the
+handles on it: the chosen part sits on Lime Wash and the handles edit it, so the finder's
+guess is a start and the ear has the last word. "Add N
 sounds" makes every part a row under the source, in order, with the names given (a blank
 one gets "Song · 0:03–0:07"); a part under half a second is refused, and said once. The
 detection is a pure function of the shape (`LidSoundLibrary.parts`): a slice quieter than

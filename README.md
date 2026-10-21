@@ -35,6 +35,17 @@ when the work is done. The closing screen tells you which it will be. No timers
 to set, no password, off until you turn it on; a battery floor and a heat cut-off
 always win. [How it works, and its limits](docs/AWAKE.md).
 
+## Lid sound
+
+Close the lid and a sound plays: it starts as the lid comes down and ends as it
+lands. The page is laid out like a music app. "On the lid" is what plays, in the
+order you set; "Packs" are the playlists, your own first and the ones that came
+with Shut under them. Drag a sound, or a whole pack, onto the lid, or press +.
+Seventy-five sounds ship, computed, not recorded (Click, Blob, Boing, CRT off,
+Applause, Ba-dum-tss, Ode to Joy one note per close), and five adhkar; add your
+own mp3, m4a, wav or aiff, and cut any part of it, by hand or at the silences.
+Off until you turn it on. [How it works](docs/SOUND.md).
+
 ## How it works
 
 - Click the menu bar icon for the panel, or open Shut from the Dock for the same

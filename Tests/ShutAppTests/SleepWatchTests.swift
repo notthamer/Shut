@@ -56,6 +56,36 @@ final class SleepWatchTests: XCTestCase {
         XCTAssertNil(watch.slow)
     }
 
+    /// A known laggard is named while it runs, before any sleep, and Stop asks launchd once.
+    func testKnownLaggardsAreNamedBeforeAnySleep() {
+        let suite = UserDefaults(suiteName: "SleepWatch-\(UUID().uuidString)")!
+        var running: Set<String> = ["com.logi.ghub.agent", "com.apple.finder"]
+        var stopped: [String] = []
+        let watch = SleepWatch(defaults: suite, powerLog: { nil }, runningBundleIDs: { running }, stopper: { stopped.append($0.label) })
+        XCTAssertTrue(watch.running.isEmpty, "nothing is read until the watch starts or is asked")
+        watch.refreshLaggards()
+        XCTAssertEqual(watch.running.map(\.name), ["Logitech G Hub"])
+        running.insert("com.logi.cp-dev-mgr")
+        watch.refreshLaggards()
+        XCTAssertEqual(watch.running.map(\.name), ["Logitech Options+", "Logitech G Hub"], "the table's order")
+        watch.stop(watch.running[1])
+        let gone = expectation(description: "stopped off the main thread"); DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { gone.fulfill() }; wait(for: [gone], timeout: 2)
+        XCTAssertEqual(stopped, ["com.logi.ghub"], "the launchd label, not the bundle id")
+        running.remove("com.logi.ghub.agent")
+        let looked = expectation(description: "looked again"); DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { looked.fulfill() }; wait(for: [looked], timeout: 3)
+        XCTAssertEqual(watch.running.map(\.name), ["Logitech Options+"])
+        // Waved away, it stays away, launch after launch.
+        watch.ignore(watch.running[0])
+        XCTAssertTrue(watch.running.isEmpty)
+        let again = SleepWatch(defaults: suite, powerLog: { nil }, runningBundleIDs: { running }, stopper: { _ in })
+        again.refreshLaggards()
+        XCTAssertTrue(again.running.isEmpty, "kept")
+        XCTAssertEqual(AwakeText.laggardTitle(names: ["Logitech G Hub"]), "Logitech G Hub holds every sleep for 30 s.")
+        XCTAssertEqual(AwakeText.laggardTitle(names: ["Logitech Options+", "Logitech G Hub"]), "Logitech Options+ and Logitech G Hub hold every sleep for 30 s.")
+        XCTAssertEqual(AwakeText.sleepPendingHero(seconds: 12, heldBy: ["Logitech G Hub"]).detail,
+                       "Closing the lid again does nothing until that finishes: 12 s so far. Logitech G Hub is holding it up; macOS gives up on it at 30 s.")
+    }
+
     func testTheWords() {
         XCTAssertEqual(AwakeText.sleepPendingHero(seconds: 12).headline, "Your Mac is still going to sleep from the last close.")
         XCTAssertEqual(AwakeText.sleepPendingHero(seconds: 12).detail, "Closing the lid again does nothing until that finishes: 12 s so far.")

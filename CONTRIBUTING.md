@@ -90,7 +90,7 @@ control.
 
 ## Testing
 
-`swift test` runs 69 tests: sensor decoding, the hinge fit, filter, calibration and
+`swift test` runs 220 tests: sensor decoding, the hinge fit, filter, calibration and
 band, the adaptive poll rate; offscreen renders of every style (identity at open,
 monotonic darkening, see-through masks that need no snapshot); a GPU probe of the
 uniform layout; the overlay window and the clamshell rule; the Tuner panel and the
@@ -140,8 +140,8 @@ and cannot be notarized, so the rest happens on a Mac with the Developer ID:
    now on the release with the Sparkle private key, which exists only as the
    `SPARKLE_PRIVATE_KEY` secret, and replaces `appcast.xml`. An appcast made
    locally with a different key is rejected by every installed copy.
-4. Publish the release. Installed copies see the update within a day; the site
-   pins the download URL in its `src/site.ts`, so bump that too.
+4. Publish the release. Installed copies see the update within an hour, or at their
+   next launch; the site pins the download URL in its `src/site.ts`, so bump that too.
 
 Pushes to other branches and pull requests run the Build workflow and attach the
 DMG as an artifact. Locally: `scripts/build.sh --zip` or `scripts/package-dmg.sh`;

@@ -178,6 +178,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         tunerHost = TunerHost(registry: registry, previewModel: previewModel, controller: controller, settings: settings)
         menuBar.openTuner = { [weak self] in self?.tunerHost?.toggle() }
         menuBar.updateItem = updater.menuItem()
+        // One quiet check a few seconds after launch (a one-shot, not a timer): Sparkle's own
+        // schedule only runs when its interval has already passed.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in self?.updater.checkInBackground() }
         menuBar.presetMenuProvider = { [weak self] in self?.tunerHost?.presetMenuItems() ?? [] }
 
         sensor.onRateChange = { rate in Log.lid.info("poll rate \(Int(rate)) Hz") }
@@ -188,16 +191,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popoverModel = PopoverModel(settings: settings, registry: registry, preview: previewModel, sensor: sensor,
                                     thumbnails: thumbnails, stayAwake: stayAwake, lidSound: lidSound, sleep: sleep)
         // "Add a sound…": a file panel from a non-activating panel, the way the Tuner imports.
-        popoverModel.addSounds = { [weak self] in
+        popoverModel.addSounds = { [weak self] destination in
             guard let self else { return }
             let pick = {
                 let panel = NSOpenPanel()
                 panel.allowedContentTypes = [.audio]
                 panel.allowsMultipleSelection = true
                 panel.canChooseDirectories = false
-                panel.message = "Choose sounds for the lid. Each one is copied into Shut, so the original can move."
+                panel.message = destination.packName.map { "Choose sounds for the pack \($0). Each one is copied into Shut, so the original can move." }
+                    ?? "Choose sounds for the lid. Each one is copied into Shut, so the original can move."
                 NSApp.activate(ignoringOtherApps: true)
-                if panel.runModal() == .OK { self.popoverModel.importSounds(panel.urls) }
+                if panel.runModal() == .OK { self.popoverModel.importSounds(panel.urls, to: destination) }
             }
             if let popover = self.popover { popover.holdingOpen(pick) } else { pick() }
         }
@@ -214,6 +218,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return updater.checksAutomatically
         }
         popoverModel.setAutomaticUpdates = { [weak self] on in self?.updater.checksAutomatically = on }
+        popoverModel.checkForUpdates = { [weak self] in self?.updater.checkForUpdates() }
         popoverModel.featuredDials = { [weak self] id in self?.tunerHost?.featuredDials(for: id) ?? AnyView(EmptyView()) }
         popoverModel.resetStyle = { [weak self] id in self?.tunerHost?.resetStyle(id: id) }
         popoverModel.moreDials = { [weak self] id in self?.tunerHost?.moreDials(for: id) ?? AnyView(EmptyView()) }
@@ -285,10 +290,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         let version = InstanceVersion.current.short
-        if WhatsNew.isDue(current: version, lastSeen: settings.lastSeenVersion, hasCompletedFirstRun: settings.hasCompletedFirstRun),
+        let lastSeen = settings.lastSeenVersion
+        if WhatsNew.isDue(current: version, lastSeen: lastSeen, hasCompletedFirstRun: settings.hasCompletedFirstRun),
            let news = WhatsNew.bundled() {
-            // After the menu bar has settled, so the card lands under the icon.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.whatsNew.show(news, version: version) }
+            // After the menu bar has settled, so the card lands under the icon. A fix of a
+            // version whose tour this Mac has seen gets the fix's own words, not the tour again.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.whatsNew.show(news, version: version, seenBefore: lastSeen) }
         }
         settings.lastSeenVersion = version
 

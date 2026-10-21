@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>ATSApplicationFontsPath</key>
+	<string>Shut_Tuner.bundle/Fonts</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
@@ -18,12 +20,10 @@
 	<string>Shut</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
-	<key>ATSApplicationFontsPath</key>
-	<string>Shut_Tuner.bundle/Fonts</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.4.0</string>
+	<string>0.4.1</string>
 	<key>CFBundleVersion</key>
-	<string>5</string>
+	<string>6</string>
 	<key>LSAppNapIsDisabled</key>
 	<true/>
 	<key>LSApplicationCategoryType</key>
@@ -40,5 +40,7 @@
 	<string>https://github.com/notthamer/shut/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>5eznk8jyRMKnx/q7d6efjAX7bD+WaozJ4JcJTgXguBs=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>3600</integer>
 </dict>
 </plist>

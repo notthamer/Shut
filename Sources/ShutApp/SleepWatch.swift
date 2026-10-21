@@ -7,6 +7,10 @@ import Foundation
 /// lifted and closed again does nothing, and the Mac sleeps on its own when the laggard
 /// times out, lid open or not. Shut sees the two notifications that bracket the transaction
 /// and says so; and after a slow one it reads `pmset -g log` once to name who held it up.
+///
+/// Some laggards are known by name before any sleep: background agents that never answer
+/// (Logitech's, so far), which Shut can see running and offer to stop, in the user's own
+/// launchd domain, so the first close is not the one that teaches the lesson.
 @MainActor
 final class SleepWatch: ObservableObject {
     /// A sleep began and has not finished (no wake yet).
@@ -14,6 +18,25 @@ final class SleepWatch: ObservableObject {
     /// The last slow sleep: who did not answer, and when. Shown until dismissed, or until a
     /// sleep goes through quickly again.
     @Published private(set) var slow: SlowSleep?
+    /// The known laggards running now, in the table's order. Read at start and when an app
+    /// launches or quits: never a poll.
+    @Published private(set) var running: [Laggard] = []
+
+    /// A process known to hold every sleep open until macOS gives up on it (30 s): its plain
+    /// name, the bundle id its agent runs under, and the launchd label that starts it. The
+    /// table grows as reports come in; the labels are in /Library/LaunchAgents.
+    struct Laggard: Equatable, Identifiable {
+        let name: String
+        /// The name on a button: "Stop G Hub".
+        let short: String
+        let bundleID: String
+        let label: String
+        var id: String { bundleID }
+    }
+    nonisolated static let knownLaggards: [Laggard] = [
+        Laggard(name: "Logitech Options+", short: "Options+", bundleID: "com.logi.cp-dev-mgr", label: "com.logi.cp-dev-mgr"),
+        Laggard(name: "Logitech G Hub", short: "G Hub", bundleID: "com.logi.ghub.agent", label: "com.logi.ghub"),
+    ]
 
     struct SlowSleep: Codable, Equatable {
         var names: [String]
@@ -26,11 +49,21 @@ final class SleepWatch: ObservableObject {
     private let defaults: UserDefaults
     /// Runs `pmset -g log` and returns its text; a test hands in a line of its own.
     private let powerLog: () -> String?
+    /// The bundle ids running now; a test hands in its own set.
+    private let runningBundleIDs: () -> Set<String>
+    /// Stops a laggard; a test hands in one that only records the call.
+    private let stopper: (Laggard) -> Void
+    /// Laggards the user chose to leave alone (the × on the card), by bundle id. Saved.
+    private var ignored: Set<String> { didSet { defaults.set(Array(ignored).sorted(), forKey: "sleep.laggardsIgnored") } }
     private var observers: [NSObjectProtocol] = []
 
-    init(defaults: UserDefaults = .standard, powerLog: (() -> String?)? = nil) {
+    init(defaults: UserDefaults = .standard, powerLog: (() -> String?)? = nil,
+         runningBundleIDs: (() -> Set<String>)? = nil, stopper: ((Laggard) -> Void)? = nil) {
         self.defaults = defaults
         self.powerLog = powerLog ?? Self.readPowerLog
+        self.runningBundleIDs = runningBundleIDs ?? Self.readRunningBundleIDs
+        self.stopper = stopper ?? Self.stopWithLaunchd
+        ignored = Set(defaults.stringArray(forKey: "sleep.laggardsIgnored") ?? [])
         if let data = defaults.data(forKey: "sleep.slow"), let saved = try? JSONDecoder().decode(SlowSleep.self, from: data) { slow = saved }
     }
 
@@ -42,6 +75,67 @@ final class SleepWatch: ObservableObject {
         observers.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.woke() }
         })
+        // The laggards: once now, and again whenever an app comes or goes.
+        for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
+            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.refreshLaggards() }
+            })
+        }
+        refreshLaggards()
+    }
+
+    // MARK: The laggards, known in advance
+
+    /// Which known laggards are running and not waved away.
+    func refreshLaggards() {
+        let ids = runningBundleIDs()
+        let now = Self.knownLaggards.filter { ids.contains($0.bundleID) && !ignored.contains($0.bundleID) }
+        if now != running { running = now }
+    }
+
+    /// Stops a laggard, off the main thread, and looks again once it has had a moment to go.
+    func stop(_ laggard: Laggard) {
+        let stop = stopper
+        Log.app.notice("stopping \(laggard.name, privacy: .public), which holds every sleep for 30 s")
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            stop(laggard)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self?.refreshLaggards() }
+        }
+    }
+
+    /// The × on the card: this one is the user's business. Kept across launches.
+    func ignore(_ laggard: Laggard) {
+        ignored.insert(laggard.bundleID)
+        refreshLaggards()
+    }
+
+    /// Every laggard's bundle id that is running, read from the workspace. No process list
+    /// is walked: one lookup per known name, and there are two.
+    nonisolated private static func readRunningBundleIDs() -> Set<String> {
+        Set(knownLaggards.map(\.bundleID).filter { !NSRunningApplication.runningApplications(withBundleIdentifier: $0).isEmpty })
+    }
+
+    /// Out of launchd for this session and the next login, then out of memory: `launchctl
+    /// bootout` and `disable` in the user's own gui domain, which need no password, and a
+    /// terminate for a process that outlives its job. Launching the app brings it back, with
+    /// its agent, so nothing here is final.
+    nonisolated private static func stopWithLaunchd(_ laggard: Laggard) {
+        let service = "gui/\(getuid())/\(laggard.label)"
+        run("/bin/launchctl", ["bootout", service])
+        run("/bin/launchctl", ["disable", service])
+        DispatchQueue.main.async {
+            for app in NSRunningApplication.runningApplications(withBundleIdentifier: laggard.bundleID) { app.terminate() }
+        }
+    }
+
+    nonisolated private static func run(_ path: String, _ arguments: [String]) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = arguments
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return }
+        process.waitUntilExit()
     }
 
     func sleepBegan(now: Date = Date()) {

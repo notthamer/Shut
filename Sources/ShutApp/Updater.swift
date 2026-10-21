@@ -34,6 +34,13 @@ final class Updater {
         set { controller?.updater.automaticallyChecksForUpdates = newValue }
     }
 
+    /// Check now, from the panel: Sparkle shows its own window with the answer, found or not.
+    func checkForUpdates() { controller?.checkForUpdates(nil) }
+
+    /// A check with nothing to show unless there is an update: for the launch, so a Mac that
+    /// slept through a release sees it as soon as Shut starts, not up to an hour later.
+    func checkInBackground() { controller?.updater.checkForUpdatesInBackground() }
+
     /// A menu item that asks Sparkle to check now. Disabled when updates are off.
     func menuItem() -> NSMenuItem {
         let item = NSMenuItem(title: "Check for Updates…", action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)), keyEquivalent: "")
