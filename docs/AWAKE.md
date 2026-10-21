@@ -292,6 +292,23 @@ holding it; only `pmset -g log` has the line. So Shut does two things (`SleepWat
   own when they time out. Quit or update them." Known process names are spelled out; others
   are shown as printed. The note is kept across launches, has an ×, and takes itself down
   the next time a sleep goes through in under 10 s.
+- The ones it knows, it names **before** any sleep. `SleepWatch.knownLaggards` is a small
+  table (process name, the bundle id its agent runs under, its launchd label; Logitech
+  Options+ and G Hub so far). At start and whenever an app launches or quits (two workspace
+  notifications, never a poll) Shut asks the workspace whether each is running, one lookup
+  per name, and while one is, both pages carry a Saffron card: "Logitech G Hub holds every
+  sleep for 30 s. Close the lid and your Mac waits for it; a second close meanwhile does
+  nothing." with **Stop Logitech G Hub**. Stop is the one thing that works, since Login
+  Items does not (the agents load from /Library/LaunchAgents): `launchctl bootout` and
+  `launchctl disable` on `gui/<uid>/<label>`, the user's own domain, no password, then a
+  terminate for a process that outlived its job. Launching the app brings its agent back,
+  so nothing is final. The × waves that laggard away for good (`sleep.laggardsIgnored`).
+  While this card shows, the after-the-fact card for the same names stays away, and the
+  "still going to sleep" answer names who is holding it, during the wait: "12 s so far.
+  Logitech G Hub is holding it up; macOS gives up on it at 30 s."
+
+  Seen on the author's Mac: quitting the Logitech windows left both agents running, and
+  System Settings showed them "disabled" under Login Items while launchd kept them loaded.
 
 ## If Shut dies while holding
 

@@ -215,8 +215,8 @@ enum AwakeText {
     /// `watchingApps`: "An app is busy" is on. When it is not, the page says so, because then
     /// an agent or a build will not keep the Mac awake and nothing else would mention it.
     static func hero(state: HoldState, reasons: [HoldReason], conditions: PowerConditions, limits: HoldLimits,
-                     watchingApps: Bool = true, armed: Armed? = nil, sleepPendingSeconds: Int? = nil, now: Date) -> Hero {
-        if let seconds = sleepPendingSeconds { return sleepPendingHero(seconds: seconds) }
+                     watchingApps: Bool = true, armed: Armed? = nil, sleepPendingSeconds: Int? = nil, sleepHeldBy: [String] = [], now: Date) -> Hero {
+        if let seconds = sleepPendingSeconds { return sleepPendingHero(seconds: seconds, heldBy: sleepHeldBy) }
         let willSleep = "Closing the lid will sleep your Mac."
         let staysAwake = "Closing the lid keeps your Mac awake."
         // A no-break space: "20" at the end of one line and "% battery" on the next reads badly.
@@ -293,9 +293,34 @@ enum AwakeText {
 
     /// A lid close started a sleep that has not finished: macOS waits up to 30 s for every
     /// app to answer, and a lid closed again meanwhile does nothing. The one honest answer.
-    static func sleepPendingHero(seconds: Int) -> Hero {
+    static func sleepPendingHero(seconds: Int, heldBy names: [String] = []) -> Hero {
         Hero(headline: "Your Mac is still going to sleep from the last close.",
-             detail: "Closing the lid again does nothing until that finishes: \(seconds) s so far.", showsCards: false)
+             detail: "Closing the lid again does nothing until that finishes: \(seconds) s so far.\(heldByLine(names))", showsCards: false)
+    }
+    /// The laggard named while the wait is on, not after: " Logitech G Hub is holding it up; macOS gives up on it at 30 s."
+    static func heldByLine(_ names: [String]) -> String {
+        guard !names.isEmpty else { return "" }
+        return " \(joined(names)) \(names.count == 1 ? "is" : "are") holding it up; macOS gives up on \(names.count == 1 ? "it" : "them") at 30 s."
+    }
+    static func joined(_ names: [String]) -> String {
+        switch names.count {
+        case 0: return ""
+        case 1: return names[0]
+        case 2: return "\(names[0]) and \(names[1])"
+        default: return names.dropLast().joined(separator: ", ") + " and " + names[names.count - 1]
+        }
+    }
+
+    /// The card shown before any sleep, while a known laggard is running.
+    static func laggardTitle(names: [String]) -> String {
+        "\(joined(names)) \(names.count == 1 ? "holds" : "hold") every sleep for 30 s."
+    }
+    /// Short: the Stay awake band is a fixed height, and the Stop links must stay in it.
+    static func laggardShort(names: [String]) -> String {
+        "A second lid close in those 30 s does nothing. Stop \(names.count == 1 ? "it" : "them") here; opening the app brings \(names.count == 1 ? "it" : "them") back."
+    }
+    static func laggardDetail(names: [String]) -> String {
+        "\(joined(names)) \(names.count == 1 ? "runs" : "run") in the background and never \(names.count == 1 ? "answers" : "answer") macOS when the lid closes, so every sleep waits the full 30 s before the Mac gives up and sleeps anyway; a lid opened and closed again in that time does nothing. Stop takes the agent out of launchd for this session and the next login (your own account, no password) and quits it; the mouse and keyboard keep working without it, only the app's own settings stop applying until you open the app again, which brings it back. × leaves it alone and does not ask again."
     }
     static let sleepPendingCaption = "Still going to sleep from the last close"
 

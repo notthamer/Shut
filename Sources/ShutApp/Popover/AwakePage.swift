@@ -114,7 +114,10 @@ private struct AwakeBand: View {
                               tint: !isOn || (dot == .idle && !status.lidHolds) ? theme.inkLabel : theme.ink, dreams: true, follows: true)
                 }
                 if isOn { hero } else { pitch }
-                if let slow = model.sleep.slow {
+                if !model.sleep.running.isEmpty {
+                    LaggardCard(laggards: model.sleep.running, stop: { model.sleep.stop($0) }, dismiss: { for laggard in model.sleep.running { model.sleep.ignore(laggard) } }, compact: true)
+                }
+                if let slow = model.sleep.slow, !Set(slow.names).isSubset(of: Set(model.sleep.running.map(\.name))) {
                     SlowSleepCard(slow: slow) { model.sleep.dismissSlow() }
                 }
             }
@@ -225,7 +228,7 @@ private struct AwakeBand: View {
             let copy = pending.map { AwakeText.pendingHero($0.name) }
                 ?? AwakeText.hero(state: arbiter.state, reasons: arbiter.reasons, conditions: arbiter.conditions,
                                   limits: arbiter.limits, watchingApps: settings.whenWorking, armed: awake.armed,
-                                  sleepPendingSeconds: model.sleepPendingSeconds(now: context.date), now: context.date)
+                                  sleepPendingSeconds: model.sleepPendingSeconds(now: context.date), sleepHeldBy: model.sleep.running.map(\.name), now: context.date)
             let status = awake.status
             VStack(alignment: .leading, spacing: 14) {
                 // The eyes are beside this block, in the band. Here: the answer and why, with the icon
