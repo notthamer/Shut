@@ -140,8 +140,12 @@ and cannot be notarized, so the rest happens on a Mac with the Developer ID:
    now on the release with the Sparkle private key, which exists only as the
    `SPARKLE_PRIVATE_KEY` secret, and replaces `appcast.xml`. An appcast made
    locally with a different key is rejected by every installed copy.
-4. Publish the release. Installed copies see the update within an hour, or at their
-   next launch; the site pins the download URL in its `src/site.ts`, so bump that too.
+4. Publish the release. Then the site: it serves the download and the feed itself (the
+   app's `SUFeedURL` is `shut.notthamer.com/releases/appcast.xml`, from 0.4.2 on), so copy
+   the notarized DMG, its `.sha256` and the release's signed `appcast.xml` into its
+   `public/releases/`, point the appcast's `<enclosure url>` at the site's DMG (the
+   signature is of the bytes, not the address) and bump `src/site.ts`. Installed copies see
+   the update within an hour, or at their next launch.
 
 Pushes to other branches and pull requests run the Build workflow and attach the
 DMG as an artifact. Locally: `scripts/build.sh --zip` or `scripts/package-dmg.sh`;
