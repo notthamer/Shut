@@ -37,7 +37,7 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>SUFeedURL</key>
-	<string>https://github.com/notthamer/shut/releases/latest/download/appcast.xml</string>
+	<string>https://shut.notthamer.com/releases/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>5eznk8jyRMKnx/q7d6efjAX7bD+WaozJ4JcJTgXguBs=</string>
 	<key>SUScheduledCheckInterval</key>
