@@ -72,13 +72,15 @@ final class WhatsNewCard {
     var showMe: (() -> Void)?
     private var panel: NSPanel?
 
-    func show(_ news: WhatsNew, version: String) {
+    func show(_ news: WhatsNew, version: String, seenBefore lastSeen: String? = nil) {
         close()
         let onShow: () -> Void = { [weak self] in self?.close(); self?.showMe?() }
         let onClose: () -> Void = { [weak self] in self?.close() }
-        // A release with a tour shows it; any other gets the words from the changelog.
-        let isTour = WhatsNewTour.slides(for: version) != nil
-        let view = WhatsNewTour.slides(for: version).map { AnyView(WhatsNewTourView(slides: $0, version: version, onShow: onShow, onClose: onClose)) }
+        // A release with a tour shows it, unless this Mac saw that tour already; any other
+        // gets the words from the changelog.
+        let slides = WhatsNewTour.slides(for: version, seenBefore: lastSeen)
+        let isTour = slides != nil
+        let view = slides.map { AnyView(WhatsNewTourView(slides: $0, version: version, onShow: onShow, onClose: onClose)) }
             ?? AnyView(WhatsNewView(news: news, version: version, onShow: onShow, onClose: onClose))
         let hosting = FirstMouseHostingView(rootView: view)
         hosting.sizingOptions = [.intrinsicContentSize]
@@ -191,7 +193,12 @@ enum WhatsNewTour {
         let detail: String
     }
 
-    static func slides(for version: String) -> [Slide]? {
+    /// The tour for a version: a release's own, and a fix of it still shows what the release
+    /// brought, for whoever skipped from before it. `seenBefore` is the version this Mac last
+    /// ran: someone who already saw the 0.4 tour on 0.4.0 gets 0.4.1's own words instead of
+    /// the same slides again.
+    static func slides(for version: String, seenBefore lastSeen: String? = nil) -> [Slide]? {
+        if let lastSeen, minor(of: lastSeen) == minor(of: version) { return nil }
         if version.hasPrefix("0.4") {
             return [
                 Slide(stage: .soundPlays, headline: "Close the lid. Hear it land.",
@@ -210,6 +217,11 @@ enum WhatsNewTour {
                   detail: "It lets your Mac sleep under a battery level you choose. When you open the lid again, a note says how it went."),
         ]
     }
+}
+
+extension WhatsNewTour {
+    /// "0.4" of "0.4.1".
+    static func minor(of version: String) -> String { version.split(separator: ".").prefix(2).joined(separator: ".") }
 }
 
 struct WhatsNewTourView: View {

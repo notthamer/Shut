@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.1
+
+**The stage and the packs.** The Lid sound page is laid out the way a music app is: "On the lid" is what plays, "Packs" are the playlists, and a sound is dragged from one onto the other.
+
+- On the lid, on the left, is the short list a close picks from. Random never repeats, In order walks down it, hold and drag to reorder; it never leaves the screen, and Timing and Settings fold under it. Edit ticks several sounds and takes them off the lid at once; a sound taken off the lid goes back to its pack, and only your own files can be deleted, which the menu says.
+- Packs, on the right, are playlists. Your own first, with "New pack…" at the foot and Rename and Remove pack under each one you made (its sounds go to Mine); the ones that came with Shut folded under them as "From Shut"; one open at a time. Drag a sound onto the lid and it lands where you drop it, or drag the whole pack and every sound in it lands there together, or press + beside one; a sound on the lid carries the three-bar mark, and a click on it takes it off. "Play this pack" makes the lid play that pack and nothing else; "Add all" adds the lot. A pack is a playlist, never a switch: nothing to add or remove, and one sound from each of nine packs is nine drags.
+- Add a sound where you want it. "Add a sound…" over the stage puts your file straight on the lid, no pack to choose; every open pack has its own "Add a sound…" and takes dropped files, into that pack.
+- Nothing you had is lost. "Plays from", "More from Shut" and the Library are gone; what they did is now one thing, on the lid or in its pack. An existing list comes over whole: whatever played still plays, and a sound that was kept for later, hidden, or in a pack you had put away is in its pack, off the lid.
+
+**Sixty-seven new sounds, computed, not recorded.** Blob, Pop, Boing, Coin and CRT off join Click, Breath and Hum in the Starters pack, on the lid from the first launch. Six more packs: Pops (Plop, Bloop, Bubble, Cork, Drip, Squelch), Toys (Slide whistle, Bonk, Squeak, Sad trombone, Kazoo, Honk, Door stop), Machines (Power down, Vault, Car door, Camera, Typewriter, Cash register, Zipper, Latch, Steam, Ding), Retro (Jump, Game over, Glitch, Warp, Modem, Morse, Laser, Level up), Night (Yawn, Snore, Lullaby, Wind chime, Gong, Owl, Crickets, Candle) and Encore (Applause, Ta-da, Drum roll, Ba-dum-tss, Dun dun dun, Record scratch, Boom, Whistle). Every one is made by `scripts/make-sounds.swift` from a few lines of arithmetic, so there is nothing to license, and all of them together add under a megabyte.
+
+- Close the lid fifteen times and it plays Ode to Joy. One pack is a tune, one note per sound: Play this pack, choose In order, and each close is the next note.
+- Updates come sooner: Shut looks for a new version about once an hour instead of once a day, and once a few seconds after it starts. And "Check for updates" sits in the panel's footer, beside the version, for whoever heard of a release first; before, it was only in the menu bar icon's right-click menu.
+- Cutting is clearer: the two edges have handles, the pointer says what a drag would do, the handle in hand shows its time, and when a sound has silences in it the editor says how many parts they make and offers to split there, before you ask; the parts it finds are a start, not a verdict: click one, drag the handles to fix it, or × to leave it out, then name and add.
+- The apps that hold every sleep for 30 s are named before they do it. Logitech Options+ and G Hub never answer macOS when the lid closes, so a second close inside 30 s does nothing; quitting their windows does not stop their agents, and Login Items does not either. While one is running, both pages say so, with a "Stop" that takes it out of launchd for this session and the next login, no password, and quits it: your mouse keeps working, and opening the app brings it back. And while a sleep is still going, the page names who is holding it, not only after.
+- The Lid sound glyph is smoother: its bars sit on the pixel grid, and it breathes at thirty frames a second instead of fifteen.
+
 ## 0.4.0
 
 **Lid sound.** Close the lid and a sound plays: it starts as the lid comes down and ends as it lands. Eight sounds come with the app, five adhkar among them; add your own, and with several Shut picks one each time. Off until you turn it on.
