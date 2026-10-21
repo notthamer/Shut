@@ -1,14 +1,16 @@
 import Foundation
 
-/// One sound in the list: a starter that ships with the app, or a file the user added. Own
-/// files live in Shut's Sounds folder under `fileName`; starters resolve into the resource
-/// bundle. A starter is never deleted, only hidden, so "Restore the starter sounds" can.
+/// One sound: a starter that ships with the app, or a file the user added. Own files live
+/// in Shut's Sounds folder under `fileName`; starters resolve into the resource bundle. A
+/// starter is never deleted: taken off the lid, it waits on its shelf.
 struct LidSoundItem: Codable, Identifiable, Equatable {
     var id: UUID
     var fileName: String
     var displayName: String
+    /// On the lid: in the short list a close picks from. Off, the sound waits on its shelf.
     var enabled: Bool
     var isStarter: Bool
+    /// 0.4.0's "removed starter". Read for the migration, never set again.
     var hidden = false
     /// Seconds, read once at import (starters: once at first launch). nil until known.
     var duration: TimeInterval?
@@ -19,13 +21,12 @@ struct LidSoundItem: Codable, Identifiable, Equatable {
     var clipEnd: TimeInterval?
     /// A part cut from another sound: it shares that sound's file and owns no file of its own.
     var isCut = false
-    /// Listed in the app's own starters.json: removed, it is hidden and can be restored. A
-    /// part the user cut from a starter is theirs, and goes when removed.
+    /// Listed in the app's own starters.json: it has no file to delete and cannot be removed,
+    /// only taken off the lid. A part the user cut from a starter is theirs, and goes when removed.
     var fromManifest = false
     /// The pack this sound belongs to (`LidSoundPack.id`).
     var packID: String = LidSoundPack.mineID
-    /// Saved for later: out of the list and out of every pick, file and all kept, one click
-    /// from coming back. The library.
+    /// 0.4.0's "kept for later". Read for the migration, never set again.
     var kept = false
 
     /// Older lists have no `fromManifest`, `packID` or `kept`: a whole starter was from the

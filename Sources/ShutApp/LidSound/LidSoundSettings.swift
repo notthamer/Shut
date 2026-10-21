@@ -4,6 +4,12 @@ import Foundation
 /// The Lid sound switches, backed by UserDefaults like `StayAwakeSettings`. Kept apart so
 /// the feature can be read, tested and removed as one piece. Unlike Stay awake's one-close
 /// arming, `isOn` here is a standing preference and is saved.
+///
+/// Two places, one list. Every sound the app has is in `items`, each on a shelf (its pack).
+/// The ones with `enabled` set are **on the lid**: that short list, in `items` order, is
+/// what a close picks from, and the only thing In order walks down. A pack is a shelf to
+/// browse, never a switch, so one sound from each of nine packs is nine clicks, not nine
+/// packs added and sixty switches turned off.
 @MainActor
 final class LidSoundSettings: ObservableObject {
     let defaults: UserDefaults
@@ -13,14 +19,6 @@ final class LidSoundSettings: ObservableObject {
     /// What the Volume dial means: a share of the Mac's volume as it is, or a level of its
     /// own that Shut sets the Mac to for the sound and puts back after.
     enum VolumeMode: String, Codable { case shareOfMac, ownLevel }
-    /// What a close picks from: every pack, or one.
-    enum PlaysFrom: Equatable {
-        case all
-        case pack(String)
-        var stored: String { if case .pack(let id) = self { return id } else { return "all" } }
-        var key: String { stored }
-        init(stored: String?) { self = (stored == nil || stored == "all") ? .all : .pack(stored!) }
-    }
     /// What "Also on open" plays: the close's pick again, or one sound in particular.
     enum OnOpenPick: Equatable {
         case samePick
@@ -30,7 +28,7 @@ final class LidSoundSettings: ObservableObject {
     }
 
     @Published var isOn: Bool { didSet { defaults.set(isOn, forKey: "lidSound.isOn") } }
-    /// The list, in the order shown. One blob, so a row's fields travel together.
+    /// Every sound, in the order shown. One blob, so a row's fields travel together.
     @Published var items: [LidSoundItem] { didSet { defaults.set(try? JSONEncoder().encode(items), forKey: "lidSound.items") } }
     @Published var mode: Mode { didSet { defaults.set(mode.rawValue, forKey: "lidSound.mode") } }
     /// 0…1 of the Mac's own volume, which Shut never changes.
@@ -46,14 +44,10 @@ final class LidSoundSettings: ObservableObject {
     /// The sound plays to its end: the Mac waits for it, then sleeps at once. Off: a short
     /// fade as the lid lands, whatever the length.
     @Published var playsToEnd: Bool { didSet { defaults.set(playsToEnd, forKey: "lidSound.playsToEnd") } }
-    /// The packs: the user's own first, Mine leading, then the bundled ones as the manifest
-    /// lists them (hidden or not). The user's sounds lead the list; what came with the app
-    /// follows, as a phone lists your ringtones over its own. Only the user's packs and the
-    /// hidden flags are saved.
-    @Published var packs: [LidSoundPack] { didSet { savePacks() } }
-    @Published var playsFrom: PlaysFrom { didSet { defaults.set(playsFrom.stored, forKey: "lidSound.playsFrom") } }
-    /// In order carries on per scope, so switching packs and back does not lose the place.
-    var nextIndexByScope: [String: Int] { didSet { defaults.set(try? JSONEncoder().encode(nextIndexByScope), forKey: "lidSound.nextIndexByScope") } }
+    /// The shelves: Mine, then the user's own packs, then the bundled ones as the manifest
+    /// lists them. Only the user's packs are saved; the bundled ones come from the manifest
+    /// each launch.
+    @Published var packs: [LidSoundPack] { didSet { defaults.set(try? JSONEncoder().encode(packs.filter { !$0.bundled }), forKey: "lidSound.packs") } }
 
     /// Random never plays the same sound twice running; in order carries on from here.
     var lastPickID: UUID? { didSet { defaults.set(lastPickID?.uuidString, forKey: "lidSound.lastPickID") } }
@@ -70,35 +64,23 @@ final class LidSoundSettings: ObservableObject {
         func bool(_ key: String, _ fallback: Bool) -> Bool { defaults.object(forKey: key) as? Bool ?? fallback }
         let manifest = manifest ?? LidSoundLibrary().packs()
         isOn = bool("lidSound.isOn", false)
-        let firstLaunch: Bool
-        let loaded: [LidSoundItem]
         if let data = defaults.data(forKey: "lidSound.items"), let saved = try? JSONDecoder().decode([LidSoundItem].self, from: data) {
-            loaded = saved
-            firstLaunch = false
+            // An older list's manifest sounds find their pack first; then the list is brought
+            // to this shape, once: written back here, since a property observer does not run
+            // in init, and the keys it read are removed below, so a second launch finds
+            // nothing left to migrate.
+            let settled = Self.settled(saved, against: manifest)
+            let migrated = Self.migrated(settled, hiddenPacks: Set(defaults.stringArray(forKey: "lidSound.hiddenPacks") ?? []))
+            if migrated != saved { defaults.set(try? JSONEncoder().encode(migrated), forKey: "lidSound.items") }
+            items = migrated
         } else {
-            // First launch: the starters, switched on, so the first close has something to play.
-            loaded = manifest.flatMap(\.starters).map { $0.item() }
-            firstLaunch = true
+            // First launch: every bundled sound on its shelf, the starters on the lid, so the
+            // first close has something to play.
+            items = manifest.flatMap { pack in pack.starters.map { $0.item(onLid: pack.startsOnTheLid) } }
         }
-        // An older list's manifest sounds find their pack first, so that a pack whose sounds
-        // are in this list counts as listed below, whatever its flag says.
-        let settled = firstLaunch ? loaded : Self.settled(loaded, against: manifest)
-        items = settled
-        // The packs: bundled from the manifest, with what the user decided about each saved
-        // (in the list or out of it); a pack never seen before starts as the manifest says,
-        // unless its sounds are already in this list. The user's own packs first.
-        let hiddenBundled = Set(defaults.stringArray(forKey: "lidSound.hiddenPacks") ?? [])
-        let shownBundled = Set(defaults.stringArray(forKey: "lidSound.shownPacks") ?? [])
+        for key in ["lidSound.hiddenPacks", "lidSound.shownPacks", "lidSound.playsFrom", "lidSound.nextIndexByScope"] { defaults.removeObject(forKey: key) }
         let userPacks = (defaults.data(forKey: "lidSound.packs")).flatMap { try? JSONDecoder().decode([LidSoundPack].self, from: $0) } ?? [LidSoundPack.mine]
-        let listed = firstLaunch ? [] : Set(settled.map(\.packID))
-        packs = (userPacks.contains { $0.id == LidSoundPack.mineID } ? userPacks : [LidSoundPack.mine] + userPacks) + manifest.map { entry in
-            var pack = entry.pack
-            if hiddenBundled.contains(pack.id) { pack.hidden = true }
-            else if shownBundled.contains(pack.id) || listed.contains(pack.id) { pack.hidden = false }
-            return pack
-        }
-        playsFrom = PlaysFrom(stored: defaults.string(forKey: "lidSound.playsFrom"))
-        nextIndexByScope = (defaults.data(forKey: "lidSound.nextIndexByScope")).flatMap { try? JSONDecoder().decode([String: Int].self, from: $0) } ?? [:]
+        packs = (userPacks.contains { $0.id == LidSoundPack.mineID } ? userPacks : [LidSoundPack.mine] + userPacks) + manifest.map(\.pack)
         mode = defaults.string(forKey: "lidSound.mode").flatMap(Mode.init(rawValue:)) ?? .random
         volume = defaults.object(forKey: "lidSound.volume") as? Double ?? 0.7
         onOpen = bool("lidSound.onOpen", false)
@@ -116,10 +98,17 @@ final class LidSoundSettings: ObservableObject {
         volumeToRestore = defaults.object(forKey: "lidSound.volumeToRestore") as? Double
     }
 
-    private func savePacks() {
-        defaults.set(try? JSONEncoder().encode(packs.filter { !$0.bundled }), forKey: "lidSound.packs")
-        defaults.set(packs.filter { $0.bundled && $0.hidden }.map(\.id), forKey: "lidSound.hiddenPacks")
-        defaults.set(packs.filter { $0.bundled && !$0.hidden }.map(\.id), forKey: "lidSound.shownPacks")
+    /// A 0.4.0 list had three ways for a sound to be out of the pick besides its switch: kept
+    /// for later, a starter hidden, or its whole pack put away. All three now mean one thing,
+    /// off the lid, and the sound stays on its shelf. Nothing that was silent starts playing.
+    static func migrated(_ items: [LidSoundItem], hiddenPacks: Set<String>) -> [LidSoundItem] {
+        items.map { item in
+            var item = item
+            if item.kept || item.hidden || hiddenPacks.contains(item.packID) { item.enabled = false }
+            item.kept = false
+            item.hidden = false
+            return item
+        }
     }
 
     /// An older list's manifest sounds carry no pack: give each the manifest pack that lists
@@ -141,33 +130,21 @@ final class LidSoundSettings: ObservableObject {
         return settled
     }
 
-    /// The rows on the page: listed sounds, in packs that are not hidden, not kept for later.
-    var shown: [LidSoundItem] {
-        let hiddenPacks = hiddenPackIDs
-        return items.filter { !$0.hidden && !$0.kept && !hiddenPacks.contains($0.packID) }
-    }
-    /// The library: saved for later, out of the list.
-    var kept: [LidSoundItem] { items.filter { $0.kept && !$0.hidden } }
-    var hiddenPackIDs: Set<String> { Set(packs.filter(\.hidden).map(\.id)) }
-    /// The packs a sound can be moved to or played from: not hidden.
-    var visiblePacks: [LidSoundPack] { packs.filter { !$0.hidden } }
+    /// The stage: what a close picks from, in the order In order walks.
+    var onTheLid: [LidSoundItem] { items.filter(\.enabled) }
+    /// One shelf: a pack's sounds, in list order.
+    func shelf(_ packID: String) -> [LidSoundItem] { items.filter { $0.packID == packID } }
     func pack(_ id: String) -> LidSoundPack? { packs.first { $0.id == id } }
-
-    /// In order's place within a scope.
-    func nextIndex(for scope: PlaysFrom) -> Int { nextIndexByScope[scope.key] ?? 0 }
-    func setNextIndex(_ index: Int, for scope: PlaysFrom) { nextIndexByScope[scope.key] = index }
 
     /// A release can bring new packs and new sounds. Any pack the list does not have is added;
     /// any sound in the manifest the list does not have yet (the same file and part as a
-    /// manifest sound) is added, switched on, at the end of its pack. Hidden ones stay hidden.
-    /// A cut of the user's own that is a manifest sound by name and part (the author's
-    /// cuts, made before the pack existed) is not doubled: it is claimed by the pack and
-    /// moves there out of Mine, so the pack is in the list with its sounds, not offered
-    /// empty beside them. Only a cut in the list: a whole file that happens to share a
-    /// name, or a sound kept for later, is the user's and stays where it is. A pack the
+    /// manifest sound) is added to its shelf, off the lid: what plays is the user's choice
+    /// and a release does not make it for them. A cut of the user's own that is a manifest
+    /// sound by name and part (the author's cuts, made before the pack existed) is not
+    /// doubled: it is claimed by the pack and moves there out of Mine. Only a cut: a whole
+    /// file that happens to share a name is the user's and stays where it is. A pack the
     /// user made keeps what they put in it.
     func adoptNewPacks(_ manifest: [LidSoundLibrary.ManifestPack]) {
-        let known = Dictionary(uniqueKeysWithValues: packs.filter(\.bundled).map { ($0.id, $0.hidden) })
         let userPacks = packs.filter { !$0.bundled }
         var added: [LidSoundItem] = []
         var claimed = items
@@ -178,26 +155,16 @@ final class LidSoundSettings: ObservableObject {
                     abs(item.clipStart - from) < 0.01 && ((item.clipEnd == nil && to == nil) || abs((item.clipEnd ?? -1) - (to ?? -1)) < 0.01)
                 }
                 if claimed.contains(where: { $0.fromManifest && $0.samePart(file: starter.file, from: from, to: to) }) { continue }
-                if let own = claimed.firstIndex(where: { $0.isCut && !$0.kept && !$0.hidden && $0.displayName == starter.name && sameClip($0) }) {
+                if let own = claimed.firstIndex(where: { $0.isCut && $0.displayName == starter.name && sameClip($0) }) {
                     if claimed[own].packID == LidSoundPack.mineID { claimed[own].packID = pack.id }
                     continue
                 }
-                added.append(starter.item())
+                added.append(starter.item(onLid: false))
             }
         }
-        let listed = Set(claimed.map(\.packID))
-        packs = userPacks + manifest.map { entry in
-            var pack = entry.pack
-            if let decided = known[entry.id] { pack.hidden = decided }
-            else if listed.contains(entry.id) { pack.hidden = false }
-            return pack
-        }
-        let claimedSome = claimed != items
-        if claimedSome || !added.isEmpty { items = claimed + added }
+        packs = userPacks + manifest.map(\.pack)
+        if claimed != items || !added.isEmpty { items = claimed + added }
         settlePacks(against: manifest)
-        // The claim can empty the pack that was chosen to play from: then every pack plays.
-        // Only then: a pack the user emptied on purpose stays chosen.
-        if claimedSome, case .pack(let id) = playsFrom, !shown.contains(where: { $0.packID == id }) { playsFrom = .all }
     }
 
     func update(_ item: LidSoundItem) {

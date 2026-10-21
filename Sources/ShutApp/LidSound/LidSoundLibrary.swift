@@ -56,8 +56,9 @@ final class LidSoundLibrary {
             self.name = name; self.file = file; self.from = from; self.to = to; self.packID = packID
         }
 
-        func item() -> LidSoundItem {
-            LidSoundItem(id: UUID(), fileName: file, displayName: name, enabled: true, isStarter: true,
+        /// The row for this sound, on the lid or only on its shelf.
+        func item(onLid: Bool = true) -> LidSoundItem {
+            LidSoundItem(id: UUID(), fileName: file, displayName: name, enabled: onLid, isStarter: true,
                          clipStart: from ?? 0, clipEnd: to, isCut: to != nil, fromManifest: true, packID: packID)
         }
     }
@@ -67,8 +68,8 @@ final class LidSoundLibrary {
         var id: String
         var name: String
         var credit: String?
-        /// In the list the first time it is seen (the default), or offered under "Add a pack"
-        /// for whoever wants it: a pack is an offer, not a fixture.
+        /// Its sounds are on the lid from the first launch (the default), or only on their
+        /// shelf, for whoever wants them: a pack is an offer, not a fixture.
         var onByDefault: Bool?
         var sounds: [Starter]
 
@@ -76,8 +77,8 @@ final class LidSoundLibrary {
             self.id = id; self.name = name; self.credit = credit; self.onByDefault = onByDefault; self.sounds = sounds
         }
 
-        var startsInTheList: Bool { onByDefault ?? true }
-        var pack: LidSoundPack { LidSoundPack(id: id, name: name, bundled: true, credit: credit, hidden: !startsInTheList) }
+        var startsOnTheLid: Bool { onByDefault ?? true }
+        var pack: LidSoundPack { LidSoundPack(id: id, name: name, bundled: true, credit: credit) }
         /// The sounds, each knowing its pack.
         var starters: [Starter] { sounds.map { var s = $0; s.packID = id; return s } }
     }
@@ -135,14 +136,9 @@ final class LidSoundLibrary {
 
     func markUnreadable(_ item: LidSoundItem) { unreadable.insert(item.id) }
 
-    /// The sounds a close may pick from: switched on, listed (not hidden, not kept), on disk,
-    /// and, with a pack chosen, in that pack. `hiddenPacks` are bundled packs put away whole.
-    func candidates(_ items: [LidSoundItem], scope: LidSoundSettings.PlaysFrom = .all, hiddenPacks: Set<String> = []) -> [LidSoundItem] {
-        items.filter { item in
-            guard item.enabled, !item.hidden, !item.kept, !hiddenPacks.contains(item.packID), state(of: item) == .ok else { return false }
-            if case .pack(let id) = scope { return item.packID == id }
-            return true
-        }
+    /// The sounds a close may pick from: on the lid, and on disk.
+    func candidates(_ items: [LidSoundItem]) -> [LidSoundItem] {
+        items.filter { $0.enabled && state(of: $0) == .ok }
     }
 
     // MARK: Import and remove
@@ -232,7 +228,7 @@ final class LidSoundLibrary {
         guard let duration = Self.duration(of: source) else { return .failure(.unreadable) }
         guard duration <= Self.longest else { return .failure(.tooLong(duration)) }
         let hash = Self.hash(of: source)
-        if let hash, let same = existing.first(where: { $0.contentHash == hash && !$0.hidden && !$0.isCut }) { return .failure(.duplicate(of: same.id)) }
+        if let hash, let same = existing.first(where: { $0.contentHash == hash && !$0.isCut }) { return .failure(.duplicate(of: same.id)) }
         let base = source.deletingPathExtension().lastPathComponent
         let ext = source.pathExtension.isEmpty ? "audio" : source.pathExtension
         let name = Self.uniqueName(base, among: existing.map(\.displayName))
@@ -261,7 +257,7 @@ final class LidSoundLibrary {
     }
 
     /// An own file lives as long as any row plays it, the source or a part cut from it: the
-    /// last of them to go takes the file with it. A starter is for the caller to hide.
+    /// last of them to go takes the file with it. A starter has no file of its own to lose.
     func remove(_ item: LidSoundItem, keptBy others: [LidSoundItem] = []) {
         unreadable.remove(item.id)
         guard !item.isStarter, let url = url(for: item) else { return }

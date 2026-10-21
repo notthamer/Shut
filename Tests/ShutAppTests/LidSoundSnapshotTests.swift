@@ -100,47 +100,48 @@ final class LidSoundSnapshotTests: XCTestCase {
         click.duration = 14
         sound.settings.update(click)
         on.cutSound(sound.settings.items[0], from: 2, to: 6.5, name: "Verse")
-        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Click", "Verse", "Breath", "Hum"], "under its source")
-        XCTAssertEqual(sound.settings.shown[1].heardLength, 4.5)
-        on.renameSound(sound.settings.shown[1], to: "Chorus")
-        on.renameSound(sound.settings.shown[0], to: "Chorus")
-        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Chorus 2", "Chorus", "Breath", "Hum"], "never two the same")
-        on.renameSound(sound.settings.shown[0], to: "   ")
-        XCTAssertEqual(sound.settings.shown[0].displayName, "Chorus 2", "a blank name is no name")
+        XCTAssertEqual(sound.settings.items.map(\.displayName), ["Click", "Verse", "Breath", "Hum"], "under its source")
+        XCTAssertEqual(sound.settings.items[1].heardLength, 4.5)
+        on.renameSound(sound.settings.items[1], to: "Chorus")
+        on.renameSound(sound.settings.items[0], to: "Chorus")
+        XCTAssertEqual(sound.settings.items.map(\.displayName), ["Chorus 2", "Chorus", "Breath", "Hum"], "never two the same")
+        on.renameSound(sound.settings.items[0], to: "   ")
+        XCTAssertEqual(sound.settings.items[0].displayName, "Chorus 2", "a blank name is no name")
         on.cutSound(sound.settings.items[0], from: 1, to: 1.2, name: "Blip")
         XCTAssertEqual(on.importNote, "A part is half a second at least.")
         on.importNote = nil
         try render(on, name: "parts")
         // Seven sounds: the well is as long as the list and the column scrolls once; no
         // scroll inside a scroll, however many there are.
-        for i in 1...3 { on.cutSound(sound.settings.shown[0], from: Double(i), to: Double(i) + 1, name: "Part \(i)") }
-        XCTAssertEqual(sound.settings.shown.count, 7)
+        for i in 1...3 { on.cutSound(sound.settings.items[0], from: Double(i), to: Double(i) + 1, name: "Part \(i)") }
+        XCTAssertEqual(on.stage.count, 7)
         try render(on, name: "many")
-        for part in sound.settings.shown where part.displayName.hasPrefix("Part ") { on.removeSound(part) }
-        XCTAssertEqual(sound.settings.shown.count, 4)
+        for part in sound.settings.items where part.displayName.hasPrefix("Part ") { on.removeSound(part) }
+        XCTAssertEqual(on.stage.count, 4)
         // The editor open on a row: the shape of the sound, with the part on it.
-        sound.readWaveformNow(for: sound.settings.shown[2])
+        sound.readWaveformNow(for: sound.settings.items[2])
         XCTAssertEqual(sound.waveforms["Breath.wav"]?.count, LidSoundController.waveformBuckets)
-        XCTAssertNotNil(sound.waveform(for: sound.settings.shown[2]), "read once, kept")
-        on.cuttingSoundForTest = sound.settings.shown[2].id
+        XCTAssertNotNil(sound.waveform(for: sound.settings.items[2]), "read once, kept")
+        on.cuttingSoundForTest = sound.settings.items[2].id
         try render(on, name: "cut")
         on.cuttingSoundForTest = nil
         // Several parts at once, named; a blank name gets the part's own; a blip is refused, once.
-        let long = sound.settings.shown[0]
+        let long = sound.settings.items[0]
         XCTAssertEqual(long.duration, 14)
         on.cutSounds(long, parts: [(0...2, "In"), (2...4, "  "), (4...4.1, "Blip"), (5...5.2, "Blip 2")])
-        XCTAssertEqual(Array(sound.settings.shown.map(\.displayName).prefix(3)), ["Chorus 2", "In", "Chorus 2 · 0:02–0:04"])
+        XCTAssertEqual(Array(sound.settings.items.map(\.displayName).prefix(3)), ["Chorus 2", "In", "Chorus 2 · 0:02–0:04"])
         XCTAssertEqual(on.importNote, "A part is half a second at least.", "said once, however many were refused")
         on.importNote = nil
-        for part in sound.settings.shown where part.isCut && part.displayName != "Chorus" { on.removeSound(part) }
-        on.removeSound(sound.settings.shown[0])
-        XCTAssertEqual(sound.library.state(of: sound.settings.shown[0]), .ok, "the part outlives its source row")
-        on.removeSound(sound.settings.shown[0])
-        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Breath", "Hum"])
+        for part in sound.settings.items where part.isCut && part.displayName != "Chorus" { on.removeSound(part) }
+        on.removeSound(sound.settings.items[0])   // a starter: off the lid, still on its shelf
+        XCTAssertEqual(sound.library.state(of: sound.settings.items[0]), .ok, "the part outlives its source on the lid")
+        XCTAssertEqual(on.stage.map(\.displayName), ["Chorus", "Breath", "Hum"])
+        on.removeSound(sound.settings.items[1])   // the user's own cut: gone
+        XCTAssertEqual(on.stage.map(\.displayName), ["Breath", "Hum"])
+        XCTAssertEqual(sound.settings.items.map(\.displayName), ["Chorus 2", "Breath", "Hum"], "the starter waits on its shelf")
         click.duration = 0.06
-        sound.settings.update(click)
-        on.restoreStarterSounds()
-        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Click", "Breath", "Hum"])
+        sound.settings.update(click)   // the row as it was: its name back, on the lid
+        XCTAssertEqual(on.stage.map(\.displayName), ["Click", "Breath", "Hum"])
 
         // A file that went missing, and an import that was refused.
         let gone = LidSoundItem(id: UUID(), fileName: "Rain.wav", displayName: "Rain", enabled: true, isStarter: false, duration: 2.4)
@@ -161,16 +162,17 @@ final class LidSoundSnapshotTests: XCTestCase {
         output.muted = false
         sound.setLiveUpdates(true)
 
-        // Nothing chosen, then nothing at all.
+        // Nothing on the lid, then nothing at all (a bundle with no sounds: never on a real Mac).
         for var item in sound.settings.items { item.enabled = false; sound.settings.update(item) }
-        XCTAssertEqual(on.lidSoundTabLine, "No sound chosen")
-        try render(on, name: "none-chosen")
-        for item in sound.settings.items { on.removeSound(item) }
+        XCTAssertEqual(on.lidSoundTabLine, "Nothing on the lid")
+        try render(on, name: "stage-empty")
+        let shelved = sound.settings.items
+        sound.settings.items = []
         XCTAssertEqual(on.lidSoundTabLine, "No sounds yet")
-        XCTAssertEqual(sound.settings.items.count, 3, "starters are hidden, never deleted")
         try render(on, name: "none")
-        on.restoreStarterSounds()
-        XCTAssertEqual(sound.settings.shown.count, 3)
+        sound.settings.items = shelved
+        for item in shelved { on.setOnLid(item, true) }
+        XCTAssertEqual(on.stage.count, 3)
 
         // A sleep from the last close still going, and the note about a slow one.
         on.sleep.sleepBegan(now: Date().addingTimeInterval(-12))
@@ -183,57 +185,118 @@ final class LidSoundSnapshotTests: XCTestCase {
         RunLoop.main.run(until: Date().addingTimeInterval(0.3))
         XCTAssertNil(on.sleep.slow, "with no power log to read, nothing is pinned on anyone")
 
-        // Packs: a sound moved to a new pack shows under its own heading; a pack chosen filters
-        // the list and the pick; kept for later takes a sound out of both; use again brings it back.
+        // The stage and the packs: a sound on the lid is picked, one in its pack only is not.
+        // The packs open one at a time; a drop lands a sound where it is dropped; Play this
+        // pack makes the stage the pack; a user's pack is a playlist of their own.
         let (packed, packedSound) = try makeModel(on: true)
+        XCTAssertNil(packed.openPackID, "every pack closed to start")
+        XCTAssertEqual(packed.shelf("generated").map(\.displayName), ["Click", "Breath", "Hum"])
+        packed.showingSoundTiming = true
+        try render(packed, name: "packs-closed")
+        packed.showingSoundTiming = false
+        packed.showingBundledPacks = true
+        packed.openPackID = "generated"
+        packed.setOnLid(packedSound.settings.items[1], false)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Click", "Hum"])
+        XCTAssertEqual(packed.lidSoundTabLine, "2 sounds · random")
+        XCTAssertEqual(packed.shelf("generated").count, 3, "off the lid, still in its pack")
+        try render(packed, name: "packs-open")
+        // Dropped on the stage at a place, it lands there; dropped again, it moves.
+        let breath = try XCTUnwrap(packedSound.settings.items.first { $0.displayName == "Breath" })
+        packed.putOnLid(breath.id, at: 0)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Breath", "Click", "Hum"])
+        packed.putOnLid(breath.id, at: 3)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Click", "Hum", "Breath"], "past the last row: last")
+        packed.putOnLid(breath.id, at: 1)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Click", "Breath", "Hum"])
+        packed.putOnLid(breath.id, at: 1)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Click", "Breath", "Hum"], "dropped where it was: nothing moves")
+        // A whole pack dropped on the stage: every sound in it, together, where it was dropped.
+        for name in ["Breath", "Click"] { packed.setOnLid(try XCTUnwrap(packedSound.settings.items.first { $0.displayName == name }), false) }
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Hum"])
+        packed.putPackOnLid("generated", at: 0)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Click", "Breath", "Hum"], "the pack's own order; Hum, already on, joins the group")
+        packed.putPackOnLid("generated", at: 3)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Click", "Breath", "Hum"], "nothing else on the lid: the group is the stage")
         let voices = try XCTUnwrap(packed.newPack(named: "Voices"))
-        packed.moveSound(packedSound.settings.items[1], to: voices.id)
-        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Breath", "Click", "Hum"], "pack order: the user's, then the bundled")
+        packed.moveSound(breath, to: voices.id)
         XCTAssertEqual(packedSound.settings.packs.map(\.name), ["Mine", "Voices", "Starters"])
-        try render(packed, name: "packs-all")
-        packedSound.settings.playsFrom = .pack(voices.id)
-        XCTAssertEqual(packed.lidSoundTabLine, "Breath · On")
-        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Breath"])
-        try render(packed, name: "packs-one")
-        packed.keep(packedSound.settings.items[1])
-        XCTAssertEqual(packed.lidSoundTabLine, "Nothing to play in Voices")
-        XCTAssertEqual(packedSound.settings.kept.map(\.displayName), ["Breath"])
-        packed.showingLibrary = true
-        try render(packed, name: "library")
-        packed.useAgain(packedSound.settings.kept[0])
-        XCTAssertEqual(packed.lidSoundTabLine, "Breath · On")
-        packed.removePack(voices)
-        XCTAssertEqual(packedSound.settings.playsFrom, .all)
-        XCTAssertEqual(packedSound.settings.items[1].packID, LidSoundPack.mineID, "a removed pack's sounds go to Mine")
-        // Reorder across a heading moves the sound into that pack.
-        packed.moveSound(packedSound.settings.items[1], to: LidSoundPack.mineID)
-        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Breath", "Click", "Hum"], "Mine leads")
-        packed.moveSound(from: 0, to: 2)
-        XCTAssertEqual(packed.displayedSounds.map(\.displayName), ["Click", "Hum", "Breath"])
-        XCTAssertEqual(packedSound.settings.items.first { $0.displayName == "Breath" }?.packID, "generated", "dropped among the bundled pack's rows: it is theirs now")
+        packed.openPackID = voices.id
+        XCTAssertEqual(packed.shelf(voices.id).map(\.displayName), ["Breath"])
+        packed.playOnly(voices)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Breath"], "Play this pack: the stage is the pack")
         let starters = try XCTUnwrap(packedSound.settings.packs.first { $0.id == "generated" })
+        packed.setShelf(starters, onLid: true)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Click", "Breath", "Hum"], "Add all: list order, whatever the pack")
+        // Reorder on the stage: the sounds on the lid take one another's places; a sound in
+        // its pack only keeps its place in the list.
+        packed.moveSound(from: 0, to: 2)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Breath", "Hum", "Click"])
+        XCTAssertEqual(packedSound.settings.items.first { $0.displayName == "Breath" }?.packID, voices.id, "a move on the stage changes no pack")
+        packed.setOnLid(try XCTUnwrap(packedSound.settings.items.first { $0.displayName == "Hum" }), false)
+        packed.moveSound(from: 1, to: 0)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Click", "Breath"])
+        XCTAssertEqual(packedSound.settings.items.map(\.displayName), ["Click", "Hum", "Breath"])
+        packed.removePack(voices)
+        XCTAssertEqual(packedSound.settings.items.first { $0.displayName == "Breath" }?.packID, LidSoundPack.mineID, "a removed pack's sounds go to Mine")
+        XCTAssertNil(packed.openPackID, "the open pack gone: none open")
         packed.removePack(starters)
-        XCTAssertTrue(packed.displayedSounds.isEmpty, "the bundled pack taken out of the list: nothing shown")
-        XCTAssertEqual(packed.offeredPacks.map(\.id), ["generated"], "and offered under More from Shut, never gone from the app")
-        packed.setPack(starters, hidden: false)
-        XCTAssertEqual(packed.displayedSounds.count, 3)
-        XCTAssertTrue(packed.offeredPacks.isEmpty)
+        XCTAssertEqual(packedSound.settings.packs.count, 2, "a bundled pack is a playlist that came with the app: it cannot be removed")
+        packed.setShelf(starters, onLid: false)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Breath"], "Take all off: the pack's sounds leave the stage")
+        packed.openPackID = LidSoundPack.mineID
+        try render(packed, name: "stage")
+        // Added into a pack: in it, off the lid; added from the stage: in Mine, on the lid.
+        let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("LidSoundImport-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        let rain = scratch.appendingPathComponent("Rain.wav")
+        try Self.tone(seconds: 1, tone: 440).write(to: rain)
+        packed.importSounds([rain], to: .pack(starters))
+        XCTAssertEqual(packedSound.settings.items.last?.packID, "generated")
+        XCTAssertEqual(packedSound.settings.items.last?.enabled, false)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Breath"])
+        let thunder = scratch.appendingPathComponent("Thunder.wav")
+        try Self.tone(seconds: 1, tone: 220).write(to: thunder)
+        packed.importSounds([thunder])
+        XCTAssertEqual(packedSound.settings.items.last?.packID, LidSoundPack.mineID)
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Breath", "Thunder"])
+        for own in packedSound.settings.items where !own.isStarter { packed.removeSound(own) }
+        // Edit: tick rows, Remove takes them off the lid together, and Edit ends.
+        packed.setShelf(starters, onLid: true)
+        XCTAssertEqual(packed.stage.count, 3)
+        packed.editingStage = true
+        packed.toggleStageSelection(packed.stage[0].id)
+        packed.toggleStageSelection(packed.stage[2].id)
+        XCTAssertEqual(packed.stageSelection.count, 2)
+        try render(packed, name: "stage-editing")
+        packed.removeSelectedFromLid()
+        XCTAssertEqual(packed.stage.map(\.displayName), ["Hum"])
+        XCTAssertFalse(packed.editingStage)
+        XCTAssertTrue(packed.stageSelection.isEmpty)
+        XCTAssertEqual(packedSound.settings.items.count, 3, "off the lid, not gone")
+        packed.editingStage = true
+        packed.selectWholeStage(true)
+        XCTAssertEqual(packed.stageSelection.count, 1)
+        packed.selectWholeStage(false)
+        XCTAssertTrue(packed.stageSelection.isEmpty)
+        packed.editingStage = false
         packedSound.shutDown()
 
-        // A new user with a pack that is an offer: it waits folded under the list, Mine and
-        // the starters above it; opened, one click puts it in.
+        // A new user with a pack that is an offer: in its pack, off the lid, one click from it.
         let offer = [LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", credit: "Recorded by the author.", onByDefault: false, sounds: [
             LidSoundLibrary.Starter(name: "اذكر الله", file: "Adhkar.mp3", from: 2.7, to: 4.7),
             LidSoundLibrary.Starter(name: "توكل على الله", file: "Adhkar.mp3", from: 11.2, to: 13.1)])] + LidSoundLibrary.fallbackPacks
         let (offered, offeredSound) = try makeModel(on: true, manifest: offer)
-        XCTAssertEqual(offered.offeredPacks.map(\.name), ["Adhkar"])
-        XCTAssertEqual(offered.displayedSounds.map(\.displayName), ["Click", "Breath", "Hum"], "not in the list until asked for")
-        XCTAssertEqual(offeredSound.settings.visiblePacks.map(\.name), ["Mine", "Starters"])
-        offered.showingOffers = true
-        try render(offered, name: "offers")
-        offered.setPack(offered.offeredPacks[0], hidden: false)
-        XCTAssertEqual(offered.displayedSounds.count, 5)
-        XCTAssertEqual(offered.lidSoundTabLine, "5 sounds · random")
+        XCTAssertEqual(offered.stage.map(\.displayName), ["Click", "Breath", "Hum"], "not on the lid until asked for")
+        XCTAssertEqual(offeredSound.settings.packs.map(\.name), ["Mine", "Adhkar", "Starters"])
+        XCTAssertEqual(offered.shelf("adhkar").count, 2)
+        offered.showingBundledPacks = true
+        offered.openPackID = "adhkar"
+        try render(offered, name: "packs-offer")
+        offered.setOnLid(offered.shelf("adhkar")[0], true)
+        XCTAssertEqual(offered.stage.count, 4)
+        XCTAssertEqual(offered.lidSoundTabLine, "4 sounds · random")
         offeredSound.shutDown()
 
         let (edges, _) = try makeModel(on: true, capability: .lidStateOnly)
@@ -293,22 +356,36 @@ final class LidSoundSnapshotTests: XCTestCase {
 }
 
 extension LidSoundSnapshotTests {
+    /// A one-second 16-bit mono WAV of a tone, written the way scripts/make-sounds.swift does.
+    static func tone(seconds: Double, tone: Double) -> Data {
+        let rate = 8_000.0, count = Int(seconds * rate)
+        var data = Data()
+        func put<T: FixedWidthInteger>(_ value: T) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
+        data.append(contentsOf: Array("RIFF".utf8)); put(UInt32(36 + count * 2)); data.append(contentsOf: Array("WAVE".utf8))
+        data.append(contentsOf: Array("fmt ".utf8)); put(UInt32(16)); put(UInt16(1)); put(UInt16(1))
+        put(UInt32(rate)); put(UInt32(rate * 2)); put(UInt16(2)); put(UInt16(16))
+        data.append(contentsOf: Array("data".utf8)); put(UInt32(count * 2))
+        for i in 0..<count { put(Int16(sin(Double(i) / rate * tone * 2 * .pi) * 8_000)) }
+        return data
+    }
+
     /// A row carried to a new place changes the order, which is the order "In order" plays.
     func testMovingARow() throws {
         let (model, sound) = try makeModel(on: true)
-        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Click", "Breath", "Hum"])
+        XCTAssertEqual(sound.settings.items.map(\.displayName), ["Click", "Breath", "Hum"])
         model.moveSound(from: 2, to: 0)
-        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Hum", "Click", "Breath"])
+        XCTAssertEqual(sound.settings.items.map(\.displayName), ["Hum", "Click", "Breath"])
         model.moveSound(from: 0, to: 2)
-        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Click", "Breath", "Hum"])
+        XCTAssertEqual(sound.settings.items.map(\.displayName), ["Click", "Breath", "Hum"])
         model.moveSound(from: 1, to: 1)
         model.moveSound(from: 5, to: 0)
-        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Click", "Breath", "Hum"], "nothing to do, nothing done")
-        // A hidden starter stays hidden and out of the way.
-        model.removeSound(sound.settings.shown[1])
+        XCTAssertEqual(sound.settings.items.map(\.displayName), ["Click", "Breath", "Hum"], "nothing to do, nothing done")
+        // A sound on its shelf keeps its place in the list; the stage reorders around it.
+        model.removeSound(sound.settings.items[1])   // Breath, a starter: off the lid, on its shelf
+        XCTAssertEqual(model.stage.map(\.displayName), ["Click", "Hum"])
         model.moveSound(from: 1, to: 0)
-        XCTAssertEqual(sound.settings.shown.map(\.displayName), ["Hum", "Click"])
-        XCTAssertEqual(sound.settings.items.count, 3)
+        XCTAssertEqual(model.stage.map(\.displayName), ["Hum", "Click"])
+        XCTAssertEqual(sound.settings.items.map(\.displayName), ["Hum", "Breath", "Click"])
         sound.settings.mode = .inOrder
         sound.settings.nextIndex = 0
         XCTAssertEqual(LidSoundText.copy(sound.situation()).detail.contains("Next: Hum."), true, "the order is what In order plays")
