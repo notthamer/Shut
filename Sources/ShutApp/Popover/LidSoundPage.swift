@@ -410,8 +410,9 @@ private struct LidSoundList: View {
             if items.isEmpty {
                 // Empty, the stage is a drop zone and looks like one: three rows tall, a dashed
                 // ink outline, and the sentence that says what goes here.
-                Text(LidSoundText.stageEmpty)
-                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).lineSpacing(2).multilineTextAlignment(.center)
+                Text(model.dragging ? LidSoundText.dropHere : LidSoundText.stageEmpty)
+                    .font(model.dragging ? TunerTheme.bodyMedium : TunerTheme.bodySmall).foregroundStyle(model.dragging ? theme.ink : theme.inkLabel)
+                    .lineSpacing(2).multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
                     .frame(maxWidth: .infinity, minHeight: Self.rowHeight * 3)
                     .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -439,6 +440,15 @@ private struct LidSoundList: View {
             if let pending = model.newPackFor, let item = items.first(where: { $0.id == pending }) {
                 LidSoundNewPack(model: model, item: item)
             }
+            if model.dragging, !items.isEmpty {
+                // While a drag from a pack is in flight the well grows by one row and says where
+                // the sound lands: the same box, taller, with nothing covered. Dropped up between
+                // the rows it goes there instead; the landing line says so.
+                Rectangle().fill(theme.hairline).frame(height: 1)
+                Text(LidSoundText.dropHere).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
+                    .frame(maxWidth: .infinity).frame(height: Self.rowHeight - 1)
+                    .transition(.blurFade)
+            }
         }
         // A carried row whose list changed under it (removed, re-sorted) is let go of, so
         // nothing is ever left floating out of view.
@@ -451,18 +461,6 @@ private struct LidSoundList: View {
         .surface(.well, radius: TunerTheme.wellRadius)
         .overlay(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous)
             .strokeBorder(theme.ink, lineWidth: 1).opacity(dropTargeted || model.dragging ? 1 : 0))
-        .overlay {
-            // While a drag from a pack is in flight, the stage says where it goes, before the
-            // pointer gets there; once it is over the well the landing line takes over.
-            if model.dragging, !dropTargeted {
-                Text(LidSoundText.dropHere).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(Capsule().fill(theme.card))
-                    .overlay(Capsule().strokeBorder(theme.ink, lineWidth: 1))
-                    .allowsHitTesting(false)
-                    .transition(.blurFade)
-            }
-        }
         .overlay(alignment: .top) {
             // The landing line: 2 pt of ink in the gap the sound would fall into.
             if let dropIndex, !items.isEmpty {

@@ -54,7 +54,9 @@ lid opens. Off until you turn it on.
   frames; nothing eases into place), and letting go keeps the order, which is what "In
   order" plays down; the sounds in their packs only keep their places in the list. VoiceOver
   gets Move up and Move down on each row. The stage is also where a sound dragged from a
-  pack lands, at the row it is dropped on (`LidSoundStageDrop`, a `DropDelegate` that takes
+  pack lands: while the drag is in flight the well grows by one row that says "Drop here"
+  (the same box, taller, nothing covered; an empty stage's zone says it instead), and the
+  sound lands at the row it is dropped on (`LidSoundStageDrop`, a `DropDelegate` that takes
   the sound's id as plain text under a prefix, or audio files); dropped where it already is,
   nothing moves. A refused import says why in one Saffron line: too long, unreadable,
   already in the list, could not be copied.
