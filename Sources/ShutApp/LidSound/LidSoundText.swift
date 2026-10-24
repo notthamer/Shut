@@ -182,7 +182,7 @@ enum LidSoundText {
         }
     }
 
-    /// The folded "More from Shut" row: what waits there.
+    /// The folded "From Shut" line: what waits in it.
     /// The shelf heading's count of what is on the lid: "3 of 8". Short, since the heading
     /// also holds All on and All off, and the well's help says what the count is of.
     static func shelfLine(onLid: Int, of count: Int) -> String {

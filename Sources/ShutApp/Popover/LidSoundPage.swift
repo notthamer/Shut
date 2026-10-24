@@ -960,7 +960,7 @@ private struct LidSoundRow: View {
                 } else if onStage, draft == nil, let shelf = sound.settings.pack(item.packID) {
                     // Which shelf it came from, in the faintest ink: the stage mixes them.
                     Text(shelf.name).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1).truncationMode(.tail)
-                        .help("On the \(shelf.name) shelf, under Browse.")
+                        .help("From the \(shelf.name) pack, under Add from packs.")
                 }
                 Spacer(minLength: 6)
                 if let queueTag, draft == nil {
