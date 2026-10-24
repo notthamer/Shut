@@ -998,7 +998,7 @@ private struct LidSoundRow: View {
             }
             // Everything else about a row, behind one mark: the row stays a name and a button.
             if ticked == nil { Menu {
-                Button("Hear") { sound.preview(item) }.disabled(state != .ok)
+                // No "Hear" here: the ▶ at the row's left already is it.
                 Button("Rename") { draft = item.displayName }
                 if item.canCut, state == .ok { Button(clipping ? "Done cutting" : "Cut a part…") { clipping.toggle() } }
                 Menu("Move to") {
@@ -1019,7 +1019,7 @@ private struct LidSoundRow: View {
                     .frame(width: 28, height: 28).contentShape(Circle())
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-            .help(onStage ? "Hear, rename, cut, move to a pack, or remove from the lid: it stays in its pack." : "Hear, rename, cut, or move to a pack.")
+            .help(onStage ? "Rename, cut, move to a pack, or remove from the lid: it stays in its pack." : "Rename, cut, or move to a pack.")
             .accessibilityLabel("More for \(item.displayName)") }
         }
         .padding(.leading, 6).padding(.trailing, 8).frame(height: LidSoundList.rowHeight - 1)

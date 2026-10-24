@@ -37,7 +37,7 @@ lid opens. Off until you turn it on.
   music app keeps what is playing apart from the playlists. The column scrolls, once; the
   well never scrolls inside it (it did, at four and a half rows, and six sounds made a
   scroll inside a scroll). Each row has a ▶ to hear it, its name, the pack it came from in
-  the faintest ink, its length, and a … menu (Hear, Rename, Cut a part…, Move to, Remove
+  the faintest ink, its length, and a … menu (Rename, Cut a part…, Move to, Remove
   from the lid, which puts it back in its pack, and Delete from Shut for the user's own files). A row at work is in ink with a Lime dot. A
   file that went missing says "Missing"; one Core Audio cannot open says "Can't be played".
   "Edit", in the heading, puts a tick where ▶ was on every row: tick what should go (All
