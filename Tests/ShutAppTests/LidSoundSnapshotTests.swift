@@ -266,7 +266,8 @@ final class LidSoundSnapshotTests: XCTestCase {
         packed.setShelf(starters, onLid: false)
         packed.setOnLid(try XCTUnwrap(packedSound.settings.items.first { $0.displayName == "Breath" }), false)
         XCTAssertTrue(packed.stage.isEmpty)
-        try render(packed, name: "stage-empty-zone")
+        packed.showingBundledPacks = false
+        try render(packed, name: "stage-empty-zone")   // From Shut unfolds by itself while the stage is empty
         XCTAssertTrue(packedSound.settings.hasPutOnLid, "a sound was put on the lid by hand above: the hint is done")
         packed.setOnLid(try XCTUnwrap(packedSound.settings.items.first { $0.displayName == "Breath" }), true)
         // Added into a pack: in it, off the lid; added from the stage: in Mine, on the lid.

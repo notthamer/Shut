@@ -323,16 +323,20 @@ private struct LidSoundControls: View {
         let own = settings.packs.filter { !$0.bundled }
         let bundled = settings.packs.filter(\.bundled)
         let bundledSounds = settings.items.filter { item in bundled.contains { $0.id == item.packID } }.count
+        // With nothing on the lid, the packs from Shut stay unfolded: the way to put something
+        // there must be in view, not behind a fold.
+        let stageEmpty = model.stage.isEmpty
+        let bundledOpen = model.showingBundledPacks || stageEmpty
         return VStack(alignment: .leading, spacing: 10) {
             Eyebrow("Add from packs", number: "02").padding(.bottom, 2)
             LidSoundPackList(model: model, packs: own, canMakeOne: true)
             FoldedSection("From Shut", summary: LidSoundText.bundledPacksLine(packs: bundled.map(\.name), sounds: bundledSounds),
-                          isOpen: Binding(get: { model.showingBundledPacks }, set: { model.showingBundledPacks = $0 }),
-                          help: LidSoundText.bundledPacksAbout)
+                          isOpen: Binding(get: { bundledOpen }, set: { if !stageEmpty { model.showingBundledPacks = $0 } }),
+                          help: stageEmpty ? "The packs that came with Shut, open while nothing is on the lid. Open one, then drag a sound onto the lid or press + Lid." : LidSoundText.bundledPacksAbout)
                 .padding(.top, 18)
-            if model.showingBundledPacks { LidSoundPackList(model: model, packs: bundled, canMakeOne: false).transition(.blurFade) }
+            if bundledOpen { LidSoundPackList(model: model, packs: bundled, canMakeOne: false).transition(.blurFade) }
         }
-        .tunerAnimation(TunerTheme.ease, value: model.showingBundledPacks)
+        .tunerAnimation(TunerTheme.ease, value: bundledOpen)
     }
 }
 
