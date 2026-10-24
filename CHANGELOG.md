@@ -8,6 +8,7 @@
 - In order shows its queue. Each row carries its number, the one the next close plays is tagged NEXT (in Random, the one that just played is tagged LAST), the band has a "Next up · Breath" line of its own, the tab reads "In order · next Breath", and a row's menu has "Play this next".
 - Edit's mark is a filled circle, not a check.
 - A new install starts with nothing on the lid. Every pack is in place under From Shut, which stays unfolded with the first pack open while the stage is empty, so the first thing to do is the first thing in view. A list from before keeps whatever it played.
+- The panel costs nothing when it is out of sight. Its two moving parts, the Lid sound glyph's breath and the eyes' glances, kept their clocks running while the window was minimized to the Dock or covered, and the panel read a third of a core there. Every clock now stops the moment its window is minimized, covered or closed, and starts again when it is seen.
 - Play to the end is on by default: your Mac waits for the sound, then sleeps at once, so a sound is heard whole however fast the lid comes down. Whoever turned it off keeps it off.
 
 ## 0.4.1
@@ -25,7 +26,7 @@
 - Updates come sooner: Shut looks for a new version about once an hour instead of once a day, and once a few seconds after it starts. And "Check for updates" sits in the panel's footer, beside the version, for whoever heard of a release first; before, it was only in the menu bar icon's right-click menu.
 - Cutting is clearer: the two edges have handles, the pointer says what a drag would do, the handle in hand shows its time, and when a sound has silences in it the editor says how many parts they make and offers to split there, before you ask; the parts it finds are a start, not a verdict: click one, drag the handles to fix it, or × to leave it out, then name and add.
 - The apps that hold every sleep for 30 s are named before they do it. Logitech Options+ and G Hub never answer macOS when the lid closes, so a second close inside 30 s does nothing; quitting their windows does not stop their agents, and Login Items does not either. While one is running, both pages say so, with a "Stop" that takes it out of launchd for this session and the next login, no password, and quits it: your mouse keeps working, and opening the app brings it back. And while a sleep is still going, the page names who is holding it, not only after.
-- The Lid sound glyph is smoother: its bars sit on the pixel grid, and it breathes at thirty frames a second instead of fifteen.
+- The Lid sound glyph is smoother: its bars sit on the pixel grid, so its breath no longer steps, and it moves at thirty frames a second while a sound plays.
 
 ## 0.4.0
 

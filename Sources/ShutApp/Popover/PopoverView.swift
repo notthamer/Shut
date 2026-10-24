@@ -57,6 +57,8 @@ struct PopoverView: View {
         }
         .frame(width: Self.width)
         .tunerThemed()
+        // Every clock below stops when this window is minimized, covered or gone.
+        .pausesClocksOffScreen()
     }
 }
 

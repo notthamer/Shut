@@ -75,10 +75,11 @@ struct AwakeEyes: View {
     @State private var gaze: Frame?
     @Environment(\.tunerTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.windowOnScreen) private var onScreen
 
     var body: some View {
         Group {
-            if !animated || reduceMotion || mood == .shut || mood == .asleep {
+            if !animated || reduceMotion || !onScreen || mood == .shut || mood == .asleep {
                 image(Self.restingFrame(mood))
             } else {
                 // Only a face that moves needs a clock, and only while it is on screen.
