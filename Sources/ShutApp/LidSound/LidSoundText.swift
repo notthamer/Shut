@@ -48,6 +48,7 @@ enum LidSoundText {
         if s.shownCount == 0 { return "No sounds yet" }
         guard let first = s.candidates.first else { return "Nothing on the lid" }
         if s.candidates.count == 1 { return s.capability == .lidStateOnly ? "\(first) · after the lid shuts" : "\(first) · On" }
+        if s.mode == .inOrder, let next = s.next { return "In order · next \(next)" }
         return "\(s.candidates.count) sounds · \(s.mode == .random ? "random" : "in order")"
     }
 
@@ -75,7 +76,7 @@ enum LidSoundText {
         }
         if s.shownCount == 0 { return Copy(headline: silent, detail: "No sounds yet. Add one below.") }
         guard let first = s.candidates.first else {
-            return Copy(headline: silent, detail: "Nothing is on the lid. Drag a sound onto it from a pack, or press + beside one.")
+            return Copy(headline: silent, detail: "Nothing is on the lid. Drag a sound onto it from a pack, or press + Lid beside one.")
         }
         let sounds = "\(s.candidates.count) sounds"
         let headline: String
@@ -96,9 +97,8 @@ enum LidSoundText {
             parts.append(s.playsToEnd ? "It starts as the lid comes down and plays to the end; your Mac sleeps right after."
                                       : "It starts as the lid comes down and ends as it lands.")
         }
-        if s.candidates.count > 1 {
-            parts.append(s.mode == .random ? "A different one each time." : "Next: \(s.next ?? first).")
-        }
+        // In order's next sound has a line of its own under this (`nextUpLine`), not a clause here.
+        if s.candidates.count > 1, s.mode == .random { parts.append("A different one each time.") }
         if s.muted, s.whenMuted == .unmute { parts.append("Your Mac is muted; Shut unmutes for the sound and mutes again after.") }
         // Said once: "on open" is in the Settings summary, the slow sleep is the card under
         // this, and the built-in speakers go without saying (`outputName` is nil for them).
@@ -188,9 +188,15 @@ enum LidSoundText {
     static func shelfLine(onLid: Int, of count: Int) -> String {
         count == 0 ? "Empty" : (onLid == count ? "All \(count)" : "\(onLid) of \(count)")
     }
-    static let onTheLidAbout = "The sounds a close may play, in the order In order walks. Hold a row a moment, then drag to reorder. Drag a sound here from a pack, or drop audio files to add them."
+    static let onTheLidAbout = "The sounds a close may play, in the order In order walks them. Hold a row a moment, then drag to reorder. Drag a sound here from a pack, or drop audio files to add them."
     static let packsAbout = "Your packs: Mine, and the ones you make. Open one, then drag a sound onto the lid or press +. Play this pack makes the lid play that pack and nothing else."
-    static let stageEmpty = "Nothing on the lid. Drag a sound here from a pack, or press + beside it."
+    static let stageEmpty = "Drag a sound here from a pack on the right, or press + Lid beside one."
+    /// Over the stage while a drag from a pack is in flight.
+    static let dropHere = "Drop here"
+    /// Under the open pack, until the user has put a sound on the lid once.
+    static let firstHint = "+ Lid puts a sound on the lid, where it plays. You can also drag it there."
+    /// The band's own line for In order: what the next close plays.
+    static func nextUpLine(_ name: String) -> String { "Next up · \(name)" }
     static let shelfEmpty = "Nothing here yet. Add a sound… below, or drop audio files on this pack."
     /// The folded "From Shut" line: what waits in it.
     static func bundledPacksLine(packs: [String], sounds: Int) -> String {

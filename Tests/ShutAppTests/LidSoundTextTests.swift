@@ -54,12 +54,15 @@ final class LidSoundTextTests: XCTestCase {
         XCTAssertTrue(LidSoundText.copy(situation()).detail.hasSuffix("A different one each time."))
         var order = situation(mode: .inOrder); order.next = "Breath"
         XCTAssertEqual(LidSoundText.copy(order).headline, "Closing the lid plays 3 sounds in turn.")
-        XCTAssertTrue(LidSoundText.copy(order).detail.hasSuffix("Next: Breath."))
+        XCTAssertFalse(LidSoundText.copy(order).detail.contains("Next"), "the next sound is a line of its own, not a clause")
+        XCTAssertEqual(LidSoundText.nextUpLine("Breath"), "Next up · Breath")
+        XCTAssertEqual(LidSoundText.tabLine(order), "In order · next Breath")
+        XCTAssertEqual(LidSoundText.tabLine(situation(mode: .inOrder)), "3 sounds · in order", "no next known yet: the count")
         XCTAssertEqual(LidSoundText.copy(situation(muted: true)).headline, "Your Mac is muted, so closing is silent.")
         XCTAssertTrue(LidSoundText.copy(situation(whenMuted: .unmute, muted: true)).detail.contains("unmutes for the sound"))
         var noSwitch = situation(whenMuted: .unmute, muted: true); noSwitch.canUnmute = false
         XCTAssertTrue(LidSoundText.copy(noSwitch).detail.contains("no mute switch"))
-        XCTAssertEqual(LidSoundText.copy(situation(shown: 3, candidates: [])).detail, "Nothing is on the lid. Drag a sound onto it from a pack, or press + beside one.")
+        XCTAssertEqual(LidSoundText.copy(situation(shown: 3, candidates: [])).detail, "Nothing is on the lid. Drag a sound onto it from a pack, or press + Lid beside one.")
         XCTAssertEqual(LidSoundText.copy(situation(shown: 0, candidates: [])).detail, "No sounds yet. Add one below.")
         var output = situation(candidates: ["Rain"]); output.outputName = "AirPods Pro"; output.onOpen = true
         XCTAssertEqual(LidSoundText.copy(output).detail,

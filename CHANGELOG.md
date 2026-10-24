@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2
+
+**The stage says what to do, and In order shows what comes next.** The Lid sound page's two sections are named for what happens, "On close" and "Add from packs", and the stage shows its queue.
+
+- Where sounds go is said, not guessed. An empty stage is a drop zone with a dashed outline that says so; the moment a drag leaves a pack, the stage says "Drop here"; the plus beside a sound in a pack reads "+ Lid", since a bare plus read as "add to this list", the opposite of what it does; and on the first visit a pack is already open, with one line under it saying how, gone after the first sound is put on the lid.
+- In order shows its queue. Each row carries its number, the one the next close plays is tagged NEXT (in Random, the one that just played is tagged LAST), the band has a "Next up · Breath" line of its own, the tab reads "In order · next Breath", and a row's menu has "Play this next".
+- Edit's mark is a filled circle, not a check.
+
 ## 0.4.1
 
 **The stage and the packs.** The Lid sound page is laid out the way a music app is: "On the lid" is what plays, "Packs" are the playlists, and a sound is dragged from one onto the other.

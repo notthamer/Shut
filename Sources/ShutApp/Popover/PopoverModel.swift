@@ -126,9 +126,45 @@ final class PopoverModel: ObservableObject {
     @Published var showingSoundTiming = false
     /// "From Shut" is open: the packs that came with the app, under the user's own.
     @Published var showingBundledPacks = false
-    /// Edit, on the stage: a check beside each row, and the ticked ones come off the lid at once.
+    /// Edit, on the stage: a mark beside each row, and the marked ones come off the lid at once.
     @Published var editingStage = false { didSet { if !editingStage { stageSelection = [] } } }
     @Published var stageSelection: Set<UUID> = []
+    /// A drag from a pack is in flight: the stage says "Drop here" before the pointer reaches
+    /// it. Set when the drag starts; cleared by the drop, or by the first pointer movement the
+    /// page sees after the drag (a drag session owns the pointer while it lasts).
+    @Published var dragging = false
+    var draggingSince: Date = .distantPast
+
+    func dragBegan() { dragging = true; draggingSince = Date() }
+    func dragEnded() { if dragging { dragging = false } }
+    /// Pointer movement over the page: a drag that ended somewhere else is over. The first
+    /// moments after the start are ignored, since one event can slip in before the session
+    /// takes the pointer.
+    func pointerMoved() { if dragging, Date().timeIntervalSince(draggingSince) > 0.4 { dragging = false } }
+
+    /// In order: the sound the next close plays, if there is one.
+    var nextOnLid: LidSoundItem? {
+        guard lidSound.settings.mode == .inOrder else { return nil }
+        let candidates = lidSound.candidates
+        guard !candidates.isEmpty else { return nil }
+        let index = ((lidSound.settings.nextIndex % candidates.count) + candidates.count) % candidates.count
+        return candidates[index]
+    }
+
+    /// Random: the one that played last, so the rotation can be seen moving.
+    var lastPlayedOnLid: LidSoundItem? {
+        guard lidSound.settings.mode == .random, let id = lidSound.settings.lastPickID else { return nil }
+        return stage.first { $0.id == id }
+    }
+
+    /// "Play this next": In order carries on from this row.
+    func playNext(_ item: LidSoundItem) {
+        guard let index = lidSound.candidates.firstIndex(where: { $0.id == item.id }) else { return }
+        lidSound.settings.nextIndex = index
+    }
+
+    /// Once a sound has been put on the lid by hand, the hint that says how is done.
+    private func notePutOnLid() { if !lidSound.settings.hasPutOnLid { lidSound.settings.hasPutOnLid = true } }
     /// "New pack…" was chosen for this sound: a name is being typed for the pack.
     @Published var newPackFor: UUID?
 
@@ -143,11 +179,13 @@ final class PopoverModel: ObservableObject {
         guard item.enabled != on else { return }
         var changed = item; changed.enabled = on
         lidSound.settings.update(changed)
+        if on { notePutOnLid() }
     }
 
     /// "Add all" / "Take all off" under an open pack: every sound in it, at once.
     func setShelf(_ pack: LidSoundPack, onLid: Bool) {
         lidSound.settings.items = lidSound.settings.items.map { var item = $0; if item.packID == pack.id { item.enabled = onLid }; return item }
+        if onLid { notePutOnLid() }
     }
 
     func toggleStageSelection(_ id: UUID) {
@@ -180,12 +218,14 @@ final class PopoverModel: ObservableObject {
         let stage = Array(others.prefix(target)) + pack + Array(others.dropFirst(target))
         for (slot, item) in zip(slots, stage) { items[slot] = item }
         lidSound.settings.items = items
+        notePutOnLid()
     }
 
     /// "Play this pack": the stage becomes exactly this pack, in list order, the way choosing
     /// a playlist replaces what was playing.
     func playOnly(_ pack: LidSoundPack) {
         lidSound.settings.items = lidSound.settings.items.map { var item = $0; item.enabled = item.packID == pack.id; return item }
+        notePutOnLid()
     }
 
     /// A sound dropped on the stage at `index` (a place between its rows, 0…count): onto the
@@ -205,6 +245,7 @@ final class PopoverModel: ObservableObject {
         stage.insert(stage.remove(at: from), at: to)
         for (slot, item) in zip(slots, stage) { items[slot] = item }
         lidSound.settings.items = items
+        notePutOnLid()
     }
 
     func moveSound(_ item: LidSoundItem, to packID: String) {

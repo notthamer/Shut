@@ -48,6 +48,9 @@ final class LidSoundSettings: ObservableObject {
     /// lists them. Only the user's packs are saved; the bundled ones come from the manifest
     /// each launch.
     @Published var packs: [LidSoundPack] { didSet { defaults.set(try? JSONEncoder().encode(packs.filter { !$0.bundled }), forKey: "lidSound.packs") } }
+    /// The user has put a sound on the lid themselves, by + or a drag: the hint that says how
+    /// is for before that, and never after.
+    @Published var hasPutOnLid: Bool { didSet { defaults.set(hasPutOnLid, forKey: "lidSound.hasPutOnLid") } }
 
     /// Random never plays the same sound twice running; in order carries on from here.
     var lastPickID: UUID? { didSet { defaults.set(lastPickID?.uuidString, forKey: "lidSound.lastPickID") } }
@@ -91,6 +94,7 @@ final class LidSoundSettings: ObservableObject {
         startsWithEffect = bool("lidSound.startsWithEffect", true)
         startDegrees = defaults.object(forKey: "lidSound.startDegrees") as? Double ?? 60
         playsToEnd = bool("lidSound.playsToEnd", false)
+        hasPutOnLid = bool("lidSound.hasPutOnLid", false)
         lastPickID = defaults.string(forKey: "lidSound.lastPickID").flatMap(UUID.init(uuidString:))
         nextIndex = defaults.integer(forKey: "lidSound.nextIndex")
         muteToRestore = defaults.bool(forKey: "lidSound.muteToRestore")

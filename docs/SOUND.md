@@ -33,7 +33,7 @@ lid opens. Off until you turn it on.
   old value is written to defaults first, so a sleep in between still gets it put back at
   the next launch, on the same output only). Outputs with no volume Shut can set keep the
   dial a share.
-- **01 On the lid**: the stage, on the left, a well as long as the list is, the way a
+- **01 On close**: the stage, on the left, a well as long as the list is, the way a
   music app keeps what is playing apart from the playlists. The column scrolls, once; the
   well never scrolls inside it (it did, at four and a half rows, and six sounds made a
   scroll inside a scroll). Each row has a ▶ to hear it, its name, the pack it came from in
@@ -58,7 +58,7 @@ lid opens. Off until you turn it on.
   the sound's id as plain text under a prefix, or audio files); dropped where it already is,
   nothing moves. A refused import says why in one Saffron line: too long, unreadable,
   already in the list, could not be copied.
-- **02 Packs**, on the right: the user's packs first (Mine and the ones they make, with
+- **02 Add from packs**, on the right: the user's packs first (Mine and the ones they make, with
   "New pack…" at the foot of the well), and under them a fold, "From Shut", with the packs
   that came with the app, so a new user sees Mine and one line, not a wall of starters.
   Every pack is a row (name, "3 of 8" on the lid, a chevron), one open at a time across both
