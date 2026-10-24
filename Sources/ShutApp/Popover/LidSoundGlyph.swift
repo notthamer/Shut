@@ -5,8 +5,9 @@ import Tuner
 /// On, they breathe, slowly; while a sound plays they move to it. On the page they lean
 /// toward the pointer when it comes near, and a click on them plays the sound. Every
 /// movement is a pure function of time (`heights(at:)`), so only a glyph that moves has a
-/// clock, only while it is on screen, and Reduce Motion stills it. Thirty frames a second,
-/// breathing or playing: at fifteen the breath was seen to step.
+/// clock, only while it is on screen (`windowOnScreen`: minimized or covered, it stops), and
+/// Reduce Motion stills it. Thirty frames a second while a sound plays, fifteen for the
+/// breath; the bars sit on the pixel grid, which is what made fifteen look stepped before.
 struct LidSoundGlyph: View {
     let playing: Bool
     let height: CGFloat
@@ -23,6 +24,7 @@ struct LidSoundGlyph: View {
     @State private var hover: Hover?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.displayScale) private var scale
+    @Environment(\.windowOnScreen) private var onScreen
 
     /// Where the pointer is across the glyph, -1 (left) to 1 (right), and since when, so the
     /// lean eases in over a moment instead of jumping.
@@ -59,12 +61,15 @@ struct LidSoundGlyph: View {
         return heights.map { max(0.15, min(1, $0)) }
     }
 
-    private var moves: Bool { !reduceMotion && (playing || breathes || hover != nil) }
+    /// A clock only for a glyph that moves, in a window that can be seen.
+    private var moves: Bool { onScreen && !reduceMotion && (playing || breathes || hover != nil) }
 
     var body: some View {
         Group {
             if moves {
-                TimelineView(.periodic(from: .now, by: 1 / 30)) { context in
+                // Thirty frames a second while a sound plays, fifteen for the six-second breath: with
+                // the bars on the pixel grid the slow breath is as smooth at fifteen, for half the work.
+                TimelineView(.periodic(from: .now, by: playing ? 1 / 30 : 1 / 15)) { context in
                     bars(Self.heights(at: context.date.timeIntervalSinceReferenceDate, playing: playing, breathing: breathes, hover: hover))
                 }
             } else {
