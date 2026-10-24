@@ -216,8 +216,11 @@ should play; "Play this pack" makes the stage that pack. A pack is a playlist, n
 switch: nothing to add or remove, and one sound from each of nine packs is nine drags. In
 the model this is one flag, `LidSoundItem.enabled` (on the lid), and one list, `items`,
 whose order is the stage's order; `LidSoundPack` has no state of its own. A release's new
-sounds land in their packs, off the lid; the first launch puts the `onByDefault` packs
-(Starters) on the lid and the rest in their packs.
+sounds land in their packs, off the lid, and so does the first launch: a new list has
+every pack in place and nothing on the lid. The stage is the user's to fill, and the page
+shows how: while it is empty "From Shut" stays unfolded with the first pack open, and
+until a sound has been put on the lid by hand a line under the open pack says what + Lid
+does.
 
 Bundled packs come from `starters.json`, each with a `credit` line saying where its audio
 came from, written beside it (rule 6). Mine leads the shelves and the bundled packs follow
@@ -257,7 +260,7 @@ joins its neighbour, each part gets 0.05 s of air either side, and there are twe
 most, the shortest gaps closed first. A sound with no silence in it is one part, and the
 line says so.
 
-**Play to the end.** Under Extras, off by default. On, the lid's sleep is held off while
+**Play to the end.** Under Extras, on by default (whoever turned it off keeps it off). On, the lid's sleep is held off while
 this close's sound plays, with the same kernel call Stay awake makes
 (`kPMSetClamshellSleepState`), and given back the moment the sound ends, so the Mac sleeps
 right after and a two-second sound is heard whole however fast the lid comes down. The

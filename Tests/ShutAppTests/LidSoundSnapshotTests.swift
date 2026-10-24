@@ -23,6 +23,10 @@ final class LidSoundSnapshotTests: XCTestCase {
         let suite = UserDefaults(suiteName: "LidSoundSnapshot-\(UUID().uuidString)")!
         let soundSettings = LidSoundSettings(defaults: suite, manifest: manifest)
         soundSettings.isOn = on
+        // A new list starts with nothing on the lid; these tests are of a user who put the
+        // three starters there (the fresh state is covered by the library tests).
+        soundSettings.items = soundSettings.items.map { var item = $0; if item.packID == "generated" { item.enabled = true }; return item }
+        soundSettings.hasPutOnLid = true
         if let items { soundSettings.items = items }
         let settings = AppSettings(defaults: suite)
         let registry = TransitionRegistry(transitions: TransitionCatalog.make(), currentID: "fold")
@@ -308,7 +312,7 @@ final class LidSoundSnapshotTests: XCTestCase {
         packedSound.shutDown()
 
         // A new user with a pack that is an offer: in its pack, off the lid, one click from it.
-        let offer = [LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", credit: "Recorded by the author.", onByDefault: false, sounds: [
+        let offer = [LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", credit: "Recorded by the author.", sounds: [
             LidSoundLibrary.Starter(name: "اذكر الله", file: "Adhkar.mp3", from: 2.7, to: 4.7),
             LidSoundLibrary.Starter(name: "توكل على الله", file: "Adhkar.mp3", from: 11.2, to: 13.1)])] + LidSoundLibrary.fallbackPacks
         let (offered, offeredSound) = try makeModel(on: true, manifest: offer)

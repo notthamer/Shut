@@ -134,8 +134,6 @@ final class LidSoundLibraryTests: XCTestCase {
         XCTAssertEqual(packs.map(\.id), ["generated", "pops", "toys", "machines", "retro", "night", "encore", "ode-to-joy", "adhkar"], "the manifest, in packs")
         XCTAssertEqual(packs.map(\.sounds.count), [8, 6, 7, 10, 8, 8, 8, 15, 5])
         XCTAssertTrue(packs.allSatisfy { $0.credit != nil }, "where a bundled pack's audio came from is written beside it")
-        XCTAssertTrue(packs[0].startsOnTheLid, "the starters are on the lid from the first launch")
-        XCTAssertTrue(packs.dropFirst().allSatisfy { !$0.startsOnTheLid }, "every other pack is a shelf to browse, off the lid")
         let starters = bundled.starters()
         XCTAssertEqual(starters.count, 75)
         XCTAssertEqual(starters.prefix(8).map(\.name), ["Click", "Blob", "Pop", "Boing", "Coin", "CRT off", "Breath", "Hum"], "the fun ones first, the 0.4.0 three kept")
@@ -189,7 +187,9 @@ final class LidSoundLibraryTests: XCTestCase {
         let suite = UserDefaults(suiteName: "LidSound-\(UUID().uuidString)")!
         let settings = LidSoundSettings(defaults: suite, manifest: LidSoundLibrary.fallbackPacks)
         XCTAssertEqual(settings.items.map(\.displayName), ["Click", "Breath", "Hum"])
-        XCTAssertTrue(settings.items.allSatisfy { $0.isStarter && $0.enabled })
+        XCTAssertTrue(settings.items.allSatisfy { $0.isStarter && !$0.enabled }, "a new list: everything in its pack, nothing on the lid")
+        XCTAssertTrue(settings.playsToEnd, "the whole sound by default: the Mac waits for it")
+        for item in settings.items { var on = item; on.enabled = true; settings.update(on) }
         XCTAssertFalse(settings.isOn, "off until turned on")
         XCTAssertEqual(settings.volume, 0.7)
         XCTAssertEqual(settings.whenMuted, .stayQuiet)
@@ -228,12 +228,13 @@ final class LidSoundLibraryTests: XCTestCase {
         let library = LidSoundLibrary(directory: folder, bundle: AppAssets.resourceBundle(), packs: release)
         XCTAssertEqual(library.candidates(again.items).map(\.displayName), ["Click", "Breath"], "on the lid and on disk; the user's file is not on disk")
 
-        // A new user with a pack that is not on by default: on its shelf, off the lid.
+        // A new user: every pack in place, nothing on the lid.
         let fresh = UserDefaults(suiteName: "LidSound-\(UUID().uuidString)")!
-        let offer = [LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", onByDefault: false, sounds: release[1].sounds)] + LidSoundLibrary.fallbackPacks
+        let offer = [LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", sounds: release[1].sounds)] + LidSoundLibrary.fallbackPacks
         let newUser = LidSoundSettings(defaults: fresh, manifest: offer)
-        XCTAssertEqual(newUser.onTheLid.map(\.packID), ["generated", "generated", "generated"], "offered, not imposed")
+        XCTAssertTrue(newUser.onTheLid.isEmpty, "nothing imposed")
         XCTAssertEqual(newUser.shelf("adhkar").count, 2)
+        XCTAssertEqual(newUser.shelf("generated").count, 3)
         XCTAssertEqual(newUser.packs.map(\.id), [LidSoundPack.mineID, "adhkar", "generated"])
 
         // The claim takes the author's cuts only: a whole file of the user's that shares a
@@ -257,7 +258,7 @@ final class LidSoundLibraryTests: XCTestCase {
         older.set(try? JSONEncoder().encode(oldItems), forKey: "lidSound.items")
         let migrated = LidSoundSettings(defaults: older, manifest: offer)
         XCTAssertEqual(Set(migrated.items.map(\.packID)), ["adhkar", "generated"], "settled against the manifest")
-        XCTAssertEqual(migrated.onTheLid.count, 5, "they were on the lid before: they stay on it")
+        XCTAssertEqual(migrated.onTheLid.count, 5, "they were on the lid before: they stay on it; only a new list starts empty")
     }
 
     /// 0.4.0 had three ways for a sound to be out of the pick besides its switch: kept for
@@ -266,7 +267,7 @@ final class LidSoundLibraryTests: XCTestCase {
     @MainActor
     func testAnOlderListComesToTheStageAndTheShelves() throws {
         let suite = UserDefaults(suiteName: "LidSound-\(UUID().uuidString)")!
-        let adhkar = LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", onByDefault: false, sounds: [
+        let adhkar = LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", sounds: [
             LidSoundLibrary.Starter(name: "اذكر الله", file: "Adhkar.mp3", from: 2.7, to: 4.7)])
         let manifest = LidSoundLibrary.fallbackPacks + [adhkar]
         let click = LidSoundLibrary.fallbackPacks[0].starters[0].item()

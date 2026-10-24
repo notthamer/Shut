@@ -7,6 +7,8 @@
 - Where sounds go is said, not guessed. An empty stage is a drop zone with a dashed outline that says so; the moment a drag leaves a pack, the stage grows by a row that says "Drop here", with nothing covered; the plus beside a sound in a pack reads "+ Lid", since a bare plus read as "add to this list", the opposite of what it does; on the first visit a pack is already open, with one line under it saying how, gone after the first sound is put on the lid; and while nothing is on the lid, the packs from Shut stay unfolded.
 - In order shows its queue. Each row carries its number, the one the next close plays is tagged NEXT (in Random, the one that just played is tagged LAST), the band has a "Next up · Breath" line of its own, the tab reads "In order · next Breath", and a row's menu has "Play this next".
 - Edit's mark is a filled circle, not a check.
+- A new install starts with nothing on the lid. Every pack is in place under From Shut, which stays unfolded with the first pack open while the stage is empty, so the first thing to do is the first thing in view. A list from before keeps whatever it played.
+- Play to the end is on by default: your Mac waits for the sound, then sleeps at once, so a sound is heard whole however fast the lid comes down. Whoever turned it off keeps it off.
 
 ## 0.4.1
 
