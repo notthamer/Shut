@@ -411,7 +411,7 @@ private struct LidSoundList: View {
                 // Empty, the stage is a drop zone and looks like one: three rows tall, a dashed
                 // ink outline, and the sentence that says what goes here.
                 Text(model.dragging ? LidSoundText.dropHere : LidSoundText.stageEmpty)
-                    .font(model.dragging ? TunerTheme.bodyMedium : TunerTheme.bodySmall).foregroundStyle(model.dragging ? theme.ink : theme.inkLabel)
+                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                     .lineSpacing(2).multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
                     .frame(maxWidth: .infinity, minHeight: Self.rowHeight * 3)
@@ -445,7 +445,8 @@ private struct LidSoundList: View {
                 // the sound lands: the same box, taller, with nothing covered. Dropped up between
                 // the rows it goes there instead; the landing line says so.
                 Rectangle().fill(theme.hairline).frame(height: 1)
-                Text(LidSoundText.dropHere).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
+                // Quiet, like the empty zone's sentence: a place, not a button.
+                Text(LidSoundText.dropHere).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
                     .frame(maxWidth: .infinity).frame(height: Self.rowHeight - 1)
                     .transition(.blurFade)
             }
