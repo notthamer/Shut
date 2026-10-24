@@ -55,6 +55,12 @@ final class LidSoundControllerTests: XCTestCase {
         suite = UserDefaults(suiteName: "LidSoundController-\(UUID().uuidString)")!
         let settings = LidSoundSettings(defaults: suite, manifest: LidSoundLibrary.fallbackPacks)
         settings.isOn = true
+        // A new list starts with nothing on the lid; these are tests of a list with the
+        // three starters on it.
+        settings.items = settings.items.map { var item = $0; item.enabled = true; return item }
+        // Play to the end is on by default; these tests are of the landing fade, and the one
+        // of the hold switches it back on itself.
+        settings.playsToEnd = false
         if let items { settings.items = items }
         let app = AppSettings(defaults: suite)
         app.isEnabled = lidEffects

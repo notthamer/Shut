@@ -23,6 +23,10 @@ final class LidSoundSnapshotTests: XCTestCase {
         let suite = UserDefaults(suiteName: "LidSoundSnapshot-\(UUID().uuidString)")!
         let soundSettings = LidSoundSettings(defaults: suite, manifest: manifest)
         soundSettings.isOn = on
+        // A new list starts with nothing on the lid; these tests are of a user who put the
+        // three starters there (the fresh state is covered by the library tests).
+        soundSettings.items = soundSettings.items.map { var item = $0; if item.packID == "generated" { item.enabled = true }; return item }
+        soundSettings.hasPutOnLid = true
         if let items { soundSettings.items = items }
         let settings = AppSettings(defaults: suite)
         let registry = TransitionRegistry(transitions: TransitionCatalog.make(), currentID: "fold")
@@ -158,7 +162,7 @@ final class LidSoundSnapshotTests: XCTestCase {
         XCTAssertEqual(on.lidSoundTabLine, "Muted")
         try render(on, name: "muted")
         sound.settings.whenMuted = .unmute
-        XCTAssertEqual(on.lidSoundTabLine, "3 sounds · in order")
+        XCTAssertEqual(on.lidSoundTabLine, "In order · next Click")
         output.muted = false
         sound.setLiveUpdates(true)
 
@@ -179,7 +183,7 @@ final class LidSoundSnapshotTests: XCTestCase {
         XCTAssertEqual(on.lidSoundTabLine, "Still going to sleep")
         try render(on, name: "sleep-pending")
         on.sleep.woke(now: Date())
-        XCTAssertEqual(on.lidSoundTabLine, "3 sounds · in order")
+        XCTAssertEqual(on.lidSoundTabLine, "In order · next Click")
         on.sleep.sleepBegan(now: Date().addingTimeInterval(-31))
         on.sleep.woke(now: Date())
         RunLoop.main.run(until: Date().addingTimeInterval(0.3))
@@ -246,6 +250,30 @@ final class LidSoundSnapshotTests: XCTestCase {
         XCTAssertEqual(packed.stage.map(\.displayName), ["Breath"], "Take all off: the pack's sounds leave the stage")
         packed.openPackID = LidSoundPack.mineID
         try render(packed, name: "stage")
+        // In order shows its queue: numbers, NEXT on the next, and the band's own line.
+        packed.setShelf(starters, onLid: true)
+        packedSound.settings.mode = .inOrder
+        packedSound.settings.nextIndex = 1
+        XCTAssertEqual(packed.nextOnLid?.displayName, packed.stage[1].displayName)
+        try render(packed, name: "stage-queue")
+        packedSound.settings.mode = .random
+        // A drag from a pack in flight: the stage says Drop here before the pointer arrives.
+        packed.dragBegan()
+        XCTAssertTrue(packed.dragging)
+        try render(packed, name: "stage-dragging")
+        packed.dragBegan()   // the render above took longer than the grace the start gets
+        packed.pointerMoved()
+        XCTAssertTrue(packed.dragging, "a pointer event right after the start is the start itself")
+        packed.draggingSince = Date().addingTimeInterval(-1)
+        packed.pointerMoved()
+        XCTAssertFalse(packed.dragging, "the first movement after the drag ends it")
+        packed.setShelf(starters, onLid: false)
+        packed.setOnLid(try XCTUnwrap(packedSound.settings.items.first { $0.displayName == "Breath" }), false)
+        XCTAssertTrue(packed.stage.isEmpty)
+        packed.showingBundledPacks = false
+        try render(packed, name: "stage-empty-zone")   // From Shut unfolds by itself while the stage is empty
+        XCTAssertTrue(packedSound.settings.hasPutOnLid, "a sound was put on the lid by hand above: the hint is done")
+        packed.setOnLid(try XCTUnwrap(packedSound.settings.items.first { $0.displayName == "Breath" }), true)
         // Added into a pack: in it, off the lid; added from the stage: in Mine, on the lid.
         let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("LidSoundImport-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
@@ -284,7 +312,7 @@ final class LidSoundSnapshotTests: XCTestCase {
         packedSound.shutDown()
 
         // A new user with a pack that is an offer: in its pack, off the lid, one click from it.
-        let offer = [LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", credit: "Recorded by the author.", onByDefault: false, sounds: [
+        let offer = [LidSoundLibrary.ManifestPack(id: "adhkar", name: "Adhkar", credit: "Recorded by the author.", sounds: [
             LidSoundLibrary.Starter(name: "اذكر الله", file: "Adhkar.mp3", from: 2.7, to: 4.7),
             LidSoundLibrary.Starter(name: "توكل على الله", file: "Adhkar.mp3", from: 11.2, to: 13.1)])] + LidSoundLibrary.fallbackPacks
         let (offered, offeredSound) = try makeModel(on: true, manifest: offer)
@@ -388,7 +416,15 @@ extension LidSoundSnapshotTests {
         XCTAssertEqual(sound.settings.items.map(\.displayName), ["Hum", "Breath", "Click"])
         sound.settings.mode = .inOrder
         sound.settings.nextIndex = 0
-        XCTAssertEqual(LidSoundText.copy(sound.situation()).detail.contains("Next: Hum."), true, "the order is what In order plays")
+        XCTAssertEqual(sound.situation().next, "Hum", "the order is what In order plays")
+        XCTAssertEqual(model.nextOnLid?.displayName, "Hum")
+        XCTAssertEqual(model.lidSoundTabLine, "In order · next Hum")
+        model.playNext(model.stage[1])
+        XCTAssertEqual(model.nextOnLid?.displayName, "Click", "Play this next: In order carries on from that row")
+        sound.settings.mode = .random
+        XCTAssertNil(model.nextOnLid)
+        sound.settings.lastPickID = model.stage[0].id
+        XCTAssertEqual(model.lastPlayedOnLid?.displayName, "Hum", "Random: the one that just played")
         sound.shutDown()
     }
 }

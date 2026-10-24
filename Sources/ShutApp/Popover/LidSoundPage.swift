@@ -75,6 +75,14 @@ private struct LidSoundBand: View {
                     Text(copy.detail)
                         .font(TunerTheme.body).foregroundStyle(theme.inkLabel).lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
+                    // In order: the next sound is a line you can see, not a clause in a sentence.
+                    if isOn, settings.mode == .inOrder, situation.sleepPendingSeconds == nil, let next = situation.next {
+                        HStack(spacing: 8) {
+                            LidSoundGlyph(playing: false, height: 11, tint: theme.ink)
+                            Text(LidSoundText.nextUpLine(next)).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink)
+                        }
+                        .help("What the next close plays. Reorder the list below, or choose Play this next in a row's menu.")
+                    }
                     action(situation).padding(.top, 4)
                     if !model.sleep.running.isEmpty {
                         LaggardCard(laggards: model.sleep.running, stop: { model.sleep.stop($0) }, dismiss: { for laggard in model.sleep.running { model.sleep.ignore(laggard) } })
@@ -227,10 +235,21 @@ private struct LidSoundControls: View {
             .frame(width: PopoverView.width - AwakePage.statusWidth - 1)
         }
         .frame(maxHeight: .infinity)
+        // A drag that was let go outside the stage leaves `dragging` set; the first pointer
+        // movement the page sees afterwards clears it (a drag session owns the pointer meanwhile).
+        .onContinuousHover { phase in if case .active = phase { model.pointerMoved() } }
+        // First visit: a pack is already open, so the + Lid and the drag are in view with the hint.
+        .onAppear {
+            if !sound.settings.hasPutOnLid, model.openPackID == nil, let first = sound.settings.packs.first(where: \.bundled) {
+                model.showingBundledPacks = true
+                model.openPackID = first.id
+            }
+        }
         .tunerAnimation(TunerTheme.ease, value: model.showingSoundSettings)
         .tunerAnimation(TunerTheme.ease, value: model.showingSoundTiming)
         .tunerAnimation(TunerTheme.ease, value: model.openPackID)
         .tunerAnimation(TunerTheme.ease, value: model.importNote)
+        .tunerAnimation(TunerTheme.ease, value: model.dragging)
     }
 
     /// The left column: the stage, then the timing and the settings folded under it.
@@ -241,7 +260,7 @@ private struct LidSoundControls: View {
             // The section's one action sits in its heading, so it is there before the list
             // is scrolled, however long the list grows.
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Eyebrow("On the lid", number: "01")
+                Eyebrow("On close", number: "01")
                 Spacer(minLength: 8)
                 if model.editingStage {
                     // Edit: tick rows, then one action takes them off the lid together.
@@ -304,16 +323,20 @@ private struct LidSoundControls: View {
         let own = settings.packs.filter { !$0.bundled }
         let bundled = settings.packs.filter(\.bundled)
         let bundledSounds = settings.items.filter { item in bundled.contains { $0.id == item.packID } }.count
+        // With nothing on the lid, the packs from Shut stay unfolded: the way to put something
+        // there must be in view, not behind a fold.
+        let stageEmpty = model.stage.isEmpty
+        let bundledOpen = model.showingBundledPacks || stageEmpty
         return VStack(alignment: .leading, spacing: 10) {
-            Eyebrow("Packs", number: "02").padding(.bottom, 2)
+            Eyebrow("Add from packs", number: "02").padding(.bottom, 2)
             LidSoundPackList(model: model, packs: own, canMakeOne: true)
             FoldedSection("From Shut", summary: LidSoundText.bundledPacksLine(packs: bundled.map(\.name), sounds: bundledSounds),
-                          isOpen: Binding(get: { model.showingBundledPacks }, set: { model.showingBundledPacks = $0 }),
-                          help: LidSoundText.bundledPacksAbout)
+                          isOpen: Binding(get: { bundledOpen }, set: { if !stageEmpty { model.showingBundledPacks = $0 } }),
+                          help: stageEmpty ? "The packs that came with Shut, open while nothing is on the lid. Open one, then drag a sound onto the lid or press + Lid." : LidSoundText.bundledPacksAbout)
                 .padding(.top, 18)
-            if model.showingBundledPacks { LidSoundPackList(model: model, packs: bundled, canMakeOne: false).transition(.blurFade) }
+            if bundledOpen { LidSoundPackList(model: model, packs: bundled, canMakeOne: false).transition(.blurFade) }
         }
-        .tunerAnimation(TunerTheme.ease, value: model.showingBundledPacks)
+        .tunerAnimation(TunerTheme.ease, value: bundledOpen)
     }
 }
 
@@ -381,11 +404,20 @@ private struct LidSoundList: View {
         let items = model.stage
         let clipping = self.clipping ?? model.cuttingSoundForTest
         let editing = model.editingStage
+        let inOrder = model.lidSound.settings.mode == .inOrder
+        let nextID = model.nextOnLid?.id, lastID = model.lastPlayedOnLid?.id
         VStack(spacing: 0) {
             if items.isEmpty {
-                Text(LidSoundText.stageEmpty)
-                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel).padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                // Empty, the stage is a drop zone and looks like one: three rows tall, a dashed
+                // ink outline, and the sentence that says what goes here.
+                Text(model.dragging ? LidSoundText.dropHere : LidSoundText.stageEmpty)
+                    .font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                    .lineSpacing(2).multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity, minHeight: Self.rowHeight * 3)
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(theme.inkLabel, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                    .padding(8)
             }
             VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
@@ -393,6 +425,8 @@ private struct LidSoundList: View {
                     LidSoundRow(model: model, item: item, place: .stage,
                                 clipping: Binding(get: { clipping == item.id }, set: { self.clipping = $0 ? item.id : nil }),
                                 ticked: editing ? model.stageSelection.contains(item.id) : nil,
+                                position: inOrder ? index + 1 : nil,
+                                queueTag: item.id == nextID ? "Next" : (item.id == lastID ? "Last" : nil),
                                 carried: carry?.id == item.id, canMove: !editing && items.count > 1 && clipping == nil,
                                 hold: { carry = Carry(id: item.id, from: index) },
                                 drag: { offset in if carry?.id == item.id { carry?.offset = clamped(offset, from: index, count: items.count) } },
@@ -406,6 +440,16 @@ private struct LidSoundList: View {
             if let pending = model.newPackFor, let item = items.first(where: { $0.id == pending }) {
                 LidSoundNewPack(model: model, item: item)
             }
+            if model.dragging, !items.isEmpty {
+                // While a drag from a pack is in flight the well grows by one row and says where
+                // the sound lands: the same box, taller, with nothing covered. Dropped up between
+                // the rows it goes there instead; the landing line says so.
+                Rectangle().fill(theme.hairline).frame(height: 1)
+                // Quiet, like the empty zone's sentence: a place, not a button.
+                Text(LidSoundText.dropHere).font(TunerTheme.bodySmall).foregroundStyle(theme.inkLabel)
+                    .frame(maxWidth: .infinity).frame(height: Self.rowHeight - 1)
+                    .transition(.blurFade)
+            }
         }
         // A carried row whose list changed under it (removed, re-sorted) is let go of, so
         // nothing is ever left floating out of view.
@@ -417,7 +461,7 @@ private struct LidSoundList: View {
 
         .surface(.well, radius: TunerTheme.wellRadius)
         .overlay(RoundedRectangle(cornerRadius: TunerTheme.wellRadius, style: .continuous)
-            .strokeBorder(theme.ink, lineWidth: 1).opacity(dropTargeted ? 1 : 0))
+            .strokeBorder(theme.ink, lineWidth: 1).opacity(dropTargeted || model.dragging ? 1 : 0))
         .overlay(alignment: .top) {
             // The landing line: 2 pt of ink in the gap the sound would fall into.
             if let dropIndex, !items.isEmpty {
@@ -464,6 +508,7 @@ private struct LidSoundStageDrop: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         targeted = false
         insertion = nil
+        model.dragEnded()
         let index = gap(info)
         let texts = info.itemProviders(for: [.utf8PlainText, .plainText])
         if !texts.isEmpty {
@@ -552,9 +597,11 @@ private struct LidSoundPackList: View {
                         }
                         // Under the rows: what to do with the pack, and a way to add to it. A bundled
                         // pack takes the user's sounds too: a playlist is theirs to fill.
-                        Rectangle().fill(theme.hairline).frame(height: 1)
-                        HStack(spacing: 6) {
-                            if !rows.isEmpty {
+                        // Under the rows: what the pack can do for the lid, then what can be done
+                        // to the pack. Two lines, so no link is ever cut short.
+                        if !rows.isEmpty {
+                            Rectangle().fill(theme.hairline).frame(height: 1)
+                            HStack(spacing: 6) {
                                 QuietButton("Play this pack") { model.playOnly(pack) }
                                     .help("The lid plays this pack and nothing else: the stage becomes these sounds.")
                                 Text("·").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
@@ -565,28 +612,38 @@ private struct LidSoundPackList: View {
                                     QuietButton("Add all") { model.setShelf(pack, onLid: true) }
                                         .help("Every sound in this pack onto the lid, after what is there.")
                                 }
+                                Spacer(minLength: 0)
                             }
-                            Spacer(minLength: 0)
-                            QuietButton("Add a sound…", disclosure: true) { model.addSounds(.pack(pack)) }
-                                .help("Choose audio files for this pack: mp3, m4a, wav or aiff. They go in here, off the lid; + puts one on. Files can also be dropped on the pack.")
+                            .padding(.leading, 16).padding(.trailing, 8).frame(height: 32)
                         }
-                        .padding(.leading, 16).padding(.trailing, 8).frame(height: 32)
-                        if !pack.bundled, pack.id != LidSoundPack.mineID {
-                            // A pack of the user's own is theirs to rename and to let go of: its sounds
-                            // go to Mine, never deleted.
-                            Rectangle().fill(theme.hairline).frame(height: 1)
-                            HStack(spacing: 6) {
+                        Rectangle().fill(theme.hairline).frame(height: 1)
+                        HStack(spacing: 6) {
+                            QuietButton("Add a sound…", disclosure: true) { model.addSounds(.pack(pack)) }
+                                .help("Choose audio files for this pack: mp3, m4a, wav or aiff. They go in here, off the lid; + Lid puts one on. Files can also be dropped on the pack.")
+                            if !pack.bundled, pack.id != LidSoundPack.mineID {
+                                // A pack of the user's own is theirs to rename and to let go of: its
+                                // sounds go to Mine, never deleted.
+                                Text("·").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
                                 QuietButton("Rename") { renaming = (pack.id, pack.name) }
                                     .help("A new name for this pack.")
                                 Text("·").font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary)
                                 QuietButton("Remove pack") { model.removePack(pack) }
                                     .help(rows.isEmpty ? "Remove this pack." : "Remove this pack. Its \(rows.count == 1 ? "sound goes" : "\(rows.count) sounds go") to Mine; nothing is deleted.")
-                                Spacer(minLength: 0)
                             }
-                            .padding(.leading, 16).padding(.trailing, 8).frame(height: 32)
+                            Spacer(minLength: 0)
                         }
+                        .padding(.leading, 16).padding(.trailing, 8).frame(height: 32)
                         if let pending = model.newPackFor, let item = rows.first(where: { $0.id == pending }) {
                             LidSoundNewPack(model: model, item: item)
+                        }
+                        if !model.lidSound.settings.hasPutOnLid, !rows.isEmpty {
+                            // Until the first sound has been put on the lid by hand: how.
+                            Text(LidSoundText.firstHint)
+                                .font(TunerTheme.bodySmall).foregroundStyle(theme.ink).lineSpacing(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(theme.washSaffron)
+                                .transition(.blurFade)
                         }
                     }
                     .transition(.blurFade)
@@ -648,11 +705,14 @@ private struct LidSoundPackList: View {
 private struct DragOntoStage: ViewModifier {
     let payload: String?
     let item: LidSoundItem
+    @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
 
     func body(content: Content) -> some View {
         if let payload {
-            content.draggable(payload) {
+            // onDrag, not draggable: its closure runs as the drag begins, which is when the stage
+            // should start saying "Drop here".
+            content.onDrag({ model.dragBegan(); return NSItemProvider(object: payload as NSString) }) {
                 HStack(spacing: 8) {
                     Image(systemName: "play.fill").font(.system(size: 12, weight: .medium)).foregroundStyle(theme.inkLabel).frame(width: 28)
                     Text(item.displayName).font(TunerTheme.body).foregroundStyle(theme.ink).lineLimit(1)
@@ -677,11 +737,12 @@ private struct DragOntoStage: ViewModifier {
 private struct DragPackOntoStage: ViewModifier {
     let pack: LidSoundPack?
     let count: Int
+    @ObservedObject var model: PopoverModel
     @Environment(\.tunerTheme) private var theme
 
     func body(content: Content) -> some View {
         if let pack {
-            content.draggable(LidSoundStageDrop.payload(for: pack)) {
+            content.onDrag({ model.dragBegan(); return NSItemProvider(object: LidSoundStageDrop.payload(for: pack) as NSString) }) {
                 HStack(spacing: 8) {
                     Text(pack.name).font(TunerTheme.bodyMedium).foregroundStyle(theme.ink).lineLimit(1)
                     Spacer(minLength: 12)
@@ -722,34 +783,11 @@ private struct LidSoundPackRow: View {
         .buttonStyle(PressStyle())
         // The whole pack can be dragged onto the stage: every sound in it lands together, where
         // it is dropped. What travels is the pack's name and its count.
-        .modifier(DragPackOntoStage(pack: count > 0 ? pack : nil, count: count))
+        .modifier(DragPackOntoStage(pack: count > 0 ? pack : nil, count: count, model: model))
         .help(pack.bundled ? (pack.credit.map { "\($0) Drag the pack onto the lid to put every sound in it there." } ?? "Comes with the app.")
                            : "Your own pack. Drag it onto the lid to put every sound in it there; rename it below.")
         .accessibilityLabel("\(pack.name), \(LidSoundText.shelfLine(onLid: onLid, of: count)) on the lid")
         .accessibilityAddTraits(open ? [.isHeader, .isSelected] : .isHeader)
-    }
-}
-
-/// The tick in Edit: an empty ring, or the ring in ink with a check in it.
-private struct LidSoundTick: View {
-    let on: Bool
-    let name: String
-    let action: () -> Void
-    @Environment(\.tunerTheme) private var theme
-    @State private var hover = false
-
-    var body: some View {
-        Button(action: action) {
-            LidSoundMark(on: on, off: nil, hover: hover)
-                .frame(width: 28, height: 28).contentShape(Circle())
-        }
-        .onHover { hover = $0 }
-        .tunerAnimation(TunerTheme.ease, value: hover)
-        .buttonStyle(PressStyle())
-        .tunerAnimation(TunerTheme.ease, value: on)
-        .help(on ? "Ticked: Remove takes \(name) off the lid." : "Tick \(name) to remove it from the lid.")
-        .accessibilityLabel(on ? "\(name), ticked" : "\(name), not ticked")
-        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -770,12 +808,20 @@ private struct LidSoundLidToggle: View {
                     LidSoundGlyph(playing: false, height: 11, tint: theme.ink).opacity(hover ? 0 : 1)
                     Image(systemName: "xmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(theme.ink).opacity(hover ? 1 : 0)
                 } else {
-                    Image(systemName: "plus").font(.system(size: 10, weight: .semibold)).foregroundStyle(hover ? theme.ink : theme.inkLabel)
+                    // "+ Lid", not a bare plus: the plus alone read as "add to this list", which is
+                    // the opposite of what it does.
+                    HStack(spacing: 2) {
+                        Image(systemName: "plus").font(.system(size: 8, weight: .bold))
+                        Text("Lid").font(TunerTheme.mono(9))
+                    }
+                    .foregroundStyle(hover ? theme.ink : theme.inkLabel)
+                    .padding(.horizontal, 7).frame(height: 22)
+                    .background(Capsule().fill(hover ? theme.linen : .clear))
+                    .overlay(Capsule().strokeBorder(hover ? theme.ink : theme.border, lineWidth: 1))
                 }
             }
-            .frame(width: 28, height: 28)
-            .background(Circle().fill(hover ? theme.linen : .clear))
-            .contentShape(Circle())
+            .frame(minWidth: 28, minHeight: 28)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
         .onHover { hover = $0 }
@@ -787,24 +833,40 @@ private struct LidSoundLidToggle: View {
     }
 }
 
-/// Edit's tick: an 18 pt ring, empty until ticked, then in ink with a check in it.
+/// Edit's mark: an 18 pt ring, empty until chosen, then filled with ink. No check: a full
+/// circle reads as "this one" at a glance, the way a radio button does.
 private struct LidSoundMark: View {
     let on: Bool
-    /// The symbol when off (a plus on a pack's row); nil draws the empty ring (Edit's tick).
-    let off: String?
     var hover = false
     @Environment(\.tunerTheme) private var theme
 
     var body: some View {
-        ZStack {
-            Circle().strokeBorder(on ? theme.ink : (hover ? theme.inkLabel : theme.border), lineWidth: 1)
-                .opacity(on || off == nil || hover ? 1 : 0)
-            Image(systemName: on ? "checkmark" : (off ?? "checkmark"))
-                .font(.system(size: 8, weight: .bold))
-                .foregroundStyle(on ? theme.ink : theme.inkLabel)
-                .opacity(on || off != nil ? 1 : 0)
+        Circle().fill(on ? theme.ink : .clear)
+            .overlay(Circle().strokeBorder(on ? theme.ink : (hover ? theme.inkLabel : theme.border), lineWidth: 1))
+            .frame(width: 16, height: 16)
+    }
+}
+
+/// The mark in Edit, as a button: the whole 28 pt square is its target.
+private struct LidSoundTick: View {
+    let on: Bool
+    let name: String
+    let action: () -> Void
+    @Environment(\.tunerTheme) private var theme
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            LidSoundMark(on: on, hover: hover)
+                .frame(width: 28, height: 28).contentShape(Circle())
         }
-        .frame(width: 18, height: 18)
+        .buttonStyle(PressStyle())
+        .onHover { hover = $0 }
+        .tunerAnimation(TunerTheme.ease, value: hover)
+        .tunerAnimation(TunerTheme.ease, value: on)
+        .help(on ? "Chosen: Remove takes \(name) off the lid." : "Choose \(name) to remove it from the lid.")
+        .accessibilityLabel(on ? "\(name), chosen" : "\(name), not chosen")
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -815,8 +877,12 @@ private struct LidSoundRow: View {
     let item: LidSoundItem
     let place: LidSoundPlace
     @Binding var clipping: Bool
-    /// In Edit on the stage: whether this row is ticked. nil when not editing.
+    /// In Edit on the stage: whether this row is marked. nil when not editing.
     var ticked: Bool? = nil
+    /// In order: this row's place in the queue, 1 up, shown as "01".
+    var position: Int? = nil
+    /// "Next" (In order: the next close plays this) or "Last" (Random: this one just played).
+    var queueTag: String? = nil
     /// Being carried to a new place: lifted on Linen, the pointer's to move.
     var carried = false
     var canMove = true
@@ -864,6 +930,10 @@ private struct LidSoundRow: View {
                     .accessibilityLabel("Play \(item.displayName)")
             }
             HStack(spacing: 8) {
+                if let position, draft == nil {
+                    Text(String(format: "%02d", position)).font(TunerTheme.mono(9)).foregroundStyle(theme.inkTertiary).fixedSize()
+                        .help("Its place in the order the lid plays.")
+                }
                 if let draft {
                     TextField("Name", text: Binding(get: { draft }, set: { self.draft = $0 }))
                         .textFieldStyle(.plain).font(TunerTheme.body).foregroundStyle(theme.ink)
@@ -890,9 +960,19 @@ private struct LidSoundRow: View {
                 } else if onStage, draft == nil, let shelf = sound.settings.pack(item.packID) {
                     // Which shelf it came from, in the faintest ink: the stage mixes them.
                     Text(shelf.name).font(TunerTheme.bodySmall).foregroundStyle(theme.inkTertiary).lineLimit(1).truncationMode(.tail)
-                        .help("On the \(shelf.name) shelf, under Browse.")
+                        .help("From the \(shelf.name) pack, under Add from packs.")
                 }
                 Spacer(minLength: 6)
+                if let queueTag, draft == nil {
+                    // The queue, visible: NEXT on the one the next close plays, LAST on the one
+                    // that just did. The selection colour, small.
+                    Text(queueTag.uppercased()).font(TunerTheme.mono(8)).tracking(1).foregroundStyle(theme.ink).fixedSize()
+                        .padding(.horizontal, 5).padding(.vertical, 2)
+                        .background(Capsule().fill(theme.washLime))
+                        .overlay(Capsule().strokeBorder(theme.ink, lineWidth: 0.5))
+                        .help(queueTag == "Next" ? "The next close plays this one." : "This one played last.")
+                        .accessibilityLabel(queueTag == "Next" ? "plays next" : "played last")
+                }
                 // The grip shows itself when the pointer is near, so the row says it can be moved.
                 if canMove {
                     Image(systemName: "line.3.horizontal").font(.system(size: 10, weight: .medium))
@@ -919,7 +999,7 @@ private struct LidSoundRow: View {
             }
             // Everything else about a row, behind one mark: the row stays a name and a button.
             if ticked == nil { Menu {
-                Button("Hear") { sound.preview(item) }.disabled(state != .ok)
+                // No "Hear" here: the ▶ at the row's left already is it.
                 Button("Rename") { draft = item.displayName }
                 if item.canCut, state == .ok { Button(clipping ? "Done cutting" : "Cut a part…") { clipping.toggle() } }
                 Menu("Move to") {
@@ -929,6 +1009,7 @@ private struct LidSoundRow: View {
                     Divider()
                     Button("New pack…") { model.newPackFor = item.id }
                 }
+                if onStage, sound.settings.mode == .inOrder, queueTag != "Next" { Button("Play this next") { model.playNext(item) } }
                 if onStage { Button("Remove from the lid") { model.setOnLid(item, false) } }
                 if !item.fromManifest {
                     Divider()
@@ -939,7 +1020,7 @@ private struct LidSoundRow: View {
                     .frame(width: 28, height: 28).contentShape(Circle())
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-            .help(onStage ? "Hear, rename, cut, move to a pack, or remove from the lid: it stays in its pack." : "Hear, rename, cut, or move to a pack.")
+            .help(onStage ? "Rename, cut, move to a pack, or remove from the lid: it stays in its pack." : "Rename, cut, or move to a pack.")
             .accessibilityLabel("More for \(item.displayName)") }
         }
         .padding(.leading, 6).padding(.trailing, 8).frame(height: LidSoundList.rowHeight - 1)
@@ -948,7 +1029,7 @@ private struct LidSoundRow: View {
         .contentShape(Rectangle())
         // A pack's row is dragged onto the stage as a whole: the row is the handle and the row
         // is what travels, so what lands is what was picked up. The buttons stay buttons.
-        .modifier(DragOntoStage(payload: onStage ? nil : LidSoundStageDrop.payload(for: item), item: item))
+        .modifier(DragOntoStage(payload: onStage ? nil : LidSoundStageDrop.payload(for: item), item: item, model: model))
         .onHover { hover = $0 }
         .tunerAnimation(TunerTheme.ease, value: carried)
         .tunerAnimation(TunerTheme.ease, value: hover)

@@ -41,13 +41,17 @@ final class LidSoundSettings: ObservableObject {
     /// angle, `startDegrees` above shut.
     @Published var startsWithEffect: Bool { didSet { defaults.set(startsWithEffect, forKey: "lidSound.startsWithEffect") } }
     @Published var startDegrees: Double { didSet { defaults.set(startDegrees, forKey: "lidSound.startDegrees") } }
-    /// The sound plays to its end: the Mac waits for it, then sleeps at once. Off: a short
-    /// fade as the lid lands, whatever the length.
+    /// The sound plays to its end: the Mac waits for it, then sleeps at once. On by default,
+    /// so a sound is heard whole however fast the lid comes down; off, a short fade as the
+    /// lid lands, whatever the length.
     @Published var playsToEnd: Bool { didSet { defaults.set(playsToEnd, forKey: "lidSound.playsToEnd") } }
     /// The shelves: Mine, then the user's own packs, then the bundled ones as the manifest
     /// lists them. Only the user's packs are saved; the bundled ones come from the manifest
     /// each launch.
     @Published var packs: [LidSoundPack] { didSet { defaults.set(try? JSONEncoder().encode(packs.filter { !$0.bundled }), forKey: "lidSound.packs") } }
+    /// The user has put a sound on the lid themselves, by + or a drag: the hint that says how
+    /// is for before that, and never after.
+    @Published var hasPutOnLid: Bool { didSet { defaults.set(hasPutOnLid, forKey: "lidSound.hasPutOnLid") } }
 
     /// Random never plays the same sound twice running; in order carries on from here.
     var lastPickID: UUID? { didSet { defaults.set(lastPickID?.uuidString, forKey: "lidSound.lastPickID") } }
@@ -74,9 +78,10 @@ final class LidSoundSettings: ObservableObject {
             if migrated != saved { defaults.set(try? JSONEncoder().encode(migrated), forKey: "lidSound.items") }
             items = migrated
         } else {
-            // First launch: every bundled sound on its shelf, the starters on the lid, so the
-            // first close has something to play.
-            items = manifest.flatMap { pack in pack.starters.map { $0.item(onLid: pack.startsOnTheLid) } }
+            // First launch: every bundled sound in its pack and nothing on the lid. The stage
+            // is the user's to fill, and the page shows how: the packs from Shut stay unfolded
+            // while it is empty, with the first one open and a line saying what + Lid does.
+            items = manifest.flatMap { pack in pack.starters.map { $0.item(onLid: false) } }
         }
         for key in ["lidSound.hiddenPacks", "lidSound.shownPacks", "lidSound.playsFrom", "lidSound.nextIndexByScope"] { defaults.removeObject(forKey: key) }
         let userPacks = (defaults.data(forKey: "lidSound.packs")).flatMap { try? JSONDecoder().decode([LidSoundPack].self, from: $0) } ?? [LidSoundPack.mine]
@@ -90,7 +95,8 @@ final class LidSoundSettings: ObservableObject {
         volumeMode = defaults.string(forKey: "lidSound.volumeMode").flatMap(VolumeMode.init(rawValue:)) ?? .ownLevel
         startsWithEffect = bool("lidSound.startsWithEffect", true)
         startDegrees = defaults.object(forKey: "lidSound.startDegrees") as? Double ?? 60
-        playsToEnd = bool("lidSound.playsToEnd", false)
+        playsToEnd = bool("lidSound.playsToEnd", true)
+        hasPutOnLid = bool("lidSound.hasPutOnLid", false)
         lastPickID = defaults.string(forKey: "lidSound.lastPickID").flatMap(UUID.init(uuidString:))
         nextIndex = defaults.integer(forKey: "lidSound.nextIndex")
         muteToRestore = defaults.bool(forKey: "lidSound.muteToRestore")

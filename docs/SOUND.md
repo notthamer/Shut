@@ -33,11 +33,11 @@ lid opens. Off until you turn it on.
   old value is written to defaults first, so a sleep in between still gets it put back at
   the next launch, on the same output only). Outputs with no volume Shut can set keep the
   dial a share.
-- **01 On the lid**: the stage, on the left, a well as long as the list is, the way a
+- **01 On close**: the stage, on the left, a well as long as the list is, the way a
   music app keeps what is playing apart from the playlists. The column scrolls, once; the
   well never scrolls inside it (it did, at four and a half rows, and six sounds made a
   scroll inside a scroll). Each row has a ▶ to hear it, its name, the pack it came from in
-  the faintest ink, its length, and a … menu (Hear, Rename, Cut a part…, Move to, Remove
+  the faintest ink, its length, and a … menu (Rename, Cut a part…, Move to, Remove
   from the lid, which puts it back in its pack, and Delete from Shut for the user's own files). A row at work is in ink with a Lime dot. A
   file that went missing says "Missing"; one Core Audio cannot open says "Can't be played".
   "Edit", in the heading, puts a tick where ▶ was on every row: tick what should go (All
@@ -54,11 +54,13 @@ lid opens. Off until you turn it on.
   frames; nothing eases into place), and letting go keeps the order, which is what "In
   order" plays down; the sounds in their packs only keep their places in the list. VoiceOver
   gets Move up and Move down on each row. The stage is also where a sound dragged from a
-  pack lands, at the row it is dropped on (`LidSoundStageDrop`, a `DropDelegate` that takes
+  pack lands: while the drag is in flight the well grows by one row that says "Drop here"
+  (the same box, taller, nothing covered; an empty stage's zone says it instead), and the
+  sound lands at the row it is dropped on (`LidSoundStageDrop`, a `DropDelegate` that takes
   the sound's id as plain text under a prefix, or audio files); dropped where it already is,
   nothing moves. A refused import says why in one Saffron line: too long, unreadable,
   already in the list, could not be copied.
-- **02 Packs**, on the right: the user's packs first (Mine and the ones they make, with
+- **02 Add from packs**, on the right: the user's packs first (Mine and the ones they make, with
   "New pack…" at the foot of the well), and under them a fold, "From Shut", with the packs
   that came with the app, so a new user sees Mine and one line, not a wall of starters.
   Every pack is a row (name, "3 of 8" on the lid, a chevron), one open at a time across both
@@ -214,8 +216,11 @@ should play; "Play this pack" makes the stage that pack. A pack is a playlist, n
 switch: nothing to add or remove, and one sound from each of nine packs is nine drags. In
 the model this is one flag, `LidSoundItem.enabled` (on the lid), and one list, `items`,
 whose order is the stage's order; `LidSoundPack` has no state of its own. A release's new
-sounds land in their packs, off the lid; the first launch puts the `onByDefault` packs
-(Starters) on the lid and the rest in their packs.
+sounds land in their packs, off the lid, and so does the first launch: a new list has
+every pack in place and nothing on the lid. The stage is the user's to fill, and the page
+shows how: while it is empty "From Shut" stays unfolded with the first pack open, and
+until a sound has been put on the lid by hand a line under the open pack says what + Lid
+does.
 
 Bundled packs come from `starters.json`, each with a `credit` line saying where its audio
 came from, written beside it (rule 6). Mine leads the shelves and the bundled packs follow
@@ -255,7 +260,7 @@ joins its neighbour, each part gets 0.05 s of air either side, and there are twe
 most, the shortest gaps closed first. A sound with no silence in it is one part, and the
 line says so.
 
-**Play to the end.** Under Extras, off by default. On, the lid's sleep is held off while
+**Play to the end.** Under Extras, on by default (whoever turned it off keeps it off). On, the lid's sleep is held off while
 this close's sound plays, with the same kernel call Stay awake makes
 (`kPMSetClamshellSleepState`), and given back the moment the sound ends, so the Mac sleeps
 right after and a two-second sound is heard whole however fast the lid comes down. The

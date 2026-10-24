@@ -68,16 +68,12 @@ final class LidSoundLibrary {
         var id: String
         var name: String
         var credit: String?
-        /// Its sounds are on the lid from the first launch (the default), or only on their
-        /// shelf, for whoever wants them: a pack is an offer, not a fixture.
-        var onByDefault: Bool?
         var sounds: [Starter]
 
-        init(id: String, name: String, credit: String? = nil, onByDefault: Bool? = nil, sounds: [Starter]) {
-            self.id = id; self.name = name; self.credit = credit; self.onByDefault = onByDefault; self.sounds = sounds
+        init(id: String, name: String, credit: String? = nil, sounds: [Starter]) {
+            self.id = id; self.name = name; self.credit = credit; self.sounds = sounds
         }
 
-        var startsOnTheLid: Bool { onByDefault ?? true }
         var pack: LidSoundPack { LidSoundPack(id: id, name: name, bundled: true, credit: credit) }
         /// The sounds, each knowing its pack.
         var starters: [Starter] { sounds.map { var s = $0; s.packID = id; return s } }
